@@ -10,9 +10,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Env & secrets
 .env
@@ -35,3 +37,14 @@ Resumes/*
 Resumes_Mohan/*
 !Resumes_Mohan/Templates/
 !Resumes_Mohan/Templates/**
+
+# Database backups
+*.sql
+*.sql.gz
+*.custom
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

@@ -177,7 +177,6 @@ async function main() {
   if (firstCardCount === 0) {
     console.log("❌ No Dice job cards found on the page. Check that the search URL is correct and you are not blocked.");
     await context.close();
-    await browser.close();
     return;
   }
 

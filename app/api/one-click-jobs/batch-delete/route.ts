@@ -13,17 +13,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No valid ids" }, { status: 400 });
     }
 
-    const delegate = (prisma as any).oneClickJob;
-    if (delegate?.deleteMany) {
-      const result = await delegate.deleteMany({ where: { id: { in: numIds } } });
-      return NextResponse.json({ success: true, deleted: result.count ?? numIds.length });
-    }
-    const placeholders = numIds.map((_, i) => `$${i + 1}`).join(", ");
-    const result = await prisma.$executeRawUnsafe(
-      `DELETE FROM "OneClickJob" WHERE id IN (${placeholders})`,
-      ...numIds
-    );
-    return NextResponse.json({ success: true, deleted: result });
+    const result = await prisma.oneClickJob.deleteMany({ where: { id: { in: numIds } } });
+    return NextResponse.json({ success: true, deleted: result.count });
   } catch (e: unknown) {
     console.error("POST one-click-jobs/batch-delete:", e);
     return NextResponse.json(

@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
       Number.isFinite(requestedUserId) && requestedUserId > 0
         ? requestedUserId
         : await getDefaultUserId();
-    const delegate = (prisma as any).oneClickJob;
     const data = {
       userId,
       source: typeof source === "string" && source.trim() ? source.trim() : "manual",
@@ -36,37 +35,11 @@ export async function POST(req: NextRequest) {
       externalUrl: externalUrl.trim(),
       fullText: typeof fullText === "string" ? fullText : "",
     };
-    if (delegate?.create) {
-      const job = await delegate.create({ data });
-      return NextResponse.json({
-        ...job,
-        createdAt: job.createdAt.toISOString(),
-        appliedAt: job.appliedAt?.toISOString() ?? null,
-      });
-    }
-    const raw = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-      `INSERT INTO "OneClickJob" ("userId", source, title, company, "externalUrl", "fullText")
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, "userId", source, title, company, "externalUrl", "fullText", "appliedAt", "createdAt"`,
-      data.userId,
-      data.source,
-      data.title,
-      data.company,
-      data.externalUrl,
-      data.fullText
-    );
-    const row = raw[0];
-    const createdAtVal = row.createdAt ?? row.createdat;
-    const appliedAtVal = row.appliedAt ?? row.appliedat;
+    const job = await prisma.oneClickJob.create({ data });
     return NextResponse.json({
-      id: Number(row.id),
-      source: String(row.source ?? ""),
-      title: String(row.title ?? ""),
-      company: String(row.company ?? ""),
-      externalUrl: String(row.externalUrl ?? row.externalurl ?? ""),
-      fullText: String(row.fullText ?? row.fulltext ?? ""),
-      appliedAt: appliedAtVal != null ? new Date(String(appliedAtVal)).toISOString() : null,
-      createdAt: createdAtVal != null ? new Date(String(createdAtVal)).toISOString() : new Date().toISOString(),
+      ...job,
+      createdAt: job.createdAt.toISOString(),
+      appliedAt: job.appliedAt?.toISOString() ?? null,
     });
   } catch (e: unknown) {
     console.error("POST one-click-jobs:", e);
@@ -82,63 +55,24 @@ export async function GET(req: NextRequest) {
   const userIdParam = searchParams.get("userId");
   const userId = userIdParam ? Number(userIdParam) : undefined;
 
-  const delegate = (prisma as any).oneClickJob;
-  if (delegate && typeof delegate.findMany === "function") {
-    const jobs = await delegate.findMany({
-      where: userId ? { userId } : {},
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        source: true,
-        title: true,
-        company: true,
-        externalUrl: true,
-        fullText: true,
-        appliedAt: true,
-        createdAt: true,
-      },
-    });
-    const serialized = jobs.map((job: any) => ({
-      ...job,
-      createdAt: job.createdAt.toISOString(),
-      appliedAt: job.appliedAt?.toISOString() ?? null,
-    }));
-    return new Response(JSON.stringify(serialized), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const raw = await (userId != null && !Number.isNaN(userId))
-    ? prisma.$queryRaw<Array<Record<string, unknown>>>`
-        SELECT id, "userId", source, title, company, "externalUrl", "fullText", "appliedAt", "createdAt"
-        FROM "OneClickJob"
-        WHERE "userId" = ${userId}
-        ORDER BY "createdAt" DESC
-      `
-    : prisma.$queryRaw<Array<Record<string, unknown>>>`
-        SELECT id, "userId", source, title, company, "externalUrl", "fullText", "appliedAt", "createdAt"
-        FROM "OneClickJob"
-        ORDER BY "createdAt" DESC
-      `;
-  const serialized = raw.map((row) => {
-    const createdAtVal = row.createdAt ?? row.createdat;
-    const appliedAtVal = row.appliedAt ?? row.appliedat;
-    const createdAt = createdAtVal instanceof Date ? createdAtVal : new Date(String(createdAtVal));
-    const appliedAt = appliedAtVal != null ? (appliedAtVal instanceof Date ? appliedAtVal : new Date(String(appliedAtVal))) : null;
-    return {
-      id: Number(row.id),
-      source: String(row.source ?? ""),
-      title: String(row.title ?? ""),
-      company: String(row.company ?? ""),
-      externalUrl: String(row.externalUrl ?? row.externalurl ?? ""),
-      fullText: String(row.fullText ?? row.fulltext ?? ""),
-      appliedAt: appliedAt?.toISOString() ?? null,
-      createdAt: createdAt.toISOString(),
-    };
+  const jobs = await prisma.oneClickJob.findMany({
+    where: userId ? { userId } : {},
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      source: true,
+      title: true,
+      company: true,
+      externalUrl: true,
+      fullText: true,
+      appliedAt: true,
+      createdAt: true,
+    },
   });
-  return new Response(JSON.stringify(serialized), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  const serialized = jobs.map((job) => ({
+    ...job,
+    createdAt: job.createdAt.toISOString(),
+    appliedAt: job.appliedAt?.toISOString() ?? null,
+  }));
+  return NextResponse.json(serialized);
 }

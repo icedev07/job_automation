@@ -1,372 +1,346 @@
-# Career Scrum Bot (Job Application Bot)
+# Job Application Bot
 
-A personal job-application assistant that **scans multiple job boards**, saves listings to a PostgreSQL database, and **auto-generates tailored resumes and cover letters** using your styled `.docx` templates and ChatGPT.
+Automated job scraping, tracking, and tailored resume/cover letter generation — designed to run **24/7** as a set of Docker services.
 
----
+## Architecture
 
-## What It Does
+```
+┌─────────────┐     ┌────────────────┐     ┌─────────────────┐
+│  PostgreSQL  │◄────│   Web (Next.js) │     │   Scanner       │
+│  (database)  │◄────│   UI + API      │     │   (cron jobs)   │
+└──────┬───────┘     └────────────────┘     └────────┬────────┘
+       │                                             │
+       │             ┌────────────────┐              │
+       └─────────────│   DocGen       │──────────────┘
+                     │   (backfill)   │
+                     └────────┬───────┘
+                              │
+                     ┌────────▼───────┐
+                     │  PDF Converter │
+                     │   (watch)      │
+                     └────────────────┘
+```
 
-1. **Scan jobs** from Jobright (Recommended board), ZipRecruiter, Glassdoor, Dice, or Simplify — using your logged-in browser sessions so you control which jobs are visible.
-2. **Store** each job (title, company, URL, match score, source) and scrape the **job description** when possible.
-3. **Generate documents** on demand or in bulk:
-   - **Tailored resume** — same structure as your base resume, with technologies and bullets aligned to the job description.
-   - **Story-like cover letter** — no bullets, keyword-aware, tied to your experience.
-4. **Manage** everything from a single **`/jobs`** table: filter, search, edit, mark “Invited to interview,” generate docs per job (Normal or Aggressive tailoring), export to CSV.
+| Service | Purpose | Runs as |
+|---|---|---|
+| **postgres** | PostgreSQL 16 database | Container (persistent volume) |
+| **web** | Next.js 14 app — job table UI + REST API | Container on port 3000 |
+| **scanner** | Scrapes job boards on cron schedules (Jobright, ZipRecruiter, Glassdoor, Dice, Simplify) | Container with cron |
+| **docgen** | Polls DB for jobs needing docs, generates tailored resume + cover letter via ChatGPT UI | Container (long-running) |
+| **pdf-converter** | Watches for new `.docx` files and converts to PDF via LibreOffice | Container (long-running) |
 
-You can run scans from the UI or CLI, and generate docs from the UI or via backfill scripts through the **ChatGPT web UI**.
+## Quick Start (Docker — recommended for 24/7)
 
----
+### 1. Clone and configure
 
-## Tech Stack
+```bash
+git clone <your-repo-url> job-bot
+cd job-bot
+cp .env.example .env
+```
 
-| Layer | Stack |
-|-------|--------|
-| **App** | Next.js 14 (App Router), React, TypeScript |
-| **Database** | PostgreSQL + Prisma ORM |
-| **Job scanning** | Playwright (Node) with persistent browser contexts; optional Python + nodriver for Cloudflare bypass (ZipRecruiter/Glassdoor) |
-| **Documents** | Docxtemplater + Mammoth; LLM via ChatGPT web UI |
-| **Output** | Styled `.docx` resumes and cover letters from your templates |
+Edit `.env` — at minimum set:
 
----
+```env
+POSTGRES_PASSWORD=your_strong_password
+JOBRIGHT_CONTEXT_DIR=~/.jobbot/jobright
+```
 
-## Features
+### 2. Start all services
 
-### Job sources
+```bash
+docker compose up -d --build
+```
 
-- **Jobright** — Recommended board; Google login once, then scan. Saves apply URL and job description; skips LinkedIn and low match score (&lt; threshold).
-- **ZipRecruiter** — Search URL + persistent context; optional FlareSolverr/nodriver for Cloudflare.
-- **Glassdoor** — Search URL; “Apply on employer site” only (no Easy Apply).
-- **Dice** — Search URL; login once, then scan.
-- **Simplify** — Search URL; login once, then scan.
-- **Manual** — Add job from UI with title, company, URL, and optional description (e.g. paste from any site).
+This starts PostgreSQL, runs migrations, then launches the web app, scanner, docgen worker, and PDF converter.
 
-### Database & UI (`/jobs`)
+### 3. Open the UI
 
-- **Table**: title, company, source, date, match score, “Invited to interview,” docs status (Resume / Cover / Desc).
-- **Filters**: date range, interview status (all / invited / not invited), description (all / with / without).
-- **Search**: company, title, URL, score.
-- **Actions per row**: View description, Edit (title, company, URL, description, invited to interview), **Generate Docs** (uses current Tailoring setting), Delete.
-- **Toolbar**: Tailoring (Normal / Aggressive), Jobs to scan count, Scan Jobs, Add job (manual), Export to CSV.
+Go to **http://localhost:3000/jobs** to view the job table.
 
-### Resume & cover letter generation
+### 4. View logs
 
-- **Templates** in `Resumes/Templates`:
-  - Base resume text from `*_Sample.docx`; styled output from a resume template with placeholders.
-  - Cover letter template with `{coverletterContent}`.
-- **Tailoring**:
-  - **Normal** — Balanced keyword alignment and readability.
-  - **Aggressive** — Stronger keyword/requirements matching (better ATS-style match; no fabrication).
-- **Output**: `Resumes/<Company+Role>/` with tailored resume, cover letter, and job description copy.
-- **Backend**: **ChatGPT web UI**.
+```bash
+# All services
+docker compose logs -f
 
-### Automation
+# Specific service
+docker compose logs -f scanner
+docker compose logs -f docgen
+```
 
-- **Backfill** — Generate docs for all jobs that have a description but no resume/cover letter:
-  - One-shot: `npm run docs:backfill`.
-  - **Watch mode**: `npm run docs:backfill:watch` — polls the DB on an interval and processes new jobs (env: `BACKFILL_POLL_INTERVAL_SEC`, `BACKFILL_TAILORING_STRENGTH`).
+### 5. Stop
 
----
+```bash
+docker compose down        # Stop (keep data)
+docker compose down -v     # Stop and delete volumes (reset everything)
+```
 
-## Prerequisites
+## Local Development (without Docker)
 
-- **Node.js 18+**
+### Prerequisites
+
+- **Node.js 20+**
 - **PostgreSQL** (local or remote)
-- **Git** (optional)
-- **Python 3** (optional, only for ZipRecruiter/Glassdoor nodriver scripts)
+- **Python 3.12+** (optional — for SeleniumBase scripts and PDF conversion)
 
----
-
-## Setup Guide
-
-### 1. Clone and install
+### 1. Install dependencies
 
 ```bash
-git clone <your-repo-url> career-scrum-bot
-cd career-scrum-bot
 npm install
+npx playwright install chromium
 ```
 
-(Or open the project folder and run `npm install`.)
-
-### 2. Environment variables
-
-Create a `.env` file in the project root (it is git-ignored). Below: **required** vs **optional**.
-
-**Required**
-
-```env
-# PostgreSQL (replace with your user, password, host, port, database)
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/DATABASE"
-```
-
-**Job scanning (at least one source)**  
-Pick the context dir format for your OS.
-
-- **Windows**: `C:\Users\YourName\.jobbot\jobright`
-- **Linux / macOS**: `/home/yourname/.jobbot/jobright` or `~/.jobbot/jobright`
-
-```env
-# Jobright – required for Jobright scan
-JOBRIGHT_CONTEXT_DIR=C:\Users\YourName\.jobbot\jobright
-
-# User ID for saved jobs (must exist in DB; default 1)
-JOBBOT_USER_ID=1
-MAX_JOBS=5
-MATCH_SCORE_THRESHOLD=80
-AUTO_GENERATE_DOCUMENTS=true
-```
-
-**Document generation**
-
-```env
-# ChatGPT-generated documents output directory
-RESUMES_OUTPUT_DIR=Resumes
-
-# Optional: resume source/template overrides (use these for non-Jiayong profiles)
-# RESUME_SAMPLE_PATH=Resumes/Templates/Mohan Sha_Sample.docx
-# RESUME_TEMPLATE_PATH=Resumes/Templates/Mohan Sha.docx
-# RESUME_OUTPUT_FILENAME=Mohan Sha.docx
-# Optional (for Mohan template): include {toolsContent} placeholder in the template TOOLS section
-```
-
-**Backfill watch (optional)**
-
-```env
-BACKFILL_POLL_INTERVAL_SEC=120
-```
-
-**Optional job sources** (only if you use them)
-
-```env
-# ZipRecruiter
-ZIPRECRUITER_SEARCH_URL=https://...
-ZIPRECRUITER_MAX_JOBS_PER_RUN=10
-# ZIPRECRUITER_CONTEXT_DIR=...
-
-# Glassdoor
-GLASSDOOR_SEARCH_URL=https://...
-GLASSDOOR_MAX_JOBS_PER_RUN=5
-
-# Dice
-DICE_SEARCH_URL=https://...
-DICE_MAX_JOBS_PER_RUN=10
-# DICE_CONTEXT_DIR=...
-
-# Simplify
-SIMPLIFY_SEARCH_URL=https://...
-SIMPLIFY_MAX_JOBS_PER_RUN=5
-# SIMPLIFY_CONTEXT_DIR=...
-```
-
-**ChatGPT UI**
-
-```env
-# Optional; default is ~/.jobbot/chatgpt (or %USERPROFILE%\.jobbot\chatgpt on Windows)
-# CHATGPT_CONTEXT_DIR=...
-
-# Optional; cookies exported by chatgpt:nodriver (default: ~/.jobbot/chatgpt-cookies.json)
-# CHATGPT_COOKIES_FILE=...
-# Optional; persistent browser profile for ChatGPT nodriver (default: ~/.jobbot/chatgpt-nodriver-profile). Log in once; later runs reuse the session.
-# CHATGPT_NODRIVER_USER_DATA_DIR=...
-# Optional; ChatGPT backfill nodriver: RUN_ONCE=1 to process one batch and exit; POLL_SECONDS (default 300) when no jobs in 24/7 mode.
-# CHATGPT_BACKFILL_RUN_ONCE=1
-# CHATGPT_BACKFILL_POLL_SECONDS=300
-# CHATGPT_BACKFILL_JOBS_PER_CHAT=20  (start new chat after N jobs to avoid conversation limit)
-# CHATGPT_BACKFILL_KILL_BROWSERS=1   (if port never opens: close all Chrome/Edge before launching)
-```
-
-If the script says "Port did not respond": close all Chrome and Edge windows and run again, or set `CHATGPT_BACKFILL_KILL_BROWSERS=1`. To test the Chrome debug port alone: `py -3.12 scripts/test_chrome_debug_port.py`.
-
-**If the port still never opens** (e.g. on Chrome 136+ or locked-down installs), use **Chrome for Testing**, which is built for automation and respects the debug port:
-1. Download the [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/) build (e.g. latest stable **win64**).
-2. Extract the zip and set the path to the executable, e.g. `set CHROME_FOR_TESTING_PATH=C:\path\to\chrome-win64\chrome.exe` (or put the extracted `chrome-win64` folder in the project root and the script will use `chrome-win64\chrome.exe` automatically).
-3. Run `npm run chatgpt:backfill:nodriver` again (with `CHATGPT_BACKFILL_KILL_BROWSERS=1` if you prefer).
-
-**Why doesn’t the debug port open on my PC?** On some Windows machines Chrome never listens on `--remote-debugging-port` even with the right flags. Common causes and how to fix them so it works “like other Windows”:
-- **Antivirus / Windows Defender** – Can block Chrome from opening a local server. Add an exclusion for Chrome (or the project folder), or temporarily disable real-time protection and test. If the port then works, keep an exclusion.
-- **Group policy** – Managed PCs (work/school) may have policies that disable remote debugging. Open `chrome://policy` in Chrome and search for “debug” or “remote”; check `gpresult /h gpreport.html` for Chrome-related policies. Only an admin can change these.
-- **Chrome build** – Some installs (enterprise, store) use a build that ignores the flag. Install [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/) (extract the zip, set `CHROME_FOR_TESTING_PATH` to its `chrome.exe`) and run the script again.
-- **Run as Administrator** – In a few cases behavior differs when the script is run elevated. Right‑click Command Prompt → “Run as administrator”, then run `py -3.12 scripts/test_chrome_debug_port.py`.
-
-Run the diagnostic: `py -3.12 scripts/test_chrome_debug_port.py`. It prints whether Chrome is still running and whether anything is listening on the port, plus the fixes above.
-
-**When nodriver still never connects on this PC** (e.g. debug port never opens after trying the above): run nodriver on **another machine** where it works (different Windows PC, WSL2, or Linux VM), then use the cookies on this PC so Playwright can generate docs without hitting Cloudflare:
-1. On the other machine: clone this repo, `pip install -r requirements-nodriver.txt`, run `npm run chatgpt:nodriver`, pass Cloudflare and log in, press ENTER to export cookies.
-2. Copy the cookie file from that machine to this PC (e.g. `~/.jobbot/chatgpt-cookies.json` or the path in `CHATGPT_COOKIES_FILE`).
-3. On this PC: set `CHATGPT_COOKIES_FILE` to the path of the copied file, then run `npm run chatgpt:backfill:playwright`. Playwright loads those cookies; Cloudflare usually does not reappear until the session expires. Re-copy the cookie file if it expires or you get blocked again.
-
-### 3. Database
-
-Create the database if it does not exist (e.g. `createdb jobbot` or via pgAdmin). Then:
+For Python scripts:
 
 ```bash
+pip install -r requirements-seleniumbase.txt  # SeleniumBase (ChatGPT, ZipRecruiter)
+pip install -r requirements-pdf.txt           # PDF conversion
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+# Edit .env with your DATABASE_URL and other settings
+```
+
+### 3. Set up database
+
+```bash
+# Create the database
+createdb jobbot
+
+# Run migrations
 npx prisma migrate dev
+
+# (Optional) Create profile users
+npm run profiles:ensure
+
+# (Optional) Add base resume
+npm run resume:setup
 ```
 
-If you use a dedicated DB user, ensure it can create a shadow DB for migrations (e.g. `ALTER ROLE youruser CREATEDB;`).
-
-### 4. Resume templates
-
-Put these under **`Resumes/Templates`**:
-
-| File | Purpose |
-|------|--------|
-| `Jiayong Lin_Sample.docx` | Full base resume text (all sections). Used as the source content for tailoring. |
-| `Jiayong Lin.docx` | Styled resume template with placeholders for Docxtemplater (e.g. summary, experience sections). |
-| `Cover Letter.docx` | Styled cover letter with a single body placeholder. |
-
-**Cover letter template** should contain something like:
-
-```text
-Hi Hiring Team,
-
-{coverletterContent}
-
-Best,
-Your Name
-```
-
-Replace “Jiayong Lin” with your name in both filenames and content if you prefer; the code and docs often reference these example names.
-
-### 5. (Optional) Log in to job boards and ChatGPT
-
-- **Jobright**  
-  ```bash
-  npm run jobright:login
-  ```  
-  Log in with Google in the opened browser and land on the Recommended page. Close when done; session is stored in `JOBRIGHT_CONTEXT_DIR`.
-
-- **ChatGPT (only if using ChatGPT for docs)**  
-  Use the **nodriver-only backfill**: doc generation runs in the same undetected browser as login, so Cloudflare does not reappear.
-  1. Install nodriver if you want the nodriver backfill: `pip install -r requirements-nodriver.txt` (on Windows: `py -3.12 -m pip install -r requirements-nodriver.txt` if needed).
-  2. Run **`npm run chatgpt:backfill:playwright`** (when nodriver fails to connect), or `npm run chatgpt:backfill:nodriver`. **Playwright cannot bypass Cloudflare.** If you see a Cloudflare challenge with Playwright: run nodriver on another PC where it works, export cookies, and copy `~/.jobbot/chatgpt-cookies.json` to this machine and set `CHATGPT_COOKIES_FILE`. A Chrome window opens; if needed, pass Cloudflare and log in, then press ENTER. The script uses a **persistent profile** (`~/.jobbot/chatgpt-nodriver-profile`), so you usually log in only once. By default it runs **24/7**: it polls for jobs needing docs, generates resume + cover letter for each in that browser, then polls again (Ctrl+C to stop). Set `CHATGPT_BACKFILL_RUN_ONCE=1` to process one batch and exit; `CHATGPT_BACKFILL_POLL_SECONDS` (default 300) sets the wait when no jobs. After every `CHATGPT_BACKFILL_JOBS_PER_CHAT` (default 20) jobs the script starts a new chat in the UI to avoid the conversation length limit.
-  **Optional:** `npm run chatgpt:nodriver` exports cookies to `~/.jobbot/chatgpt-cookies.json` for use with Playwright-based flows (e.g. UI “Generate Docs” or `docs:backfill:watch`) if your setup does not trigger Cloudflare there.
-
-- **ZipRecruiter**  
-  Bypass Cloudflare with nodriver, then scan with Node/Playwright: run `npm run ziprecruiter:nodriver` (browser opens, pass Cloudflare, log in if needed, press ENTER to export cookies), then run `npm run ziprecruiter:scan`. The script uses a **persistent profile** (`~/.jobbot/ziprecruiter-nodriver-profile`), so you usually log in only once. Set `ZIPRECRUITER_COOKIES_FILE` if not using the default `~/.jobbot/ziprecruiter-cookies.json`.
-- **Glassdoor / Dice / Simplify**  
-  Run the corresponding `:init` or `:login` script once (see **Scripts** below), then use the `:scan` scripts or UI.
-
----
-
-## Running the App
-
-### Start the dev server
+### 4. Start the dev server
 
 ```bash
 npm run dev
 ```
 
-Open **http://localhost:3000/jobs** to use the table, filters, Scan Jobs, Generate Docs, and Export.
+Open **http://localhost:3000/jobs**.
 
-### Scan jobs
+### 5. Run scanners manually
 
-- **From UI**: On `/jobs`, set “Jobs to scan” and click **Scan Jobs**. Scans use your configured source (e.g. Jobright) and `MAX_JOBS`, `MATCH_SCORE_THRESHOLD`, `AUTO_GENERATE_DOCUMENTS`.
-- **From CLI** (Jobright example):  
-  ```bash
-  npm run jobright:scan
-  ```  
-  Use the same `JOBRIGHT_CONTEXT_DIR` as in `.env` (or set it in the command).
+```bash
+# Log in to Jobright first (one-time)
+npm run jobright:login
 
-### Generate resume & cover letter
+# Scan jobs
+npm run jobright:scan
 
-- **From UI**: Choose **Tailoring** (Normal / Aggressive), then click **Generate Docs** on a job that has a description. Files are written to `Resumes/<Company+Role>/` and linked in the DB.
-- **Backfill (one-shot)**:  
-  ```bash
-  npm run docs:backfill
-  ```  
-- **Backfill watch** (continuous):  
-  ```bash
-  npm run docs:backfill:watch
-  ```  
-  Uses `BACKFILL_POLL_INTERVAL_SEC`. Stop with Ctrl+C.
+# Other boards (log in first with :init, then :scan)
+npm run dice:init
+npm run dice:scan
+```
 
----
+### 6. Generate documents
 
-## UI Overview (`/jobs`)
+```bash
+# One-shot: generate docs for all jobs missing them
+npm run docs:backfill
 
-- **Filters**: Date (All / Today / Last 7 / 30 days), Interview (All / Invited / Not invited), Description (All / With / Without).
-- **Search**: Matches company, title, URL, match score.
-- **Tailoring**: Normal or Aggressive — applies to the next **Generate Docs** click on any row.
-- **Docs column**: Pills for Resume, Cover, Desc (green/blue/purple when present).
-- **Actions**: View Description, Edit (including “Invited to interview”), **Generate Docs**, Delete.
-- **Export to CSV**: Exports the currently filtered rows.
+# Watch mode: continuously poll and generate
+npm run docs:backfill:watch
 
----
+# SeleniumBase backfill (bypasses Cloudflare)
+npm run chatgpt:backfill
+```
 
-## Scripts Reference
+### 7. Convert DOCX to PDF
+
+```bash
+# One-shot
+npm run convert:pdf Resumes
+
+# Watch mode
+npm run convert:watch
+```
+
+## npm Scripts Reference
+
+### Core
 
 | Script | Description |
-|--------|-------------|
+|---|---|
 | `npm run dev` | Start Next.js dev server |
 | `npm run build` | Production build |
 | `npm run start` | Run production server |
-| `npm run lint` | Run Next.js lint |
-| **Jobright** | |
-| `npm run jobright:login` | Log in to Jobright (persistent context) |
-| `npm run jobright:scan` | Scan Jobright Recommended board |
-| **Documents** | |
-| `npm run resume:setup` | Add base resume (script helper) |
-| `npm run docs:backfill` | Generate docs for all jobs missing resume/cover via ChatGPT UI |
-| `npm run docs:backfill:watch` | Watch mode: periodically find jobs needing docs and generate (env: `BACKFILL_POLL_INTERVAL_SEC`) |
-| `npm run docs:chatgpt-ui` | Generate resume + cover via ChatGPT UI (by job ID or env files) |
-| **ChatGPT UI** | |
-| `npm run chatgpt:backfill:playwright` | Backfill via ChatGPT UI (Playwright; use when nodriver fails to connect) |
-| `npm run chatgpt:backfill:nodriver` | Backfill via ChatGPT: nodriver only (login + doc generation in same browser; no Playwright) |
-| `npm run chatgpt:nodriver` | Open ChatGPT in undetected Chrome, log in, export cookies (for Playwright flows if needed) |
-| **ZipRecruiter** | |
-| `npm run ziprecruiter:nodriver` | Bypass Cloudflare in nodriver, export cookies (run before scan if CF appears) |
-| `npm run ziprecruiter:init` | Init ZipRecruiter session / export cookies |
-| `npm run ziprecruiter:scan` | Scan ZipRecruiter (Playwright; loads cookies from nodriver export) |
-| `npm run explore:ziprecruiter` | Explore ZipRecruiter (e.g. with FlareSolverr) |
-| **Glassdoor** | |
-| `npm run glassdoor:nodriver` | Python nodriver script |
+| `npm run lint` | ESLint |
+
+### Database
+
+| Script | Description |
+|---|---|
+| `npm run prisma:generate` | Generate Prisma client |
+| `npm run prisma:migrate` | Apply migrations (production) |
+| `npm run prisma:migrate:dev` | Create/apply migrations (development) |
+| `npm run prisma:studio` | Open Prisma Studio GUI |
+
+### Scanners
+
+| Script | Description |
+|---|---|
+| `npm run jobright:login` | Log in to Jobright (one-time browser session) |
+| `npm run jobright:scan` | Scan Jobright recommended board |
+| `npm run ziprecruiter:init` | Init ZipRecruiter session |
+| `npm run ziprecruiter:scan` | Scan ZipRecruiter |
 | `npm run glassdoor:init` | Init Glassdoor session |
-| `npm run glassdoor:scan` | Scan Glassdoor search results |
-| **Dice** | |
-| `npm run dice:init` | Log in to Dice (browser); session saved |
-| `npm run dice:scan` | Scan Dice search results |
-| **Simplify** | |
-| `npm run simplify:init` | Log in to Simplify (browser); session saved |
-| `npm run simplify:scan` | Scan Simplify search results |
-| **Maintenance** | |
-| `npm run jobbot:clean-cache` | Remove browser caches under `~/.jobbot` to free disk space; keeps cookies so you stay logged in. Use `-- --dry-run` to preview. |
+| `npm run glassdoor:scan` | Scan Glassdoor |
+| `npm run dice:init` | Log in to Dice |
+| `npm run dice:scan` | Scan Dice |
+| `npm run simplify:init` | Log in to Simplify |
+| `npm run simplify:scan` | Scan Simplify |
 
-### Managing .jobbot disk space
+### Document Generation
 
-Browser profiles under `~/.jobbot` (e.g. Jobright, ZipRecruiter, ChatGPT) can grow to several GB due to cache, code cache, and Chrome optimization data. You can reclaim space without losing logins:
+| Script | Description |
+|---|---|
+| `npm run docs:backfill` | Generate docs for all jobs missing resume/cover letter |
+| `npm run docs:backfill:watch` | Watch mode — continuously poll DB and generate |
+| `npm run chatgpt:backfill` | SeleniumBase backfill (Cloudflare bypass) |
+| `npm run docs:reset-user` | Reset generated documents for a user |
 
-- **Clean caches only** (recommended):  
-  `npm run jobbot:clean-cache`  
-  Removes Cache, Code Cache, GPUCache, optimization models, Crashpad, etc., and leaves cookies and local storage intact.
-- **Preview first**:  
-  `npm run jobbot:clean-cache -- --dry-run`  
-  Shows what would be removed and how much space would be freed.
-- **Custom path**: Set `JOBOT_DIR` to a different base directory if you don’t use the default `~/.jobbot`.
+### PDF Conversion
 
----
+| Script | Description |
+|---|---|
+| `npm run convert:pdf` | One-shot DOCX to PDF conversion |
+| `npm run convert:watch` | Watch mode — poll for new DOCX and convert |
 
-## Troubleshooting
+### Maintenance
 
-### "Failed to connect to browser" (nodriver scripts)
+| Script | Description |
+|---|---|
+| `npm run profiles:ensure` | Create profile users in DB |
+| `npm run resume:setup` | Add base resume to DB |
+| `npm run cache:clean` | Clean browser profile caches (~/.jobbot) |
+| `npm run jobdesc:cleanup-bad` | Remove malformed job descriptions |
 
-This means the script started Chrome/Edge but could not connect to its **debug port** in time (nodriver retries for a few seconds). It is **not** because you use Chrome instead of Chromium—both work the same way.
+### Docker
 
-- **Close other Chrome/Edge windows** and run the script again.
-- The script now tries **Chrome first, then Microsoft Edge** on Windows; Edge (Chromium) sometimes connects more reliably.
-- Set an explicit browser path: `CHATGPT_CHROME_PATH` or `ZIPRECRUITER_CHROME_PATH` to the full path to `chrome.exe` or `msedge.exe`.
-- Use **Python 3.12** for nodriver (npm scripts use `py -3.12`); Python 3.14 can cause connection/asyncio issues.
-- If nodriver keeps failing, run Playwright with cookies exported from nodriver on another machine where it works.
+| Script | Description |
+|---|---|
+| `npm run docker:up` | Build and start all services |
+| `npm run docker:down` | Stop all services |
+| `npm run docker:logs` | Follow logs from all services |
+| `npm run docker:ps` | Show service status |
 
----
+## API Endpoints
 
-## Safety & Secrets
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/jobs` | List job applications |
+| `POST` | `/api/jobs` | Create job manually |
+| `GET` | `/api/jobs/:id` | Get single job |
+| `PATCH` | `/api/jobs/:id` | Update job |
+| `DELETE` | `/api/jobs/:id` | Delete job + files |
+| `GET` | `/api/jobs/:id/description` | Get job description |
+| `PATCH` | `/api/jobs/:id/description` | Update job description |
+| `POST` | `/api/jobs/:id/generate` | Generate tailored resume + cover letter |
+| `DELETE` | `/api/jobs/:id/documents` | Delete generated documents |
+| `POST` | `/api/scan` | Trigger Jobright scan |
+| `GET` | `/api/resumes` | List resumes |
+| `POST` | `/api/resumes` | Create resume |
+| `GET` | `/api/one-click-jobs` | List one-click/easy-apply jobs |
+| `POST` | `/api/one-click-jobs` | Create one-click job |
+| `POST` | `/api/one-click-jobs/batch-delete` | Bulk delete |
 
-- **`.env` is git-ignored.** Do not commit `DATABASE_URL` or any credentials.
-- Before sharing the repo: ensure no `.env` or secret files are in history; consider whether resume templates and generated documents should be excluded or redacted.
+## Database Schema
 
----
+```
+User ─────┬── JobApplication ──── JobDescription
+          │        ├──────────── TailoredResume
+          │        └──────────── CoverLetter
+          ├── Resume
+          ├── OneClickJob
+          └── AutomationRun
+```
+
+Key models:
+- **JobApplication** — scraped job with title, company, source, URLs, match score, status
+- **OneClickJob** — easy-apply listings (ZipRecruiter, Simplify) stored separately
+- **TailoredResume / CoverLetter** — LLM-generated output linked to a job
+
+## Resume Templates
+
+Place your templates in `Resumes/Templates/`:
+
+| File | Purpose |
+|---|---|
+| `*_Sample.docx` | Full base resume text (source content for tailoring) |
+| `*.docx` (styled) | Resume template with Docxtemplater placeholders |
+| `Cover Letter.docx` | Cover letter template with `{coverletterContent}` placeholder |
+
+## Environment Variables
+
+See `.env.example` for the full list with descriptions. Key groups:
+
+- **Database** — `DATABASE_URL`, `POSTGRES_*`
+- **Scanner** — `JOBRIGHT_CONTEXT_DIR`, `MAX_JOBS`, `MATCH_SCORE_THRESHOLD`, `*_SEARCH_URL`
+- **Cron schedules** — `CRON_JOBRIGHT`, `CRON_ZIPRECRUITER`, etc.
+- **Document generation** — `BACKFILL_POLL_INTERVAL_SEC`, `RESUMES_OUTPUT_DIR`, `RESUME_*_PATH`
+- **ChatGPT** — `CHATGPT_CONTEXT_DIR`, `CHATGPT_COOKIES_FILE`
+- **PDF** — `DOCX_PDF_WATCH_POLL_SECONDS`, `DOCX_PDF_SUBDIR_WITHIN_DAYS`
+
+## Project Structure
+
+```
+.
+├── app/                    # Next.js App Router
+│   ├── api/                # REST API route handlers
+│   │   ├── health/         # Health check
+│   │   ├── jobs/           # Job CRUD + generate + description
+│   │   ├── one-click-jobs/ # Easy-apply job CRUD
+│   │   ├── resumes/        # Resume CRUD
+│   │   └── scan/           # Trigger scanner
+│   ├── jobs/               # /jobs page + JobsTable component
+│   ├── one-click-jobs/     # /one-click-jobs page
+│   └── components/         # Layout shell
+├── lib/                    # Shared domain logic
+│   ├── prisma.ts           # Prisma singleton
+│   ├── jobApplications.ts  # Job upsert logic
+│   ├── jobDuplicateDetection.ts
+│   ├── jobSkipRules.ts     # Title/company/URL blocklists
+│   ├── oneClickJobs.ts     # OneClickJob upsert
+│   ├── generateDocuments.ts # Orchestrates doc generation
+│   ├── chatgptUiClient.ts  # ChatGPT web UI automation (Playwright)
+│   ├── documentGenerator.ts # DOCX assembly
+│   └── templateProcessor.ts # Mammoth + Docxtemplater
+├── scripts/                # CLI scanners and utilities
+│   ├── jobrightScan.ts     # Jobright scanner
+│   ├── ziprecruiterScan.ts # ZipRecruiter scanner
+│   ├── glassdoorScan.ts    # Glassdoor scanner
+│   ├── diceScan.ts         # Dice scanner
+│   ├── simplifyScan.ts     # Simplify scanner
+│   ├── backfillWatch.ts    # Doc generation watch loop
+│   ├── convertDocxToPdf.py # DOCX→PDF converter
+│   └── ...                 # Login, setup, maintenance scripts
+├── prisma/
+│   ├── schema.prisma       # Database schema
+│   └── migrations/         # SQL migrations
+├── docker/                 # Dockerfiles and entrypoints
+│   ├── web.Dockerfile
+│   ├── scanner.Dockerfile
+│   ├── scanner-entrypoint.sh
+│   ├── docgen.Dockerfile
+│   └── pdf.Dockerfile
+├── docker-compose.yml      # Full service orchestration
+├── .env.example            # All environment variables documented
+├── requirements-pdf.txt    # Python deps for PDF conversion
+└── requirements-seleniumbase.txt  # Python deps for SeleniumBase scripts
+```
 
 ## License
 
-Private / personal use. Adjust as needed for your setup.
+Private / personal use.

@@ -1,68 +1,26 @@
 import { prisma } from "@/lib/prisma";
 import OneClickJobsTable from "./OneClickJobsTable";
 
-type OneClickJobRow = {
-  id: number;
-  source: string;
-  title: string;
-  company: string;
-  externalUrl: string;
-  fullText: string;
-  appliedAt: Date | null;
-  createdAt: Date;
-};
-
-async function getOneClickJobs(userId?: number): Promise<Array<OneClickJobRow & { appliedAt: string | null; createdAt: string }>> {
-  const delegate = (prisma as any).oneClickJob;
-  if (delegate && typeof delegate.findMany === "function") {
-    const jobs = await delegate.findMany({
-      where: userId ? { userId } : {},
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        source: true,
-        title: true,
-        company: true,
-        externalUrl: true,
-        fullText: true,
-        appliedAt: true,
-        createdAt: true,
-      },
-    });
-    return jobs.map((j: OneClickJobRow) => ({
-      ...j,
-      createdAt: j.createdAt.toISOString(),
-      appliedAt: j.appliedAt?.toISOString() ?? null,
-    }));
-  }
-  const raw = userId
-    ? await prisma.$queryRaw<Array<Record<string, unknown>>>`
-        SELECT id, "userId", source, title, company, "externalUrl", "fullText", "appliedAt", "createdAt"
-        FROM "OneClickJob"
-        WHERE "userId" = ${userId}
-        ORDER BY "createdAt" DESC
-      `
-    : await prisma.$queryRaw<Array<Record<string, unknown>>>`
-        SELECT id, "userId", source, title, company, "externalUrl", "fullText", "appliedAt", "createdAt"
-        FROM "OneClickJob"
-        ORDER BY "createdAt" DESC
-      `;
-  return raw.map((row) => {
-    const createdAtVal = row.createdAt ?? row.createdat;
-    const appliedAtVal = row.appliedAt ?? row.appliedat;
-    const createdAt = createdAtVal instanceof Date ? createdAtVal : new Date(String(createdAtVal));
-    const appliedAt = appliedAtVal != null ? (appliedAtVal instanceof Date ? appliedAtVal : new Date(String(appliedAtVal))) : null;
-    return {
-      id: Number(row.id),
-      source: String(row.source ?? ""),
-      title: String(row.title ?? ""),
-      company: String(row.company ?? ""),
-      externalUrl: String(row.externalUrl ?? row.externalurl ?? ""),
-      fullText: String(row.fullText ?? row.fulltext ?? ""),
-      appliedAt: appliedAt?.toISOString() ?? null,
-      createdAt: createdAt.toISOString(),
-    };
+async function getOneClickJobs(userId?: number) {
+  const jobs = await prisma.oneClickJob.findMany({
+    where: userId ? { userId } : {},
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      source: true,
+      title: true,
+      company: true,
+      externalUrl: true,
+      fullText: true,
+      appliedAt: true,
+      createdAt: true,
+    },
   });
+  return jobs.map((j) => ({
+    ...j,
+    createdAt: j.createdAt.toISOString(),
+    appliedAt: j.appliedAt?.toISOString() ?? null,
+  }));
 }
 
 export default async function OneClickJobsPage({

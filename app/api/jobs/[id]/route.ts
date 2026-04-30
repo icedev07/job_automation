@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as fs from "fs";
+import * as path from "path";
 
 import { prisma } from "@/lib/prisma";
 
@@ -119,15 +121,11 @@ export async function DELETE(
 
     // 5. Optionally delete generated files from filesystem
     try {
-      const fs = require("fs");
-      const path = require("path");
-      
-      // Generate folder name using the same logic as documentGenerator
-      // Clean company name and role (remove invalid filename characters)
       const cleanCompany = job.company.replace(/[<>:"/\\|?*]/g, "").trim();
       const cleanRole = job.title.replace(/[<>:"/\\|?*]/g, "").trim();
       const folderName = `${cleanCompany}+${cleanRole}`;
-      const folderPath = path.join(process.cwd(), "Resumes", folderName);
+      const outputDir = process.env.RESUMES_OUTPUT_DIR || "Resumes";
+      const folderPath = path.join(process.cwd(), outputDir, folderName);
       
       if (fs.existsSync(folderPath)) {
         fs.rmSync(folderPath, { recursive: true, force: true });

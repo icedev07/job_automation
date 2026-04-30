@@ -385,7 +385,6 @@ async function main() {
         await page.waitForTimeout(500);
         try {
           await card.click({ timeout: 15000 });
-          clicked = true;
         } catch {
           console.log(`  ⏭️ Skip: could not click card (dialog may be blocking; close it manually and re-run)`);
           cardIndex++;

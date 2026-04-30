@@ -1,43 +1,56 @@
 {
   "name": "job-application-bot",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo --hostname 0.0.0.0",
     "dev:3001": "next dev --turbo -p 3001 -H 0.0.0.0",
-    "dev:test-server": "node scripts/minimal-server.js",
-    "tunnel": "npx --yes localtunnel --port 3000",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --hostname 0.0.0.0",
     "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+
     "jobright:login": "tsx scripts/loginToJobright.ts",
-    "jobright": "tsx scripts/jobrightScan.ts",
-    "resume:setup": "tsx scripts/addBaseResume.ts",
-    "resume:test-mohan-headline": "tsx scripts/testMohanResumeHeadline.ts",
-    "chatgpt:seleniumbase": "py -3.12 scripts/chatgpt_seleniumbase.py",
-    "chatgpt": "py -3.12 scripts/chatgpt_seleniumbase_backfill.py",
+    "jobright:scan": "tsx scripts/jobrightScan.ts",
+
     "ziprecruiter:init": "tsx scripts/ziprecruiterInit.ts",
     "ziprecruiter:scan": "tsx scripts/ziprecruiterScan.ts",
-    "ziprecruiter:seleniumbase": "py -3.12 scripts/ziprecruiter_seleniumbase.py",
-    "ziprecruiter": "set ZIPRECRUITER_RUN_SCAN_AFTER_EXPORT=1&& py -3.12 scripts/ziprecruiter_seleniumbase.py",
+    "ziprecruiter:seleniumbase": "python3 scripts/ziprecruiter_seleniumbase.py",
+
     "glassdoor:init": "tsx scripts/glassdoorInit.ts",
     "glassdoor:scan": "tsx scripts/glassdoorScan.ts",
+
     "dice:init": "tsx scripts/diceInit.ts",
     "dice:scan": "tsx scripts/diceScan.ts",
+
     "simplify:init": "tsx scripts/simplifyInit.ts",
-    "simplify": "node --max-old-space-size=4096 node_modules/tsx/dist/cli.mjs scripts/simplifyScan.ts",
-    "indeed:seleniumbase": "py -3.12 scripts/indeed_seleniumbase.py",
+    "simplify:scan": "node --max-old-space-size=4096 node_modules/tsx/dist/cli.mjs scripts/simplifyScan.ts",
+
+    "indeed:seleniumbase": "python3 scripts/indeed_seleniumbase.py",
+
+    "docs:backfill": "tsx scripts/generateMissingDocuments.ts",
+    "docs:backfill:watch": "tsx scripts/backfillWatch.ts",
+    "docs:reset-user": "tsx scripts/resetUserGeneratedDocuments.ts",
+
+    "chatgpt:seleniumbase": "python3 scripts/chatgpt_seleniumbase.py",
+    "chatgpt:backfill": "python3 scripts/chatgpt_seleniumbase_backfill.py",
+
+    "resume:setup": "tsx scripts/addBaseResume.ts",
     "profiles:ensure": "tsx scripts/ensureProfileUsers.ts",
+
     "cache:clean": "tsx scripts/cleanJobbotCache.ts",
     "jobdesc:cleanup-bad": "tsx scripts/cleanupBadJobDescriptions.ts",
-    "docs:reset-user": "tsx scripts/resetUserGeneratedDocuments.ts",
-    "docx:pdf": "py -3.12 scripts/convertDocxToPdf.py",
-    "convert:mohan": "py -3.12 scripts/convertDocxToPdf.py Resumes_Mohan --subdir-within-days=2",
-    "convert:jiayong": "py -3.12 scripts/convertDocxToPdf.py Resumes --subdir-within-days=2",
-    "convert:mohan:all": "py -3.12 scripts/convertDocxToPdf.py Resumes_Mohan",
-    "convert:jiayong:all": "py -3.12 scripts/convertDocxToPdf.py Resumes",
-    "convert:watch": "py -3.12 scripts/convertDocxToPdf.py --watch",
-    "convert:watch:once": "py -3.12 scripts/convertDocxToPdf.py --watch --run-once"
+
+    "convert:pdf": "python3 scripts/convertDocxToPdf.py",
+    "convert:watch": "python3 scripts/convertDocxToPdf.py --watch",
+
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:ps": "docker compose ps"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
@@ -59,8 +72,6 @@
     "eslint": "8.57.1",
     "eslint-config-next": "14.2.11",
     "playwright": "1.49.0",
-    "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "prisma": "5.22.0",
     "ts-node": "10.9.2",
     "tsx": "4.19.2",
