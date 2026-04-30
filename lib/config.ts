@@ -10,6 +10,8 @@ export const CONFIG_KEYS = {
   CURRENT_LOCATION: "current_location",
   JOB_ANALYSIS_PROMPT: "job_analysis_prompt",
   SHEET_COLUMNS: "sheet_columns",
+  LINKEDIN_SHEET_TAB: "linkedin_sheet_tab",
+  EXTENSION_API_KEY: "extension_api_key",
 } as const;
 
 export async function getConfigValue(key: string): Promise<string | null> {
@@ -44,6 +46,8 @@ export async function getConfig() {
     currentLocation: all[CONFIG_KEYS.CURRENT_LOCATION] || "Armenia",
     jobAnalysisPrompt: all[CONFIG_KEYS.JOB_ANALYSIS_PROMPT] || "",
     sheetColumns: all[CONFIG_KEYS.SHEET_COLUMNS] || "",
+    linkedinSheetTab: all[CONFIG_KEYS.LINKEDIN_SHEET_TAB] || "LinkedIn",
+    extensionApiKey: all[CONFIG_KEYS.EXTENSION_API_KEY] || "",
   };
 }
 

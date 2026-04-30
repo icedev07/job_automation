@@ -74,6 +74,67 @@ export async function syncApprovedJobsToSheet(): Promise<{ synced: number }> {
   return { synced: jobs.length };
 }
 
+export async function syncJobToLinkedInTab(job: {
+  id: number;
+  title: string;
+  company: string;
+  location: string | null;
+  url: string;
+  createdAt: Date;
+}): Promise<void> {
+  const config = await getConfig();
+  if (!config.googleSheetsCredentials || !config.googleSheetId) return;
+
+  const auth = getAuth(config.googleSheetsCredentials);
+  const sheets = google.sheets({ version: "v4", auth });
+  const tab = config.linkedinSheetTab || "LinkedIn";
+
+  const existing = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.googleSheetId,
+    range: `${tab}!A1:A1`,
+  }).catch(() => null);
+
+  const hasHeader = existing?.data?.values && existing.data.values.length > 0;
+
+  if (!hasHeader) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: config.googleSheetId,
+      range: `${tab}!A1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [["No", "Date", "Platform", "Job Url", "Company", "Country", "Role", "Url"]] },
+    });
+  }
+
+  const countRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.googleSheetId,
+    range: `${tab}!A:A`,
+  }).catch(() => null);
+  const rowCount = (countRes?.data?.values?.length || 1);
+
+  const row = [
+    String(rowCount),
+    job.createdAt.toISOString().split("T")[0],
+    "LinkedIn",
+    job.url,
+    job.company,
+    job.location || "",
+    job.title,
+    job.url,
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: config.googleSheetId,
+    range: `${tab}!A:H`,
+    valueInputOption: "RAW",
+    requestBody: { values: [row] },
+  });
+
+  await prisma.scrapedJob.update({
+    where: { id: job.id },
+    data: { sheetSynced: true },
+  });
+}
+
 export async function fullSyncToSheet(): Promise<{ synced: number }> {
   const config = await getConfig();
   if (!config.googleSheetsCredentials || !config.googleSheetId) {

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 320px; font-family: system-ui, -apple-system, sans-serif; background: #f9fafb; padding: 16px; }
+    h1 { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+    .subtitle { font-size: 11px; color: #6b7280; margin-bottom: 12px; }
+    .server-url { font-size: 10px; color: #9ca3af; word-break: break-all; margin-bottom: 12px; padding: 6px 8px; background: #f3f4f6; border-radius: 4px; font-family: monospace; }
+    .config-row { display: flex; gap: 6px; margin-bottom: 12px; }
+    .config-row input { flex: 1; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px; }
+    .config-row button { padding: 6px 10px; background: #6b7280; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    #startBtn { width: 100%; padding: 10px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 12px; }
+    #startBtn:hover { background: #047857; }
+    #startBtn.running { background: #dc2626; }
+    #startBtn.running:hover { background: #b91c1c; }
+    #startBtn:disabled { background: #9ca3af; cursor: not-allowed; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .stat { background: white; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; }
+    .stat-label { font-size: 10px; color: #6b7280; }
+    .stat-value { font-size: 18px; font-weight: 700; color: #111827; }
+    .stat-value.approved { color: #16a34a; }
+    .stat-value.rejected { color: #dc2626; }
+    .stat-value.hidden { color: #d97706; }
+    .stat-value.skipped { color: #6b7280; }
+    #statusMsg { font-size: 11px; color: #374151; padding: 8px; background: white; border-radius: 6px; border: 1px solid #e5e7eb; min-height: 32px; word-break: break-word; }
+    .not-on-linkedin { text-align: center; padding: 20px 0; color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>LinkedIn Job Scanner</h1>
+  <div class="subtitle">AI-powered job filter for Armenian developers</div>
+
+  <div class="config-row">
+    <input type="text" id="apiKeyInput" placeholder="Extension API Key (optional)">
+    <button id="saveKeyBtn">Save</button>
+  </div>
+
+  <div id="mainContent">
+    <button id="startBtn">Start Scan</button>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Checked</div>
+        <div class="stat-value" id="checkedCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Approved</div>
+        <div class="stat-value approved" id="approvedCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Hidden</div>
+        <div class="stat-value hidden" id="hiddenCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Skipped</div>
+        <div class="stat-value skipped" id="skippedCount">0</div>
+      </div>
+    </div>
+
+    <div id="statusMsg">Ready. Open a LinkedIn job search page and click Start.</div>
+  </div>
+
+  <div id="notOnLinkedIn" class="not-on-linkedin" style="display:none">
+    Open a LinkedIn job search page first, then click this extension.
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
