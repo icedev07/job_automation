@@ -3,7 +3,7 @@
  * - Uses the search URL (remote ML roles) and walks all job cards on the results page
  * - Extracts title, company, location, and the short description snippet from the card
  * - Opens each job detail page to get full description (JSON-LD or description div)
- * - Uses the Dice job-detail URL as externalUrl. Skips duplicates via findDuplicateJob.
+ * - Uses the Dice job-detail URL as externalUrl. Skips duplicates via isDuplicate.
  * - Uses persistent context (run dice:init first to log in).
  *
  * Run: npm run dice:init  (once, to log in), then: npm run dice:scan
@@ -16,8 +16,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import * as fs from "fs";
 import * as path from "path";
 
-import { findDuplicateJob } from "../lib/jobDuplicateDetection";
-import { upsertJobApplication } from "../lib/jobApplications";
+import { upsertScrapedJob, isDuplicate, saveJobDescription } from "../lib/scrapedJobs";
 import { prisma } from "../lib/prisma";
 
 const DEFAULT_DICE_URL =
@@ -25,7 +24,6 @@ const DEFAULT_DICE_URL =
 
 const DICE_SEARCH_URL = process.env.DICE_SEARCH_URL || DEFAULT_DICE_URL;
 const MAX_JOBS_PER_RUN = Number(process.env.DICE_MAX_JOBS_PER_RUN ?? 10);
-const USER_ID = Number(process.env.JOBBOT_USER_ID ?? 1);
 
 function expandPath(dir: string | undefined): string {
   const home = process.env.HOME || process.env.USERPROFILE || process.cwd();
@@ -56,28 +54,7 @@ function findChromeExecutable(): string | undefined {
   return candidates.find((p) => fs.existsSync(p));
 }
 
-async function ensureUserExists(userId: number): Promise<number> {
-  let user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) user = await prisma.user.findFirst();
-  if (!user) {
-    user = await prisma.user.create({
-      data: { email: "user@jobbot.local", passwordHash: "dummy" },
-    });
-  }
-  return user.id;
-}
-
-async function saveJobDescription(
-  jobApplicationId: number,
-  description: string,
-  source: "dice_snippet" | "dice_detail" = "dice_detail"
-) {
-  await prisma.jobDescription.upsert({
-    where: { jobApplicationId },
-    create: { jobApplicationId, fullText: description, source },
-    update: { fullText: description },
-  });
-}
+// saveJobDescription and isDuplicate imported from lib/scrapedJobs
 
 /** Strip HTML to plain text (rough). */
 function stripHtml(html: string): string {
@@ -143,8 +120,6 @@ async function main() {
     console.log("\n⚠️  No Dice session found. Run first: npm run dice:init (log in), then run this again.\n");
   }
   console.log("");
-
-  const actualUserId = await ensureUserExists(USER_ID);
 
   chromium.use(StealthPlugin());
 
@@ -285,14 +260,14 @@ async function main() {
       );
 
       // Duplicate check: shared logic across boards
-      const duplicate = await findDuplicateJob({
-        userId: actualUserId,
-        externalUrl: jobUrl,
+      const duplicate = await isDuplicate({
+        platform: "dice",
+        url: jobUrl,
         title,
         company,
       });
       if (duplicate) {
-        console.log(`  ⏭️ Skip: duplicate (${duplicate.reason})`);
+        console.log(`  ⏭️ Skip: duplicate`);
         cardIndex++;
         continue;
       }
@@ -307,12 +282,11 @@ async function main() {
         continue;
       }
 
-      const saved = await upsertJobApplication({
-        userId: actualUserId,
-        source: "dice",
+      const saved = await upsertScrapedJob({
+        platform: "dice",
         title,
         company,
-        externalUrl: jobUrl,
+        url: jobUrl,
         location,
       });
       if (!saved) {
@@ -322,10 +296,10 @@ async function main() {
       }
 
       if (hasFull) {
-        await saveJobDescription(saved.id, descriptionToSave!, "dice_detail");
+        await saveJobDescription(saved.id, descriptionToSave!);
         console.log(`  ✅ Saved full description (${descriptionToSave!.length} chars)`);
       } else {
-        await saveJobDescription(saved.id, snippet!, "dice_snippet");
+        await saveJobDescription(saved.id, snippet!);
         console.log(`  ✅ Saved snippet (${snippet!.length} chars)`);
       }
 

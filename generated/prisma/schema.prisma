@@ -8,129 +8,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum ApplicationStatus {
-  SAVED
-  READY_TO_APPLY
-  APPLIED
-  INTERVIEW
-  OFFER
-  REJECTED
-  WITHDRAWN
-}
-
-enum JobType {
-  REMOTE
-  HYBRID
-  ONSITE
-}
-
 enum SkipRuleType {
   TITLE
   COMPANY
   URL
 }
 
-model User {
-  id              Int              @id @default(autoincrement())
-  email           String           @unique
-  passwordHash    String
-  createdAt       DateTime         @default(now())
-  resumes         Resume[]
-  jobApplications JobApplication[]
-  oneClickJobs    OneClickJob[]
+enum JobStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
-model OneClickJob {
+// ── Core ────────────────────────────────────────────────────────────────────
+
+model ScrapedJob {
   id          Int       @id @default(autoincrement())
-  userId      Int
-  source      String    @db.VarChar(50)
+  platform    String    @db.VarChar(50)
   title       String
   company     String
-  externalUrl String    @db.VarChar(2048)
-  fullText    String
-  appliedAt   DateTime?
+  location    String?
+  url         String    @db.VarChar(2048)
+  description String?
+  salary      String?
+  techStack   String?
+  status      JobStatus @default(PENDING)
+  aiScore     Int?
+  aiReason    String?
+  sheetSynced Boolean   @default(false)
   createdAt   DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  analysisLogs AnalysisLog[]
 
-  @@unique([userId, externalUrl])
-}
-
-model Resume {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  name      String
-  rawText   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id])
-  tailoredResumes TailoredResume[]
-  coverLetters    CoverLetter[]
-}
-
-model JobApplication {
-  id                 Int               @id @default(autoincrement())
-  userId             Int
-  source             String            @default("jobright") @db.VarChar(50)
-  jobrightJobId      String?           @db.VarChar(255)
-  title              String
-  company            String
-  location           String?
-  jobType            JobType           @default(REMOTE)
-  jobrightMatchScore Float?
-  jobrightBoard      String?           @db.VarChar(50)
-  jobrightUrl        String?           @db.VarChar(500)
-  externalUrl        String            @db.VarChar(2048)
-  status             ApplicationStatus @default(SAVED)
-  invitedToInterview Boolean           @default(false)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  appliedAt          DateTime?
-
-  user            User             @relation(fields: [userId], references: [id])
-  jobDescription  JobDescription?
-  tailoredResumes TailoredResume[]
-  coverLetters    CoverLetter[]
-
-  @@unique([userId, externalUrl])
-  @@unique([userId, title, company])
-}
-
-model JobDescription {
-  id               Int      @id @default(autoincrement())
-  jobApplicationId Int      @unique
-  fullText         String
-  source           String   @default("company_site")
-  createdAt        DateTime @default(now())
-
-  jobApplication JobApplication @relation(fields: [jobApplicationId], references: [id])
-}
-
-model TailoredResume {
-  id               Int      @id @default(autoincrement())
-  jobApplicationId Int
-  baseResumeId     Int
-  llmModel         String
-  promptVersion    String
-  outputText       String
-  createdAt        DateTime @default(now())
-
-  jobApplication JobApplication @relation(fields: [jobApplicationId], references: [id])
-  baseResume     Resume         @relation(fields: [baseResumeId], references: [id])
-}
-
-model CoverLetter {
-  id               Int      @id @default(autoincrement())
-  jobApplicationId Int
-  baseResumeId     Int?
-  llmModel         String
-  promptVersion    String
-  outputText       String
-  createdAt        DateTime @default(now())
-
-  jobApplication JobApplication @relation(fields: [jobApplicationId], references: [id])
-  baseResume     Resume?        @relation(fields: [baseResumeId], references: [id])
+  @@unique([platform, url])
+  @@unique([platform, title, company])
 }
 
 // ── Admin configuration ─────────────────────────────────────────────────────
@@ -149,14 +60,7 @@ model SkipRule {
   createdAt DateTime     @default(now())
 }
 
-model UserProfile {
-  id             Int      @id @default(autoincrement())
-  name           String
-  email          String   @unique
-  baseResumeText String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
+// ── Logging ─────────────────────────────────────────────────────────────────
 
 model ScanLog {
   id         Int      @id @default(autoincrement())
@@ -168,14 +72,16 @@ model ScanLog {
   createdAt  DateTime @default(now())
 }
 
-model GenerationLog {
-  id               Int      @id @default(autoincrement())
-  jobApplicationId Int
-  model            String   @db.VarChar(100)
-  promptVersion    String   @db.VarChar(100)
-  success          Boolean  @default(true)
-  error            String?
-  tokensUsed       Int?
-  durationMs       Int?
-  createdAt        DateTime @default(now())
+model AnalysisLog {
+  id           Int      @id @default(autoincrement())
+  scrapedJobId Int
+  model        String   @db.VarChar(100)
+  approved     Boolean
+  score        Int?
+  reason       String?
+  tokensUsed   Int?
+  durationMs   Int?
+  createdAt    DateTime @default(now())
+
+  scrapedJob ScrapedJob @relation(fields: [scrapedJobId], references: [id], onDelete: Cascade)
 }

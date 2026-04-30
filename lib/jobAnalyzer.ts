@@ -1,0 +1,124 @@
+import { prisma } from "./prisma";
+import { generateText } from "./llmClient";
+import { getConfig } from "./config";
+
+export type AnalysisResult = {
+  approved: boolean;
+  score: number;
+  reason: string;
+  techStack: string[];
+};
+
+const DEFAULT_ANALYSIS_PROMPT = `You are a job suitability analyzer. Evaluate whether this job is suitable for a software developer located in {{CURRENT_LOCATION}} who is looking for {{TARGET_MARKET}} positions.
+
+JOB TITLE: {{JOB_TITLE}}
+COMPANY: {{COMPANY}}
+LOCATION: {{LOCATION}}
+JOB DESCRIPTION:
+{{DESCRIPTION}}
+
+Analyze the following criteria:
+1. Is this job remote-friendly or accessible from {{CURRENT_LOCATION}}?
+2. Does it target the {{TARGET_MARKET}} market?
+3. Does it allow international contractors or remote workers from {{CURRENT_LOCATION}}?
+4. Does it require local work authorization or citizenship that the candidate likely does not have?
+5. Is the tech stack suitable for a software developer?
+
+Respond in EXACTLY this JSON format, nothing else:
+{
+  "approved": true or false,
+  "score": 0-100 (suitability score),
+  "reason": "brief explanation of the decision",
+  "techStack": ["list", "of", "technologies", "mentioned"]
+}`;
+
+function buildPrompt(
+  job: { title: string; company: string; location: string | null; description: string | null },
+  config: { targetMarket: string; currentLocation: string; jobAnalysisPrompt: string }
+): string {
+  const template = config.jobAnalysisPrompt || DEFAULT_ANALYSIS_PROMPT;
+  return template
+    .replace(/\{\{JOB_TITLE\}\}/g, job.title)
+    .replace(/\{\{COMPANY\}\}/g, job.company)
+    .replace(/\{\{LOCATION\}\}/g, job.location || "Not specified")
+    .replace(/\{\{DESCRIPTION\}\}/g, (job.description || "No description available").substring(0, 6000))
+    .replace(/\{\{TARGET_MARKET\}\}/g, config.targetMarket)
+    .replace(/\{\{CURRENT_LOCATION\}\}/g, config.currentLocation);
+}
+
+function parseAIResponse(text: string): AnalysisResult {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      approved: !!parsed.approved,
+      score: Math.min(100, Math.max(0, Number(parsed.score) || 0)),
+      reason: String(parsed.reason || ""),
+      techStack: Array.isArray(parsed.techStack) ? parsed.techStack.map(String) : [],
+    };
+  } catch {
+    return { approved: false, score: 0, reason: "Failed to parse AI response", techStack: [] };
+  }
+}
+
+export async function analyzeJob(jobId: number): Promise<AnalysisResult> {
+  const job = await prisma.scrapedJob.findUnique({ where: { id: jobId } });
+  if (!job) throw new Error(`Job ${jobId} not found`);
+
+  const config = await getConfig();
+  const prompt = buildPrompt(job, config);
+  const startTime = Date.now();
+
+  const llmResult = await generateText(prompt);
+  const result = parseAIResponse(llmResult.text);
+  const durationMs = Date.now() - startTime;
+
+  await prisma.scrapedJob.update({
+    where: { id: jobId },
+    data: {
+      status: result.approved ? "APPROVED" : "REJECTED",
+      aiScore: result.score,
+      aiReason: result.reason,
+      techStack: result.techStack.length > 0 ? result.techStack.join(", ") : null,
+    },
+  });
+
+  await prisma.analysisLog.create({
+    data: {
+      scrapedJobId: jobId,
+      model: llmResult.model,
+      approved: result.approved,
+      score: result.score,
+      reason: result.reason,
+      tokensUsed: llmResult.tokensUsed,
+      durationMs,
+    },
+  });
+
+  return result;
+}
+
+export async function analyzeAllPending(): Promise<{ analyzed: number; approved: number; rejected: number }> {
+  const pending = await prisma.scrapedJob.findMany({
+    where: { status: "PENDING" },
+    orderBy: { createdAt: "asc" },
+    take: 50,
+  });
+
+  let approved = 0;
+  let rejected = 0;
+
+  for (const job of pending) {
+    try {
+      const result = await analyzeJob(job.id);
+      if (result.approved) approved++;
+      else rejected++;
+    } catch (err: any) {
+      console.error(`Failed to analyze job ${job.id}: ${err.message}`);
+      rejected++;
+    }
+  }
+
+  return { analyzed: pending.length, approved, rejected };
+}

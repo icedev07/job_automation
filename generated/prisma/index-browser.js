@@ -122,79 +122,20 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
-exports.Prisma.UserScalarFieldEnum = {
+exports.Prisma.ScrapedJobScalarFieldEnum = {
   id: 'id',
-  email: 'email',
-  passwordHash: 'passwordHash',
-  createdAt: 'createdAt'
-};
-
-exports.Prisma.OneClickJobScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  source: 'source',
-  title: 'title',
-  company: 'company',
-  externalUrl: 'externalUrl',
-  fullText: 'fullText',
-  appliedAt: 'appliedAt',
-  createdAt: 'createdAt'
-};
-
-exports.Prisma.ResumeScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  name: 'name',
-  rawText: 'rawText',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.JobApplicationScalarFieldEnum = {
-  id: 'id',
-  userId: 'userId',
-  source: 'source',
-  jobrightJobId: 'jobrightJobId',
+  platform: 'platform',
   title: 'title',
   company: 'company',
   location: 'location',
-  jobType: 'jobType',
-  jobrightMatchScore: 'jobrightMatchScore',
-  jobrightBoard: 'jobrightBoard',
-  jobrightUrl: 'jobrightUrl',
-  externalUrl: 'externalUrl',
+  url: 'url',
+  description: 'description',
+  salary: 'salary',
+  techStack: 'techStack',
   status: 'status',
-  invitedToInterview: 'invitedToInterview',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  appliedAt: 'appliedAt'
-};
-
-exports.Prisma.JobDescriptionScalarFieldEnum = {
-  id: 'id',
-  jobApplicationId: 'jobApplicationId',
-  fullText: 'fullText',
-  source: 'source',
-  createdAt: 'createdAt'
-};
-
-exports.Prisma.TailoredResumeScalarFieldEnum = {
-  id: 'id',
-  jobApplicationId: 'jobApplicationId',
-  baseResumeId: 'baseResumeId',
-  llmModel: 'llmModel',
-  promptVersion: 'promptVersion',
-  outputText: 'outputText',
-  createdAt: 'createdAt'
-};
-
-exports.Prisma.CoverLetterScalarFieldEnum = {
-  id: 'id',
-  jobApplicationId: 'jobApplicationId',
-  baseResumeId: 'baseResumeId',
-  llmModel: 'llmModel',
-  promptVersion: 'promptVersion',
-  outputText: 'outputText',
+  aiScore: 'aiScore',
+  aiReason: 'aiReason',
+  sheetSynced: 'sheetSynced',
   createdAt: 'createdAt'
 };
 
@@ -212,15 +153,6 @@ exports.Prisma.SkipRuleScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
-exports.Prisma.UserProfileScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  email: 'email',
-  baseResumeText: 'baseResumeText',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
 exports.Prisma.ScanLogScalarFieldEnum = {
   id: 'id',
   board: 'board',
@@ -231,13 +163,13 @@ exports.Prisma.ScanLogScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
-exports.Prisma.GenerationLogScalarFieldEnum = {
+exports.Prisma.AnalysisLogScalarFieldEnum = {
   id: 'id',
-  jobApplicationId: 'jobApplicationId',
+  scrapedJobId: 'scrapedJobId',
   model: 'model',
-  promptVersion: 'promptVersion',
-  success: 'success',
-  error: 'error',
+  approved: 'approved',
+  score: 'score',
+  reason: 'reason',
   tokensUsed: 'tokensUsed',
   durationMs: 'durationMs',
   createdAt: 'createdAt'
@@ -257,20 +189,10 @@ exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
 };
-exports.JobType = exports.$Enums.JobType = {
-  REMOTE: 'REMOTE',
-  HYBRID: 'HYBRID',
-  ONSITE: 'ONSITE'
-};
-
-exports.ApplicationStatus = exports.$Enums.ApplicationStatus = {
-  SAVED: 'SAVED',
-  READY_TO_APPLY: 'READY_TO_APPLY',
-  APPLIED: 'APPLIED',
-  INTERVIEW: 'INTERVIEW',
-  OFFER: 'OFFER',
-  REJECTED: 'REJECTED',
-  WITHDRAWN: 'WITHDRAWN'
+exports.JobStatus = exports.$Enums.JobStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
 };
 
 exports.SkipRuleType = exports.$Enums.SkipRuleType = {
@@ -280,18 +202,11 @@ exports.SkipRuleType = exports.$Enums.SkipRuleType = {
 };
 
 exports.Prisma.ModelName = {
-  User: 'User',
-  OneClickJob: 'OneClickJob',
-  Resume: 'Resume',
-  JobApplication: 'JobApplication',
-  JobDescription: 'JobDescription',
-  TailoredResume: 'TailoredResume',
-  CoverLetter: 'CoverLetter',
+  ScrapedJob: 'ScrapedJob',
   AppConfig: 'AppConfig',
   SkipRule: 'SkipRule',
-  UserProfile: 'UserProfile',
   ScanLog: 'ScanLog',
-  GenerationLog: 'GenerationLog'
+  AnalysisLog: 'AnalysisLog'
 };
 
 /**

@@ -15,8 +15,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import * as fs from "fs";
 import * as path from "path";
 
-import { findDuplicateJob } from "../lib/jobDuplicateDetection";
-import { upsertJobApplication } from "../lib/jobApplications";
+import { upsertScrapedJob, isDuplicate, saveJobDescription } from "../lib/scrapedJobs";
 import { prisma } from "../lib/prisma";
 
 const DEFAULT_SIMPLIFY_URL =
@@ -24,7 +23,6 @@ const DEFAULT_SIMPLIFY_URL =
 
 const SIMPLIFY_SEARCH_URL = process.env.SIMPLIFY_SEARCH_URL || DEFAULT_SIMPLIFY_URL;
 const MAX_JOBS_PER_RUN = Number(process.env.SIMPLIFY_MAX_JOBS_PER_RUN ?? 5);
-const USER_ID = Number(process.env.JOBBOT_USER_ID ?? 1);
 
 function expandPath(dir: string | undefined): string {
   const home = process.env.HOME || process.env.USERPROFILE || process.cwd();
@@ -55,24 +53,7 @@ function findChromeExecutable(): string | undefined {
   return candidates.find((p) => fs.existsSync(p));
 }
 
-async function ensureUserExists(userId: number): Promise<number> {
-  let user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) user = await prisma.user.findFirst();
-  if (!user) {
-    user = await prisma.user.create({
-      data: { email: "user@jobbot.local", passwordHash: "dummy" },
-    });
-  }
-  return user.id;
-}
-
-async function saveJobDescription(jobApplicationId: number, description: string) {
-  await prisma.jobDescription.upsert({
-    where: { jobApplicationId },
-    create: { jobApplicationId, fullText: description, source: "simplify" },
-    update: { fullText: description },
-  });
-}
+// saveJobDescription and isDuplicate imported from lib/scrapedJobs
 
 /** Normalize company site URL: remove utm params and trailing slash for consistency. */
 function normalizeCompanyUrl(href: string): string {
@@ -181,8 +162,6 @@ async function main() {
     process.exit(1);
   }
   console.log("");
-
-  const actualUserId = await ensureUserExists(USER_ID);
 
   chromium.use(StealthPlugin());
 
@@ -347,23 +326,22 @@ async function main() {
         if (!description || description.length < 30) {
           continue;
         }
-        const duplicate = await findDuplicateJob({
-          userId: actualUserId,
-          externalUrl,
+        const duplicate = await isDuplicate({
+          platform: "simplify",
+          url: externalUrl,
           title,
           company,
         });
         if (duplicate) {
-          console.log(`  ⏭️ Skip: duplicate (${duplicate.reason})`);
+          console.log(`  ⏭️ Skip: duplicate`);
           continue;
         }
 
-        const saved = await upsertJobApplication({
-          userId: actualUserId,
-          source: "simplify",
+        const saved = await upsertScrapedJob({
+          platform: "simplify",
           title,
           company,
-          externalUrl,
+          url: externalUrl,
           location: "Remote",
         });
         if (!saved) {

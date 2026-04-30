@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 
 type ScanLogEntry = { id: number; board: string; jobsFound: number; jobsSaved: number; errors: string | null; durationMs: number | null; createdAt: string };
-type GenLogEntry = { id: number; jobApplicationId: number; model: string; promptVersion: string; success: boolean; error: string | null; tokensUsed: number | null; durationMs: number | null; createdAt: string };
+type AnalysisLogEntry = { id: number; scrapedJobId: number; model: string; approved: boolean; score: number | null; reason: string | null; tokensUsed: number | null; durationMs: number | null; createdAt: string };
 
 export default function LogsPage() {
-  const [tab, setTab] = useState<"scans" | "generations">("scans");
+  const [tab, setTab] = useState<"scans" | "analysis">("scans");
   const [scanLogs, setScanLogs] = useState<ScanLogEntry[]>([]);
-  const [genLogs, setGenLogs] = useState<GenLogEntry[]>([]);
+  const [analysisLogs, setAnalysisLogs] = useState<AnalysisLogEntry[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/logs?type=scans").then((r) => r.json()).then(setScanLogs);
-    fetch("/api/admin/logs?type=generations").then((r) => r.json()).then(setGenLogs);
+    fetch("/api/admin/logs?type=analysis").then((r) => r.json()).then(setAnalysisLogs);
   }, []);
 
   const tabStyle = (active: boolean) => ({
@@ -31,7 +31,7 @@ export default function LogsPage() {
       <h1 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "1rem" }}>Logs</h1>
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
         <button style={tabStyle(tab === "scans")} onClick={() => setTab("scans")}>Scan Logs</button>
-        <button style={tabStyle(tab === "generations")} onClick={() => setTab("generations")}>Generation Logs</button>
+        <button style={tabStyle(tab === "analysis")} onClick={() => setTab("analysis")}>Analysis Logs</button>
       </div>
 
       {tab === "scans" && (
@@ -55,42 +55,39 @@ export default function LogsPage() {
                   <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", color: "#6b7280" }}>{new Date(log.createdAt).toLocaleString()}</td>
                 </tr>
               ))}
-              {scanLogs.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: "1rem", color: "#6b7280", textAlign: "center", fontSize: "0.875rem" }}>No scan logs yet.</td></tr>
-              )}
+              {scanLogs.length === 0 && <tr><td colSpan={6} style={{ padding: "1rem", color: "#6b7280", textAlign: "center" }}>No scan logs yet.</td></tr>}
             </tbody>
           </table>
         </div>
       )}
 
-      {tab === "generations" && (
+      {tab === "analysis" && (
         <div style={{ background: "white", borderRadius: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #e5e7eb", background: "#f9fafb" }}>
-                {["Job ID", "Model", "Tokens", "Duration", "Status", "Date"].map((h) => (
+                {["Job ID", "Model", "Score", "Result", "Reason", "Tokens", "Date"].map((h) => (
                   <th key={h} style={{ padding: "0.5rem 0.75rem", textAlign: "left", fontSize: "0.7rem", fontWeight: 600, color: "#6b7280" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {genLogs.map((log) => (
+              {analysisLogs.map((log) => (
                 <tr key={log.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem" }}>#{log.jobApplicationId}</td>
+                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem" }}>#{log.scrapedJobId}</td>
                   <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem", fontFamily: "monospace" }}>{log.model}</td>
-                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem" }}>{log.tokensUsed ?? "-"}</td>
-                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem", color: "#6b7280" }}>{log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : "-"}</td>
+                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem" }}>{log.score ?? "-"}</td>
                   <td style={{ padding: "0.5rem 0.75rem" }}>
-                    <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: "9999px", color: "white", background: log.success ? "#16a34a" : "#dc2626" }}>
-                      {log.success ? "OK" : "FAIL"}
+                    <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: "9999px", color: "white", background: log.approved ? "#16a34a" : "#dc2626" }}>
+                      {log.approved ? "APPROVED" : "REJECTED"}
                     </span>
                   </td>
+                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.7rem", color: "#6b7280", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.reason || "-"}</td>
+                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem" }}>{log.tokensUsed ?? "-"}</td>
                   <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", color: "#6b7280" }}>{new Date(log.createdAt).toLocaleString()}</td>
                 </tr>
               ))}
-              {genLogs.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: "1rem", color: "#6b7280", textAlign: "center", fontSize: "0.875rem" }}>No generation logs yet.</td></tr>
-              )}
+              {analysisLogs.length === 0 && <tr><td colSpan={7} style={{ padding: "1rem", color: "#6b7280", textAlign: "center" }}>No analysis logs yet.</td></tr>}
             </tbody>
           </table>
         </div>

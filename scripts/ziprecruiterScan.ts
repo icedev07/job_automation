@@ -1,6 +1,6 @@
 /**
  * ZipRecruiter scan: click job cards in the left panel; extract job description from right pane;
- * click Apply to open real jobsite URL; save to JobApplication + JobDescription.
+ * click Apply to open real jobsite URL; save to ScrapedJob.
  * Uses persistent context (logged-in). Max jobs per run: ZIPRECRUITER_MAX_JOBS_PER_RUN (default 2).
  * Run: npm run ziprecruiter:scan
  *
@@ -10,7 +10,7 @@
  * 3. Click card to load right pane. Get right panel text; if title/company Unknown, parse from panel.
  * 4. If right pane shows "1-Click Apply", skip.
  * 5. Extract job description, click Apply → new tab with real jobsite URL.
- * 6. upsertJobApplication + saveJobDescription. Close new tab.
+ * 6. upsertScrapedJob + saveJobDescription. Close new tab.
  */
 
 import "dotenv/config";
@@ -19,8 +19,7 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import * as fs from "fs";
 import * as path from "path";
 
-import { findDuplicateJob } from "../lib/jobDuplicateDetection";
-import { upsertJobApplication } from "../lib/jobApplications";
+import { upsertScrapedJob, isDuplicate, saveJobDescription } from "../lib/scrapedJobs";
 import { prisma } from "../lib/prisma";
 
 // URL used for job scan: set ZIPRECRUITER_SEARCH_URL in .env, or this default is used.
@@ -31,7 +30,6 @@ const DEFAULT_ZIPRECRUITER_URL =
 const ZIPRECRUITER_SEARCH_URL =
   process.env.ZIPRECRUITER_SEARCH_URL || DEFAULT_ZIPRECRUITER_URL;
 const MAX_JOBS_PER_RUN = Number(process.env.ZIPRECRUITER_MAX_JOBS_PER_RUN ?? 2);
-const USER_ID = Number(process.env.JOBBOT_USER_ID ?? 1);
 
 /** Run a promise with a timeout; on timeout return the fallback. */
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -469,34 +467,12 @@ async function clickApplyAndGetRealJobUrl(
   return { url, newPage };
 }
 
-async function ensureUserExists(userId: number): Promise<number> {
-  let user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) user = await prisma.user.findFirst();
-  if (!user) {
-    user = await prisma.user.create({
-      data: { email: "user@jobbot.local", passwordHash: "dummy" },
-    });
-  }
-  return user.id;
-}
-
-async function saveJobDescription(jobApplicationId: number, description: string) {
-  await prisma.jobDescription.upsert({
-    where: { jobApplicationId },
-    create: { jobApplicationId, fullText: description, source: "company_site" },
-    update: { fullText: description },
-  });
-}
+// saveJobDescription and isDuplicate imported from lib/scrapedJobs
 
 async function main() {
   console.log("\n🔍 ZipRecruiter Scanner\n");
-  console.log(`Max jobs per run: ${MAX_JOBS_PER_RUN} (set ZIPRECRUITER_MAX_JOBS_PER_RUN in .env)`);
-  console.log(`Search URL (from ZIPRECRUITER_SEARCH_URL or default):`);
-  console.log(`  ${ZIPRECRUITER_SEARCH_URL}`);
-  console.log("  (For remote jobs, use a URL with location=Remote (USA), or copy from ZipRecruiter after searching in the browser.)");
-  console.log("(Detailed timing is logged below so you can see where time is spent.)\n");
-
-  const actualUserId = await ensureUserExists(USER_ID);
+  console.log(`Max jobs per run: ${MAX_JOBS_PER_RUN}`);
+  console.log(`Search URL: ${ZIPRECRUITER_SEARCH_URL}\n`);
 
   if (!fs.existsSync(PERSISTENT_CONTEXT_DIR)) {
     console.error("❌ Context directory not found. Run: npm run ziprecruiter:init");
@@ -823,15 +799,15 @@ async function main() {
       console.log(`  🔗 Real jobsite URL: ${jobUrl}`);
 
       step = logTimed("duplicate check (normalized URL / title+company)");
-      const duplicate = await findDuplicateJob({
-        userId: actualUserId,
-        externalUrl: jobUrl,
+      const duplicate = await isDuplicate({
+        platform: "ziprecruiter",
+        url: jobUrl,
         title,
         company,
       });
       step();
       if (duplicate) {
-        console.log(`  ⏭️ Skip: duplicate (${duplicate.reason}) – already have this job`);
+        console.log(`  ⏭️ Skip: duplicate`);
         await applyTab.close().catch(() => {});
         await page.bringToFront();
         console.log(`     ⏱️ card total: ${Date.now() - cardLoopStart} ms\n`);
@@ -839,13 +815,12 @@ async function main() {
         continue;
       }
 
-      step = logTimed("upsertJobApplication (DB)");
-      const saved = await upsertJobApplication({
-        userId: actualUserId,
-        source: "ziprecruiter",
+      step = logTimed("upsertScrapedJob (DB)");
+      const saved = await upsertScrapedJob({
+        platform: "ziprecruiter",
         title,
         company,
-        externalUrl: jobUrl,
+        url: jobUrl,
       });
       step();
       if (!saved) {

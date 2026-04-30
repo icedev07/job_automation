@@ -1,23 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AppShell from "./components/AppShell";
 
 export const metadata: Metadata = {
-  title: "Job Application Bot",
-  description: "Personal job-application assistant powered by Jobright, LLMs, and automation.",
+  title: "Job Finder",
+  description: "Automated job finder for Armenian developers targeting European and remote positions.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <AppShell>{children}</AppShell>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
-

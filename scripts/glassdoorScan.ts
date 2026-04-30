@@ -12,15 +12,13 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import * as fs from "fs";
 import * as path from "path";
 
-import { findDuplicateJob } from "../lib/jobDuplicateDetection";
-import { upsertJobApplication } from "../lib/jobApplications";
+import { upsertScrapedJob, isDuplicate, saveJobDescription } from "../lib/scrapedJobs";
 import { prisma } from "../lib/prisma";
 
 const DEFAULT_GLASSDOOR_URL =
   "https://www.glassdoor.com/Job/remote-machine-learning-engineer-jobs-SRCH_IL.0,6_IS11047_KO7,32.htm?fromAge=7&remoteWorkType=1";
 const GLASSDOOR_SEARCH_URL = process.env.GLASSDOOR_SEARCH_URL || DEFAULT_GLASSDOOR_URL;
 const MAX_JOBS_PER_RUN = Number(process.env.GLASSDOOR_MAX_JOBS_PER_RUN ?? 5);
-const USER_ID = Number(process.env.JOBBOT_USER_ID ?? 1);
 
 function expandPath(dir: string | undefined): string {
   const home = process.env.HOME || process.env.USERPROFILE || process.cwd();
@@ -123,24 +121,7 @@ async function expandAndExtractJobDescription(page: any): Promise<string> {
   return "";
 }
 
-async function ensureUserExists(userId: number): Promise<number> {
-  let user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) user = await prisma.user.findFirst();
-  if (!user) {
-    user = await prisma.user.create({
-      data: { email: "user@jobbot.local", passwordHash: "dummy" },
-    });
-  }
-  return user.id;
-}
-
-async function saveJobDescription(jobApplicationId: number, description: string) {
-  await prisma.jobDescription.upsert({
-    where: { jobApplicationId },
-    create: { jobApplicationId, fullText: description, source: "company_site" },
-    update: { fullText: description },
-  });
-}
+// saveJobDescription and isDuplicate imported from lib/scrapedJobs
 
 /** Left pane: job card selectors. Card has data-test="job-title" (title) and EmployerProfile_compactEmployerName (company). */
 const JOB_CARD_SELECTORS = [
@@ -280,8 +261,6 @@ async function main() {
   console.log(`Max jobs per run: ${MAX_JOBS_PER_RUN} (GLASSDOOR_MAX_JOBS_PER_RUN)`);
   console.log(`Search URL: ${GLASSDOOR_SEARCH_URL}\n`);
 
-  const actualUserId = await ensureUserExists(USER_ID);
-
   if (!fs.existsSync(PERSISTENT_CONTEXT_DIR)) {
     console.error("❌ Context directory not found. Run: npm run glassdoor:init");
     process.exit(1);
@@ -415,26 +394,25 @@ async function main() {
       const { url: jobUrl, newPage: applyTab } = applyResult;
       console.log(`  🔗 Real jobsite URL: ${jobUrl}`);
 
-      const duplicate = await findDuplicateJob({
-        userId: actualUserId,
-        externalUrl: jobUrl,
+      const duplicate = await isDuplicate({
+        platform: "glassdoor",
+        url: jobUrl,
         title,
         company,
       });
       if (duplicate) {
-        console.log(`  ⏭️ Skip: duplicate (${duplicate.reason})`);
+        console.log(`  ⏭️ Skip: duplicate`);
         await applyTab.close().catch(() => {});
         await page.bringToFront();
         cardIndex++;
         continue;
       }
 
-      const saved = await upsertJobApplication({
-        userId: actualUserId,
-        source: "glassdoor",
+      const saved = await upsertScrapedJob({
+        platform: "glassdoor",
         title,
         company,
-        externalUrl: jobUrl,
+        url: jobUrl,
       });
       if (!saved) {
         console.log(`  ⏭️ Skip: filtered by title or URL (e.g. principal, icims)`);

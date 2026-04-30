@@ -1,6 +1,6 @@
 {
-  "name": "job-application-bot",
-  "version": "2.0.0",
+  "name": "job-finder",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo --hostname 0.0.0.0",
@@ -27,10 +27,7 @@
     "simplify:init": "tsx scripts/simplifyInit.ts",
     "simplify:scan": "node --max-old-space-size=4096 node_modules/tsx/dist/cli.mjs scripts/simplifyScan.ts",
 
-    "resume:setup": "tsx scripts/addBaseResume.ts",
-    "profiles:ensure": "tsx scripts/ensureProfileUsers.ts",
-    "cache:clean": "tsx scripts/cleanJobbotCache.ts",
-    "jobdesc:cleanup-bad": "tsx scripts/cleanupBadJobDescriptions.ts"
+    "cache:clean": "tsx scripts/cleanJobbotCache.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

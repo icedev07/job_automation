@@ -2,8 +2,7 @@ import { chromium, BrowserContext, Page } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 
-import { findDuplicateJob } from "../lib/jobDuplicateDetection";
-import { upsertJobApplication } from "../lib/jobApplications";
+import { upsertScrapedJob, isDuplicate, saveJobDescription } from "../lib/scrapedJobs";
 import { shouldSkipJobFromApplyUrl, shouldSkipJobFromCardFields } from "../lib/jobSkipRules";
 import { prisma } from "../lib/prisma";
 
@@ -28,8 +27,7 @@ function expandPath(dir: string | undefined): string {
 
 const PERSISTENT_CONTEXT_DIR = expandPath(process.env.JOBRIGHT_CONTEXT_DIR);
 const MAX_JOBS_PER_RUN = Number(process.env.MAX_JOBS ?? 1);
-const USER_ID = Number(process.env.JOBBOT_USER_ID ?? 1);
-// Scan phase only saves URL + job description; run docs:backfill or docs:backfill:chatgpt-ui for resume/cover
+// Scan phase only saves URL + job description; analysis happens after scan
 // Minimum Jobright match score (0–100) required to process a job
 const MATCH_SCORE_THRESHOLD = Number(process.env.MATCH_SCORE_THRESHOLD ?? 70);
 
@@ -1724,71 +1722,11 @@ async function clickApplyAndCaptureUrl(
   }
 }
 
-// Save job description to database
-async function saveJobDescription(jobApplicationId: number, description: string) {
-  try {
-    // Check if description already exists
-    const existing = await prisma.jobDescription.findUnique({
-      where: { jobApplicationId },
-    });
-
-    if (existing) {
-      // Update existing description
-      await prisma.jobDescription.update({
-        where: { jobApplicationId },
-        data: { fullText: description },
-      });
-      console.log(`  ✅ Updated job description (${description.length} chars)`);
-    } else {
-      // Create new description
-      await prisma.jobDescription.create({
-        data: {
-          jobApplicationId,
-          fullText: description,
-          source: "company_site",
-        },
-      });
-      console.log(`  ✅ Saved job description (${description.length} chars)`);
-    }
-  } catch (error: any) {
-    console.error(`  ❌ Error saving job description: ${error.message}`);
-  }
-}
-
-async function ensureUserExists(userId: number): Promise<number> {
-  // First, try to find user with the requested id
-  let user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-  
-  if (!user) {
-    // If not found, try to find any existing user
-    user = await prisma.user.findFirst();
-    
-    if (!user) {
-      // No users exist, create a default one
-      console.log(`No users found. Creating default user...`);
-      user = await prisma.user.create({
-        data: {
-          email: `user@jobbot.local`,
-          passwordHash: 'dummy', // Not used since we're not implementing auth
-        },
-      });
-      console.log(`✅ User created with id ${user.id}\n`);
-    } else {
-      console.log(`User with id ${userId} not found. Using existing user with id ${user.id}\n`);
-    }
-  }
-  
-  return user.id;
-}
+// saveJobDescription is imported from lib/scrapedJobs
 
 async function main() {
   console.log(`\n🔍 Jobright Scanner\n`);
   console.log(`Using persistent context directory: ${PERSISTENT_CONTEXT_DIR}`);
-  
-  // Ensure user exists and get the actual user id to use
-  const actualUserId = await ensureUserExists(USER_ID);
   
   // Check if context directory exists and has cookies
   if (!fs.existsSync(PERSISTENT_CONTEXT_DIR)) {
@@ -2244,16 +2182,15 @@ async function main() {
       console.log(`  ⚠️  No job description captured`);
     }
 
-    // Duplicate check: same algorithm as manual add & ZipRecruiter (normalized URL / title+company)
-    const duplicate = await findDuplicateJob({
-      userId: actualUserId,
-      externalUrl: applyUrl,
+    const duplicate = await isDuplicate({
+      platform: "jobright",
+      url: applyUrl,
       title: meta.title,
       company: meta.company,
     });
 
     if (duplicate) {
-      console.log(`  ⏭️  Skipping duplicate (${duplicate.reason}): ${meta.title} at ${meta.company}`);
+      console.log(`  ⏭️  Skipping duplicate: ${meta.title} at ${meta.company}`);
       await dismissApplyModal(page);
       skippedCount++;
       await page.waitForTimeout(500);
@@ -2291,15 +2228,12 @@ async function main() {
         await dismissApplyModal(page);
         continue;
       }
-      const savedJob = await upsertJobApplication({
-        userId: actualUserId,
-        source: "jobright",
+      const savedJob = await upsertScrapedJob({
+        platform: "jobright",
         title: meta.title,
         company: meta.company,
         location: meta.location,
-        externalUrl: applyUrl,
-        jobrightBoard: "recommended",
-        jobrightMatchScore: meta.matchScore,
+        url: applyUrl,
       });
       if (!savedJob) {
         console.log(`  ⏭️ Skip: filtered by title or URL (e.g. principal, icims)`);

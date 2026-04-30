@@ -6,11 +6,9 @@ import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard" },
-  { href: "/admin/api-keys", label: "API Keys" },
-  { href: "/admin/prompts", label: "Prompts" },
+  { href: "/admin/settings", label: "Settings" },
   { href: "/admin/scanners", label: "Scanners" },
   { href: "/admin/skip-rules", label: "Skip Rules" },
-  { href: "/admin/profiles", label: "Profiles" },
   { href: "/admin/logs", label: "Logs" },
 ];
 

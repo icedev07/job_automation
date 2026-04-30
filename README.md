@@ -1,178 +1,130 @@
-# Job Application Bot
+# Job Finder
 
-Automated job scraping, resume tailoring, and cover letter generation — deployed entirely on **free cloud services**.
+Automated job finder for Armenian developers targeting European and remote positions.
+
+Scrapes jobs from multiple platforms, uses AI to filter for suitability, and pushes approved jobs to Google Sheets. Everything is configurable from the admin panel.
+
+## How it works
+
+1. **Scrape** - Playwright-based scanners collect jobs from 5 platforms (Jobright, ZipRecruiter, Glassdoor, Dice, Simplify)
+2. **Analyze** - Each scraped job is sent to OpenAI for suitability analysis (remote-friendly? accessible from Armenia? etc.)
+3. **Approve/Reject** - Jobs that pass the AI filter get status `APPROVED`, others get `REJECTED`
+4. **Sync** - Approved jobs are pushed to a Google Sheet with configurable columns
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                Render (Free Tier)                     │
-│  Next.js App:  UI · Admin Panel · API · Scanners     │
-└──────────────┬─────────────┬────────────────────────┘
-               │             │
-    ┌──────────▼──────┐  ┌───▼───────────┐
-    │ Supabase (Free) │  │ Google Sheets │
-    │  PostgreSQL DB  │  │  Job Results  │
-    └─────────────────┘  └───────────────┘
-                             │
-                     ┌───────▼───────┐
-                     │  OpenAI API   │
-                     │ (Your own key)│
-                     └───────────────┘
+Admin Panel (/admin)
+    |
+    v
++-------------------+       +-----------+
+| Next.js App       |------>| OpenAI    |
+| (Render free)     |       | API       |
+|                   |       +-----------+
+| - Scanner scripts |
+| - AI analyzer     |------>+---------------+
+| - Admin panel     |       | Google Sheets |
+| - Job listing UI  |       +---------------+
++-------------------+
+    |
+    v
++-------------------+
+| PostgreSQL        |
+| (Supabase free)   |
++-------------------+
 ```
 
-## Services (all free, no credit card required)
+## Services (all free tier)
 
-| Service | Purpose | Free Tier Limits |
-|---------|---------|-----------------|
-| **Render** | Web app hosting | 750 hrs/month, 512MB RAM |
-| **Supabase** | PostgreSQL database | 500MB storage, unlimited API |
-| **Google Sheets** | Job list output | 300 reads/writes per minute |
-| **OpenAI API** | Resume & cover letter generation | Your own API key |
+| Service | Purpose |
+|---------|---------|
+| Render | Host the Next.js web app |
+| Supabase | PostgreSQL database |
+| Google Sheets API | Output approved jobs |
+| OpenAI API | AI job analysis (user-provided key) |
 
-## Features
-
-- **Job Board Scanners**: Playwright-based scrapers for Jobright, ZipRecruiter, Glassdoor, Dice, Simplify
-- **AI Document Generation**: Tailored resumes and cover letters via OpenAI API
-- **Admin Panel** (`/admin`): Configure API keys, prompts, scanners, skip rules, user profiles
-- **Google Sheets Sync**: Auto-sync job data to a Google Sheet
-- **Skip Rules**: Auto-skip jobs by company, title keyword, or URL pattern
-- **Scan Logging**: Track scan history and generation stats
-
-## Quick Start
-
-### 1. Set up Supabase
-
-1. Create a free project at [supabase.com](https://supabase.com)
-2. Copy the database connection string from Settings → Database
-
-### 2. Deploy to Render
-
-1. Fork this repo
-2. Create a new Web Service on [render.com](https://render.com)
-3. Set the environment variable:
-   - `DATABASE_URL` = your Supabase connection string
-4. Render will use `render.yaml` for build/start commands
-
-### 3. Configure via Admin Panel
-
-1. Visit `your-app.onrender.com/admin` (default password: `admin`)
-2. Go to **API Keys** → Set your OpenAI API key
-3. Go to **Profiles** → Create a user profile with your base resume
-4. Optionally configure Google Sheets credentials for job list sync
-
-## Local Development
+## Quick start
 
 ```bash
-# Install dependencies
+# 1. Clone and install
 npm install
 
-# Set up environment
+# 2. Set up database
 cp .env.example .env
-# Edit .env with your DATABASE_URL
+# Edit .env with your Supabase DATABASE_URL
 
-# Run database migrations
-npx prisma migrate deploy
+# 3. Generate Prisma client and run migrations
 npx prisma generate
+npx prisma migrate dev
 
-# Start dev server
+# 4. Start dev server
 npm run dev
+
+# 5. Open http://localhost:3000/admin
+# Default password: admin
+# Configure: OpenAI key, Google Sheets, target market, etc.
 ```
 
-Visit `http://localhost:3000`
+## Admin panel
 
-## Project Structure
+| Page | Purpose |
+|------|---------|
+| Dashboard | Stats overview, sync to Google Sheets |
+| Settings | OpenAI key, Google Sheets, target market, location, AI prompt, columns |
+| Scanners | Enable/disable platforms, set search URLs, run scans, analyze pending jobs |
+| Skip Rules | Block jobs by company, title keyword, or URL pattern |
+| Logs | View scan history and AI analysis logs |
 
-```
-├── app/
-│   ├── admin/              # Admin panel pages
-│   │   ├── layout.tsx      # Admin layout with nav & password gate
-│   │   ├── page.tsx        # Dashboard with stats
-│   │   ├── api-keys/       # OpenAI key, Google Sheets credentials
-│   │   ├── prompts/        # LLM prompt template editor
-│   │   ├── scanners/       # Scanner config & manual trigger
-│   │   ├── skip-rules/     # Blocked companies/titles/URLs
-│   │   ├── profiles/       # User profile management
-│   │   └── logs/           # Scan & generation history
-│   ├── api/
-│   │   ├── admin/          # Admin API routes
-│   │   ├── health/         # Health check (keeps Supabase alive)
-│   │   └── jobs/           # Job CRUD + document generation
-│   ├── jobs/               # Jobs list UI
-│   └── one-click-jobs/     # 1-Click jobs UI
-├── lib/
-│   ├── config.ts           # Read/write AppConfig from DB
-│   ├── llmClient.ts        # OpenAI API wrapper
-│   ├── googleSheetsSync.ts # Google Sheets sync
-│   ├── jobSkipRules.ts     # Skip rules (loaded from DB)
-│   ├── generateDocuments.ts# Resume + cover letter generation
-│   └── prisma.ts           # Prisma client singleton
-├── prisma/
-│   └── schema.prisma       # Database schema
-├── scripts/                # CLI scripts for local scanning
-└── render.yaml             # Render deployment config
-```
+## Running scanners
 
-## Admin Panel Pages
-
-| Page | URL | Purpose |
-|------|-----|---------|
-| Dashboard | `/admin` | Stats overview (jobs, docs, recent scans) |
-| API Keys | `/admin/api-keys` | OpenAI key, Google Sheets creds, admin password |
-| Prompts | `/admin/prompts` | Edit resume & cover letter prompt templates |
-| Scanners | `/admin/scanners` | Configure boards, search URLs, manual Run Now |
-| Skip Rules | `/admin/skip-rules` | CRUD for blocked companies/titles/URLs |
-| Profiles | `/admin/profiles` | User profiles with base resume text |
-| Logs | `/admin/logs` | Scan history and generation history |
-
-## Database Schema
-
-### Core Tables
-- `JobApplication` — Full job listings with metadata
-- `OneClickJob` — 1-Click/Easy Apply jobs
-- `JobDescription` — Scraped job descriptions
-- `TailoredResume` — AI-generated tailored resumes
-- `CoverLetter` — AI-generated cover letters
-- `Resume` — Base resume storage
-
-### Admin Tables
-- `AppConfig` — Key-value configuration (API keys, prompts, settings)
-- `SkipRule` — Auto-skip rules (company, title, URL patterns)
-- `UserProfile` — User profiles with base resume text
-- `ScanLog` — Scan execution history
-- `GenerationLog` — Document generation history
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Health check (pings DB) |
-| GET | `/api/jobs` | List job applications |
-| POST | `/api/jobs/[id]/generate` | Generate resume + cover letter |
-| DELETE | `/api/jobs/[id]/documents` | Delete generated documents |
-| POST | `/api/admin/auth` | Admin login |
-| GET/PUT | `/api/admin/config` | Read/write admin config |
-| GET | `/api/admin/stats` | Dashboard statistics |
-| GET/POST | `/api/admin/skip-rules` | CRUD skip rules |
-| GET/POST | `/api/admin/profiles` | CRUD user profiles |
-| GET | `/api/admin/logs` | Scan & generation logs |
-| POST | `/api/admin/sheets-sync` | Full sync to Google Sheets |
-| POST | `/api/admin/scanners/run` | Trigger manual scan |
-
-## Keep-Alive
-
-To prevent Render and Supabase from pausing due to inactivity:
-1. Set up [UptimeRobot](https://uptimerobot.com) (free) to ping `/api/health` every 14 minutes
-2. The health endpoint pings Supabase, keeping both services active
-
-## Scanner Scripts (Local Only)
+Scanners require a browser (Playwright + Chrome) so they run locally, not on Render.
 
 ```bash
-npm run jobright:scan       # Scan Jobright
-npm run ziprecruiter:scan   # Scan ZipRecruiter
-npm run glassdoor:scan      # Scan Glassdoor
-npm run dice:scan           # Scan Dice
-npm run simplify:scan       # Scan Simplify
+# First-time login (opens browser for manual login)
+npm run jobright:login
+npm run ziprecruiter:init
+npm run glassdoor:init
+npm run dice:init
+npm run simplify:init
+
+# Run scans
+npm run jobright:scan
+npm run ziprecruiter:scan
+npm run glassdoor:scan
+npm run dice:scan
+npm run simplify:scan
 ```
 
-Scanners require Playwright + Chromium and are meant for local use. Cloud scanning via the admin panel "Run Now" button is planned for future implementation.
+After scanning, go to `/admin/scanners` and click **Analyze Pending Jobs** to run AI analysis and auto-sync approved jobs to Google Sheets.
+
+## Google Sheet output columns (default)
+
+| Title | Company | Location | URL | Source | AI Score | Tech Stack | Salary | Date Found |
+|-------|---------|----------|-----|--------|----------|------------|--------|------------|
+
+Columns are configurable from `/admin/settings`.
+
+## Database schema
+
+- **ScrapedJob** - every job found by scanners (pending/approved/rejected)
+- **AppConfig** - key/value settings store
+- **SkipRule** - company/title/url block rules
+- **ScanLog** - scan history
+- **AnalysisLog** - AI analysis results per job
+
+## Deploy to Render
+
+1. Push to GitHub
+2. Connect repo in Render dashboard
+3. Render uses `render.yaml` for configuration
+4. Set `DATABASE_URL` env var to your Supabase connection string
+5. Configure everything else from `/admin/settings`
+
+## Environment variables
+
+Only `DATABASE_URL` is required. Everything else is configured from the admin panel.
+
+```
+DATABASE_URL=postgresql://...
+NODE_ENV=production
+```

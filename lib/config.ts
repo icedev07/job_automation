@@ -1,16 +1,16 @@
 import { prisma } from "./prisma";
 
-const CONFIG_KEYS = {
+export const CONFIG_KEYS = {
   OPENAI_API_KEY: "openai_api_key",
   OPENAI_MODEL: "openai_model",
   GOOGLE_SHEETS_CREDENTIALS: "google_sheets_credentials",
   GOOGLE_SHEET_ID: "google_sheet_id",
   ADMIN_PASSWORD: "admin_password",
-  RESUME_PROMPT_TEMPLATE: "resume_prompt_template",
-  COVER_LETTER_PROMPT_TEMPLATE: "cover_letter_prompt_template",
+  TARGET_MARKET: "target_market",
+  CURRENT_LOCATION: "current_location",
+  JOB_ANALYSIS_PROMPT: "job_analysis_prompt",
+  SHEET_COLUMNS: "sheet_columns",
 } as const;
-
-export { CONFIG_KEYS };
 
 export async function getConfigValue(key: string): Promise<string | null> {
   const row = await prisma.appConfig.findUnique({ where: { key } });
@@ -28,9 +28,7 @@ export async function setConfigValue(key: string, value: string): Promise<void> 
 export async function getAllConfig(): Promise<Record<string, string>> {
   const rows = await prisma.appConfig.findMany();
   const config: Record<string, string> = {};
-  for (const row of rows) {
-    config[row.key] = row.value;
-  }
+  for (const row of rows) config[row.key] = row.value;
   return config;
 }
 
@@ -42,9 +40,32 @@ export async function getConfig() {
     googleSheetsCredentials: all[CONFIG_KEYS.GOOGLE_SHEETS_CREDENTIALS] || "",
     googleSheetId: all[CONFIG_KEYS.GOOGLE_SHEET_ID] || "",
     adminPassword: all[CONFIG_KEYS.ADMIN_PASSWORD] || "admin",
-    resumePromptTemplate: all[CONFIG_KEYS.RESUME_PROMPT_TEMPLATE] || "",
-    coverLetterPromptTemplate: all[CONFIG_KEYS.COVER_LETTER_PROMPT_TEMPLATE] || "",
+    targetMarket: all[CONFIG_KEYS.TARGET_MARKET] || "Europe, Eastern Europe, Remote worldwide",
+    currentLocation: all[CONFIG_KEYS.CURRENT_LOCATION] || "Armenia",
+    jobAnalysisPrompt: all[CONFIG_KEYS.JOB_ANALYSIS_PROMPT] || "",
+    sheetColumns: all[CONFIG_KEYS.SHEET_COLUMNS] || "",
   };
+}
+
+export const DEFAULT_SHEET_COLUMNS = [
+  { key: "title", label: "Title" },
+  { key: "company", label: "Company" },
+  { key: "location", label: "Location" },
+  { key: "url", label: "URL" },
+  { key: "platform", label: "Source" },
+  { key: "aiScore", label: "AI Score" },
+  { key: "techStack", label: "Tech Stack" },
+  { key: "salary", label: "Salary" },
+  { key: "createdAt", label: "Date Found" },
+];
+
+export function getSheetColumns(configValue: string) {
+  if (!configValue) return DEFAULT_SHEET_COLUMNS;
+  try {
+    const parsed = JSON.parse(configValue);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch {}
+  return DEFAULT_SHEET_COLUMNS;
 }
 
 export function maskApiKey(key: string): string {

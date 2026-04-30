@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const type = new URL(req.url).searchParams.get("type");
 
-  if (type === "generations") {
-    const logs = await prisma.generationLog.findMany({
+  if (type === "analysis") {
+    const logs = await prisma.analysisLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 100,
     });

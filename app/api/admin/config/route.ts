@@ -9,17 +9,18 @@ export async function GET() {
     openai_api_key_masked: all.openai_api_key ? maskApiKey(all.openai_api_key) : "",
     openai_model: all.openai_model || "gpt-4o-mini",
     google_sheet_id: all.google_sheet_id || "",
-    google_sheets_credentials: all.google_sheets_credentials ? true : false,
+    google_sheets_credentials: !!all.google_sheets_credentials,
+    target_market: all.target_market || "",
+    current_location: all.current_location || "",
+    job_analysis_prompt: all.job_analysis_prompt || "",
+    sheet_columns: all.sheet_columns || "",
     admin_password_set: !!all.admin_password,
-    resume_prompt_template: all.resume_prompt_template || "",
-    cover_letter_prompt_template: all.cover_letter_prompt_template || "",
   });
 }
 
 export async function PUT(req: NextRequest) {
   const body = await req.json();
-  const entries = Object.entries(body) as [string, string][];
-  for (const [key, value] of entries) {
+  for (const [key, value] of Object.entries(body)) {
     if (typeof value === "string" && value.trim()) {
       await setConfigValue(key, value.trim());
     }
