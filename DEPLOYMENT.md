@@ -103,9 +103,9 @@ npx prisma generate
 npx prisma migrate deploy
 ```
 
-Or set the "Build Command" in Vercel project settings to:
+Set the "Build Command" in Vercel project settings to:
 ```
-npx prisma generate && npx prisma migrate deploy && next build
+npx prisma generate && next build
 ```
 
 ---
