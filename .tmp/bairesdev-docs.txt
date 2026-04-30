@@ -1,0 +1,88 @@
+===RESUME===
+Mohan Sha
+
+Senior Software Engineer | Full Stack Platform Development
+
++47 48155836‬‬‬ | Brevikveien 31, Sarpsborg 1711, Norway | mohan262026@atomicmail.io‬‬‬‬‬
+
+SUMMARY
+
+ Experienced Senior Software Engineer with 7+ years of experience building backend services, cloud-native platforms, and developer-facing systems across AWS, GCP, and Azure. Strong background in Python-based automation, JavaScript-aligned full stack collaboration, microservices, data processing workflows, and scalable API-driven solutions. Proven track record of delivering production systems, improving deployment speed, optimizing platform performance, and partnering across engineering, product, and analytics teams to build reliable end-to-end software. Combines hands-on engineering depth with strong ownership, cross-functional communication, and a remote-first working style suited to globally distributed teams.
+
+
+
+SKILLS
+
+• Full Stack Development: Backend services, API design, service integrations, microservices, frontend-backend collaboration, end-to-end solution delivery• Languages: Python, JavaScript, Go, Bash• Backend & Data Processing: Python scripting, real-time data processing, workflow automation, PostgreSQL optimization, cloud data services• Cloud & Infrastructure: AWS, GCP, Azure, Kubernetes, Docker, Terraform, Ansible, scalable cloud architecture• DevOps & Developer Experience: CI/CD pipeline optimization, developer tooling, self-service infrastructure, platform-as-a-product mindset, continuous improvement• Platform Reliability & Performance: Observability, incident response, centralized logging, monitoring, high availability, cost optimization• Security & Compliance: DevSecOps, secure-by-design practices, policy-as-code, automated compliance checks, SOC 2, ISO 27001, GDPR, risk management• Team Leadership & Collaboration: Cross-functional team leadership, mentoring, Agile methodologies, stakeholder alignment, executive communication• Product & Delivery: Agile project delivery, technical trade-off analysis, cross-team initiatives, remote collaboration, strategic planning
+
+
+
+PROFESSIONAL EXPERIENCE
+
+Senior Platform Engineer | Schibsted | Norway | Jan 2022 – Present
+
+(Media and marketplace technology environment supporting product, data, and engineering teams at scale)• Lead a team of 5 engineers delivering internal platforms and developer tooling that improve the speed and reliability of software delivery across multiple product teams.• Drove a strategic developer experience roadmap aligned with quarterly OKRs, improving deployment frequency by 25% and reducing infrastructure costs by 30% through platform optimization and FinOps practices.• Built and enhanced Python-based automation workflows for infrastructure operations, compliance checks, and deployment processes, reducing manual effort for engineering teams.• Partnered closely with product and data science teams to provision cloud infrastructure and workflows for AI and data experimentation, supporting full lifecycle delivery across backend systems and processing pipelines.• Integrated vulnerability scanning, policy-as-code, and automated checks into GitHub Actions and ArgoCD pipelines, cutting production security incidents by 40% while improving release confidence.• Regularly communicated technical strategy, delivery metrics, and trade-offs to engineering leadership, influencing roadmap prioritization, staffing, and platform investment decisions.Technologies & Skills: Python · GitHub Actions · ArgoCD · AWS · GCP · Terraform · Kubernetes · CI/CD · DevEx · Platform Engineering
+
+
+
+Senior Systems Architect | Striim | USA | Dec 2020 – Jan 2022
+
+(B2B SaaS and real-time data streaming platform with distributed services and cross-functional product needs)• Owned the cloud platform engineering roadmap for a complex SaaS platform, delivering scalable internal systems that abstracted infrastructure complexity for development teams.• Created self-service provisioning tools and engineering workflows that improved deployment time by over 60%, enabling faster backend delivery and smoother collaboration across teams.• Worked cross-functionally with product, analytics, and engineering teams in Agile sprints, helping design and support systems that connected data pipelines, services, and internal tooling.• Supported service-oriented architecture and data-heavy application environments where backend reliability, observability, and maintainability were critical to product delivery.• Piloted Backstage adoption to centralize documentation and ownership metadata across 50+ microservices, making distributed systems easier for engineers to navigate and extend.• Rolled out observability improvements using Datadog, Prometheus, and centralized logging, helping teams diagnose service issues faster and operate production systems more effectively.Technologies & Skills: Python · JavaScript-aligned service environments · Datadog · Prometheus · Backstage · AWS · GCP · Azure · Microservices · SaaS Platforms
+
+
+
+Software Engineer, Cloud Applications | Qube Cinema | USA | Jan 2018 – Dec 2020
+
+(Digital cinema technology company building cloud-based application services and operational platforms)• Implemented microservices architecture on Kubernetes, enabling scalable service deployment and reliable orchestration across cloud environments.• Automated AWS and GCP infrastructure provisioning using Terraform and Ansible, improving release efficiency and supporting backend application delivery.• Developed operational tooling and scripted workflows to support cloud databases, backup processes, and disaster recovery planning, reducing downtime risk and manual intervention.• Established logging and monitoring solutions using Elasticsearch, Grafana, and Loki, providing real-time visibility into application behavior and production performance.• Contributed to systems that connected multiple application components and services, strengthening reliability and maintainability in a distributed environment.Technologies & Skills: Python scripting · JavaScript-adjacent web service support · Kubernetes · Terraform · Ansible · AWS · GCP · Elasticsearch · Grafana · Loki
+
+
+
+Software Engineer Intern, Infrastructure Systems | Google | USA | Jan 2017 – Dec 2017
+
+(High-scale engineering environment focused on performance, automation, and secure cloud infrastructure)• Designed low-latency infrastructure for real-time data processing, optimizing PostgreSQL queries and caching strategies to improve performance for high-traffic applications.• Built CI/CD pipelines that reduced build times by 30%, accelerating engineering feedback loops and improving deployment efficiency.• Optimized GCP networking and IAM policies for Cloud SQL, GKE workloads, and storage, strengthening security and access control across production systems.• Gained early experience working in a top-tier engineering environment delivering software and infrastructure solutions with strong standards for scale, quality, and reliability.Technologies & Skills: Python · PostgreSQL · GCP · CI/CD · Data Processing · Networking · IAM · Performance Optimization
+
+
+
+EDUCATION
+
+Bachelors in Computer Science and EngineeringSSN College of Engineering (Anna University), Chennai, India | Jun 2013 — Nov 2017
+
+
+
+Certification
+
+Product ManagementProduct School, Silicon Valley, USA | Aug 2018 — Oct 2018
+
+Learning product management best practices and tools by building a product using the skills learned throughout the class such as scrum, user testing, prototyping, A/B testing, KPIs definition
+
+
+
+Platform StrategiesMIT Sloan School of Management, Massachusetts, USA | May 2018 — Jul 2018
+
+This program that introduces participants to the many ways networked markets are transforming the economy and provides strategies for designing, monetizing, and launching a digital platform
+
+
+
+
+
+
+
+===COVER===
+Mohan Sha
+
+Brevikveien 31, Sarpsborg 1711, Norway+47 48155836‬mohan262026@atomicmail.io‬‬‬
+
+
+
+Hi Hiring Team,
+
+
+
+What stands out to me about BairesDev is the opportunity to contribute as a broadly capable engineer in the kind of remote, high-performance environment where versatility matters as much as depth. My background has been built around exactly that kind of work: owning backend and platform problems, collaborating across teams, and building reliable systems that connect infrastructure, services, and product needs. Over the past seven-plus years, I have worked across AWS, GCP, and Azure, delivered cloud-native platforms, improved developer workflows, and supported production environments where scalability, maintainability, and speed all mattered at once. I have also had the chance to work in technically demanding organizations, including Google, which gave me an early foundation in building for scale, performance, and engineering quality. That mix of rigorous engineering standards and remote-ready ownership is a big reason I see a strong fit with BairesDev’s model.Although my recent titles have leaned platform and DevOps, the substance of my work has consistently involved full stack engineering patterns: building backend services, writing Python automation, supporting data processing workflows, and helping different system components work together cleanly. At Schibsted, I have driven a strategic developer experience roadmap that improved deployment frequency by 25% and reduced infrastructure costs by 30%, while also partnering with product and data science teams to provision environments and workflows for AI and LLM experimentation. That work required strong Python-based automation, CI/CD design, and close collaboration with teams building user-facing and data-driven capabilities on top of the platform. At Striim, I owned cloud platform engineering roadmaps in a real-time data SaaS environment, built self-service provisioning systems that improved deployment time by more than 60%, and worked closely with product, analytics, and engineering teams in Agile sprints. In practice, that meant constantly bridging backend services, data-heavy workflows, developer tools, and the interfaces and systems that depended on them.The Python and JavaScript emphasis in this role is especially appealing because it matches both my hands-on experience and the direction I enjoy working in. Python has been a core part of my toolkit for automation, scripting, infrastructure workflows, and backend-oriented engineering tasks across multiple roles. At Google, I worked on low-latency infrastructure for real-time data processing, including PostgreSQL query optimization and caching strategies, which sharpened my understanding of how backend logic and data performance affect the overall product. At Qube Cinema, I helped implement microservices on Kubernetes, automated AWS and GCP provisioning with Terraform and Ansible, and built the operational foundations that kept distributed application components reliable in production. On the JavaScript side, while my resume reflects more backend and platform leadership than explicit frontend ownership, I have worked in cross-functional application environments where frontend-backend coordination, service integration, and developer experience were central to successful delivery. That makes me confident stepping into a role where JavaScript is part of a broader full stack responsibility rather than a narrow specialization.I am drawn to roles where I can contribute across boundaries, learn fast, and help teams ship dependable software with less friction. BairesDev’s remote-first culture, emphasis on strong engineering talent, and exposure to a wide range of impactful projects make this especially compelling to me. I bring senior-level judgment, strong communication, and a track record of improving how teams build and operate software, but I also still enjoy the hands-on work of solving technical problems directly. Whether the task is backend development in Python, supporting data processing, improving service integrations, or collaborating on software that connects multiple components cleanly, I am comfortable operating with ownership and adaptability. I would be excited to bring that combination of technical breadth, delivery discipline, and collaborative mindset to BairesDev’s global engineering team.
+
+
+
+Best,Mohan Sha
+
+
+

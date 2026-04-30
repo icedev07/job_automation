@@ -1,0 +1,37 @@
+# Node / Next.js
+node_modules
+.next
+out
+dist
+coverage
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+
+# Playwright
+playwright-report
+test-results
+
+# Prisma
+prisma/dev.db
+
+# Resumes - ignore generated documents, but keep templates
+Resumes/*
+!Resumes/Templates/
+!Resumes/Templates/**
+
+# Mohan resumes - ignore generated documents, but keep templates
+Resumes_Mohan/*
+!Resumes_Mohan/Templates/
+!Resumes_Mohan/Templates/**
