@@ -198,16 +198,49 @@ exports.Prisma.CoverLetterScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
-exports.Prisma.AutomationRunScalarFieldEnum = {
+exports.Prisma.AppConfigScalarFieldEnum = {
+  key: 'key',
+  value: 'value',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SkipRuleScalarFieldEnum = {
   id: 'id',
-  userId: 'userId',
   type: 'type',
-  startedAt: 'startedAt',
-  finishedAt: 'finishedAt',
+  pattern: 'pattern',
+  active: 'active',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.UserProfileScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  baseResumeText: 'baseResumeText',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ScanLogScalarFieldEnum = {
+  id: 'id',
+  board: 'board',
   jobsFound: 'jobsFound',
   jobsSaved: 'jobsSaved',
-  status: 'status',
-  logExcerpt: 'logExcerpt'
+  errors: 'errors',
+  durationMs: 'durationMs',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.GenerationLogScalarFieldEnum = {
+  id: 'id',
+  jobApplicationId: 'jobApplicationId',
+  model: 'model',
+  promptVersion: 'promptVersion',
+  success: 'success',
+  error: 'error',
+  tokensUsed: 'tokensUsed',
+  durationMs: 'durationMs',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -240,10 +273,10 @@ exports.ApplicationStatus = exports.$Enums.ApplicationStatus = {
   WITHDRAWN: 'WITHDRAWN'
 };
 
-exports.AutomationRunStatus = exports.$Enums.AutomationRunStatus = {
-  SUCCESS: 'SUCCESS',
-  FAILED: 'FAILED',
-  PARTIAL: 'PARTIAL'
+exports.SkipRuleType = exports.$Enums.SkipRuleType = {
+  TITLE: 'TITLE',
+  COMPANY: 'COMPANY',
+  URL: 'URL'
 };
 
 exports.Prisma.ModelName = {
@@ -254,7 +287,11 @@ exports.Prisma.ModelName = {
   JobDescription: 'JobDescription',
   TailoredResume: 'TailoredResume',
   CoverLetter: 'CoverLetter',
-  AutomationRun: 'AutomationRun'
+  AppConfig: 'AppConfig',
+  SkipRule: 'SkipRule',
+  UserProfile: 'UserProfile',
+  ScanLog: 'ScanLog',
+  GenerationLog: 'GenerationLog'
 };
 
 /**

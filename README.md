@@ -1,346 +1,178 @@
 # Job Application Bot
 
-Automated job scraping, tracking, and tailored resume/cover letter generation — designed to run **24/7** as a set of Docker services.
+Automated job scraping, resume tailoring, and cover letter generation — deployed entirely on **free cloud services**.
 
 ## Architecture
 
 ```
-┌─────────────┐     ┌────────────────┐     ┌─────────────────┐
-│  PostgreSQL  │◄────│   Web (Next.js) │     │   Scanner       │
-│  (database)  │◄────│   UI + API      │     │   (cron jobs)   │
-└──────┬───────┘     └────────────────┘     └────────┬────────┘
-       │                                             │
-       │             ┌────────────────┐              │
-       └─────────────│   DocGen       │──────────────┘
-                     │   (backfill)   │
-                     └────────┬───────┘
-                              │
-                     ┌────────▼───────┐
-                     │  PDF Converter │
-                     │   (watch)      │
-                     └────────────────┘
+┌─────────────────────────────────────────────────────┐
+│                Render (Free Tier)                     │
+│  Next.js App:  UI · Admin Panel · API · Scanners     │
+└──────────────┬─────────────┬────────────────────────┘
+               │             │
+    ┌──────────▼──────┐  ┌───▼───────────┐
+    │ Supabase (Free) │  │ Google Sheets │
+    │  PostgreSQL DB  │  │  Job Results  │
+    └─────────────────┘  └───────────────┘
+                             │
+                     ┌───────▼───────┐
+                     │  OpenAI API   │
+                     │ (Your own key)│
+                     └───────────────┘
 ```
 
-| Service | Purpose | Runs as |
-|---|---|---|
-| **postgres** | PostgreSQL 16 database | Container (persistent volume) |
-| **web** | Next.js 14 app — job table UI + REST API | Container on port 3000 |
-| **scanner** | Scrapes job boards on cron schedules (Jobright, ZipRecruiter, Glassdoor, Dice, Simplify) | Container with cron |
-| **docgen** | Polls DB for jobs needing docs, generates tailored resume + cover letter via ChatGPT UI | Container (long-running) |
-| **pdf-converter** | Watches for new `.docx` files and converts to PDF via LibreOffice | Container (long-running) |
+## Services (all free, no credit card required)
 
-## Quick Start (Docker — recommended for 24/7)
+| Service | Purpose | Free Tier Limits |
+|---------|---------|-----------------|
+| **Render** | Web app hosting | 750 hrs/month, 512MB RAM |
+| **Supabase** | PostgreSQL database | 500MB storage, unlimited API |
+| **Google Sheets** | Job list output | 300 reads/writes per minute |
+| **OpenAI API** | Resume & cover letter generation | Your own API key |
 
-### 1. Clone and configure
+## Features
+
+- **Job Board Scanners**: Playwright-based scrapers for Jobright, ZipRecruiter, Glassdoor, Dice, Simplify
+- **AI Document Generation**: Tailored resumes and cover letters via OpenAI API
+- **Admin Panel** (`/admin`): Configure API keys, prompts, scanners, skip rules, user profiles
+- **Google Sheets Sync**: Auto-sync job data to a Google Sheet
+- **Skip Rules**: Auto-skip jobs by company, title keyword, or URL pattern
+- **Scan Logging**: Track scan history and generation stats
+
+## Quick Start
+
+### 1. Set up Supabase
+
+1. Create a free project at [supabase.com](https://supabase.com)
+2. Copy the database connection string from Settings → Database
+
+### 2. Deploy to Render
+
+1. Fork this repo
+2. Create a new Web Service on [render.com](https://render.com)
+3. Set the environment variable:
+   - `DATABASE_URL` = your Supabase connection string
+4. Render will use `render.yaml` for build/start commands
+
+### 3. Configure via Admin Panel
+
+1. Visit `your-app.onrender.com/admin` (default password: `admin`)
+2. Go to **API Keys** → Set your OpenAI API key
+3. Go to **Profiles** → Create a user profile with your base resume
+4. Optionally configure Google Sheets credentials for job list sync
+
+## Local Development
 
 ```bash
-git clone <your-repo-url> job-bot
-cd job-bot
-cp .env.example .env
-```
-
-Edit `.env` — at minimum set:
-
-```env
-POSTGRES_PASSWORD=your_strong_password
-JOBRIGHT_CONTEXT_DIR=~/.jobbot/jobright
-```
-
-### 2. Start all services
-
-```bash
-docker compose up -d --build
-```
-
-This starts PostgreSQL, runs migrations, then launches the web app, scanner, docgen worker, and PDF converter.
-
-### 3. Open the UI
-
-Go to **http://localhost:3000/jobs** to view the job table.
-
-### 4. View logs
-
-```bash
-# All services
-docker compose logs -f
-
-# Specific service
-docker compose logs -f scanner
-docker compose logs -f docgen
-```
-
-### 5. Stop
-
-```bash
-docker compose down        # Stop (keep data)
-docker compose down -v     # Stop and delete volumes (reset everything)
-```
-
-## Local Development (without Docker)
-
-### Prerequisites
-
-- **Node.js 20+**
-- **PostgreSQL** (local or remote)
-- **Python 3.12+** (optional — for SeleniumBase scripts and PDF conversion)
-
-### 1. Install dependencies
-
-```bash
+# Install dependencies
 npm install
-npx playwright install chromium
-```
 
-For Python scripts:
-
-```bash
-pip install -r requirements-seleniumbase.txt  # SeleniumBase (ChatGPT, ZipRecruiter)
-pip install -r requirements-pdf.txt           # PDF conversion
-```
-
-### 2. Configure environment
-
-```bash
+# Set up environment
 cp .env.example .env
-# Edit .env with your DATABASE_URL and other settings
-```
+# Edit .env with your DATABASE_URL
 
-### 3. Set up database
+# Run database migrations
+npx prisma migrate deploy
+npx prisma generate
 
-```bash
-# Create the database
-createdb jobbot
-
-# Run migrations
-npx prisma migrate dev
-
-# (Optional) Create profile users
-npm run profiles:ensure
-
-# (Optional) Add base resume
-npm run resume:setup
-```
-
-### 4. Start the dev server
-
-```bash
+# Start dev server
 npm run dev
 ```
 
-Open **http://localhost:3000/jobs**.
-
-### 5. Run scanners manually
-
-```bash
-# Log in to Jobright first (one-time)
-npm run jobright:login
-
-# Scan jobs
-npm run jobright:scan
-
-# Other boards (log in first with :init, then :scan)
-npm run dice:init
-npm run dice:scan
-```
-
-### 6. Generate documents
-
-```bash
-# One-shot: generate docs for all jobs missing them
-npm run docs:backfill
-
-# Watch mode: continuously poll and generate
-npm run docs:backfill:watch
-
-# SeleniumBase backfill (bypasses Cloudflare)
-npm run chatgpt:backfill
-```
-
-### 7. Convert DOCX to PDF
-
-```bash
-# One-shot
-npm run convert:pdf Resumes
-
-# Watch mode
-npm run convert:watch
-```
-
-## npm Scripts Reference
-
-### Core
-
-| Script | Description |
-|---|---|
-| `npm run dev` | Start Next.js dev server |
-| `npm run build` | Production build |
-| `npm run start` | Run production server |
-| `npm run lint` | ESLint |
-
-### Database
-
-| Script | Description |
-|---|---|
-| `npm run prisma:generate` | Generate Prisma client |
-| `npm run prisma:migrate` | Apply migrations (production) |
-| `npm run prisma:migrate:dev` | Create/apply migrations (development) |
-| `npm run prisma:studio` | Open Prisma Studio GUI |
-
-### Scanners
-
-| Script | Description |
-|---|---|
-| `npm run jobright:login` | Log in to Jobright (one-time browser session) |
-| `npm run jobright:scan` | Scan Jobright recommended board |
-| `npm run ziprecruiter:init` | Init ZipRecruiter session |
-| `npm run ziprecruiter:scan` | Scan ZipRecruiter |
-| `npm run glassdoor:init` | Init Glassdoor session |
-| `npm run glassdoor:scan` | Scan Glassdoor |
-| `npm run dice:init` | Log in to Dice |
-| `npm run dice:scan` | Scan Dice |
-| `npm run simplify:init` | Log in to Simplify |
-| `npm run simplify:scan` | Scan Simplify |
-
-### Document Generation
-
-| Script | Description |
-|---|---|
-| `npm run docs:backfill` | Generate docs for all jobs missing resume/cover letter |
-| `npm run docs:backfill:watch` | Watch mode — continuously poll DB and generate |
-| `npm run chatgpt:backfill` | SeleniumBase backfill (Cloudflare bypass) |
-| `npm run docs:reset-user` | Reset generated documents for a user |
-
-### PDF Conversion
-
-| Script | Description |
-|---|---|
-| `npm run convert:pdf` | One-shot DOCX to PDF conversion |
-| `npm run convert:watch` | Watch mode — poll for new DOCX and convert |
-
-### Maintenance
-
-| Script | Description |
-|---|---|
-| `npm run profiles:ensure` | Create profile users in DB |
-| `npm run resume:setup` | Add base resume to DB |
-| `npm run cache:clean` | Clean browser profile caches (~/.jobbot) |
-| `npm run jobdesc:cleanup-bad` | Remove malformed job descriptions |
-
-### Docker
-
-| Script | Description |
-|---|---|
-| `npm run docker:up` | Build and start all services |
-| `npm run docker:down` | Stop all services |
-| `npm run docker:logs` | Follow logs from all services |
-| `npm run docker:ps` | Show service status |
-
-## API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/health` | Health check |
-| `GET` | `/api/jobs` | List job applications |
-| `POST` | `/api/jobs` | Create job manually |
-| `GET` | `/api/jobs/:id` | Get single job |
-| `PATCH` | `/api/jobs/:id` | Update job |
-| `DELETE` | `/api/jobs/:id` | Delete job + files |
-| `GET` | `/api/jobs/:id/description` | Get job description |
-| `PATCH` | `/api/jobs/:id/description` | Update job description |
-| `POST` | `/api/jobs/:id/generate` | Generate tailored resume + cover letter |
-| `DELETE` | `/api/jobs/:id/documents` | Delete generated documents |
-| `POST` | `/api/scan` | Trigger Jobright scan |
-| `GET` | `/api/resumes` | List resumes |
-| `POST` | `/api/resumes` | Create resume |
-| `GET` | `/api/one-click-jobs` | List one-click/easy-apply jobs |
-| `POST` | `/api/one-click-jobs` | Create one-click job |
-| `POST` | `/api/one-click-jobs/batch-delete` | Bulk delete |
-
-## Database Schema
-
-```
-User ─────┬── JobApplication ──── JobDescription
-          │        ├──────────── TailoredResume
-          │        └──────────── CoverLetter
-          ├── Resume
-          ├── OneClickJob
-          └── AutomationRun
-```
-
-Key models:
-- **JobApplication** — scraped job with title, company, source, URLs, match score, status
-- **OneClickJob** — easy-apply listings (ZipRecruiter, Simplify) stored separately
-- **TailoredResume / CoverLetter** — LLM-generated output linked to a job
-
-## Resume Templates
-
-Place your templates in `Resumes/Templates/`:
-
-| File | Purpose |
-|---|---|
-| `*_Sample.docx` | Full base resume text (source content for tailoring) |
-| `*.docx` (styled) | Resume template with Docxtemplater placeholders |
-| `Cover Letter.docx` | Cover letter template with `{coverletterContent}` placeholder |
-
-## Environment Variables
-
-See `.env.example` for the full list with descriptions. Key groups:
-
-- **Database** — `DATABASE_URL`, `POSTGRES_*`
-- **Scanner** — `JOBRIGHT_CONTEXT_DIR`, `MAX_JOBS`, `MATCH_SCORE_THRESHOLD`, `*_SEARCH_URL`
-- **Cron schedules** — `CRON_JOBRIGHT`, `CRON_ZIPRECRUITER`, etc.
-- **Document generation** — `BACKFILL_POLL_INTERVAL_SEC`, `RESUMES_OUTPUT_DIR`, `RESUME_*_PATH`
-- **ChatGPT** — `CHATGPT_CONTEXT_DIR`, `CHATGPT_COOKIES_FILE`
-- **PDF** — `DOCX_PDF_WATCH_POLL_SECONDS`, `DOCX_PDF_SUBDIR_WITHIN_DAYS`
+Visit `http://localhost:3000`
 
 ## Project Structure
 
 ```
-.
-├── app/                    # Next.js App Router
-│   ├── api/                # REST API route handlers
-│   │   ├── health/         # Health check
-│   │   ├── jobs/           # Job CRUD + generate + description
-│   │   ├── one-click-jobs/ # Easy-apply job CRUD
-│   │   ├── resumes/        # Resume CRUD
-│   │   └── scan/           # Trigger scanner
-│   ├── jobs/               # /jobs page + JobsTable component
-│   ├── one-click-jobs/     # /one-click-jobs page
-│   └── components/         # Layout shell
-├── lib/                    # Shared domain logic
-│   ├── prisma.ts           # Prisma singleton
-│   ├── jobApplications.ts  # Job upsert logic
-│   ├── jobDuplicateDetection.ts
-│   ├── jobSkipRules.ts     # Title/company/URL blocklists
-│   ├── oneClickJobs.ts     # OneClickJob upsert
-│   ├── generateDocuments.ts # Orchestrates doc generation
-│   ├── chatgptUiClient.ts  # ChatGPT web UI automation (Playwright)
-│   ├── documentGenerator.ts # DOCX assembly
-│   └── templateProcessor.ts # Mammoth + Docxtemplater
-├── scripts/                # CLI scanners and utilities
-│   ├── jobrightScan.ts     # Jobright scanner
-│   ├── ziprecruiterScan.ts # ZipRecruiter scanner
-│   ├── glassdoorScan.ts    # Glassdoor scanner
-│   ├── diceScan.ts         # Dice scanner
-│   ├── simplifyScan.ts     # Simplify scanner
-│   ├── backfillWatch.ts    # Doc generation watch loop
-│   ├── convertDocxToPdf.py # DOCX→PDF converter
-│   └── ...                 # Login, setup, maintenance scripts
+├── app/
+│   ├── admin/              # Admin panel pages
+│   │   ├── layout.tsx      # Admin layout with nav & password gate
+│   │   ├── page.tsx        # Dashboard with stats
+│   │   ├── api-keys/       # OpenAI key, Google Sheets credentials
+│   │   ├── prompts/        # LLM prompt template editor
+│   │   ├── scanners/       # Scanner config & manual trigger
+│   │   ├── skip-rules/     # Blocked companies/titles/URLs
+│   │   ├── profiles/       # User profile management
+│   │   └── logs/           # Scan & generation history
+│   ├── api/
+│   │   ├── admin/          # Admin API routes
+│   │   ├── health/         # Health check (keeps Supabase alive)
+│   │   └── jobs/           # Job CRUD + document generation
+│   ├── jobs/               # Jobs list UI
+│   └── one-click-jobs/     # 1-Click jobs UI
+├── lib/
+│   ├── config.ts           # Read/write AppConfig from DB
+│   ├── llmClient.ts        # OpenAI API wrapper
+│   ├── googleSheetsSync.ts # Google Sheets sync
+│   ├── jobSkipRules.ts     # Skip rules (loaded from DB)
+│   ├── generateDocuments.ts# Resume + cover letter generation
+│   └── prisma.ts           # Prisma client singleton
 ├── prisma/
-│   ├── schema.prisma       # Database schema
-│   └── migrations/         # SQL migrations
-├── docker/                 # Dockerfiles and entrypoints
-│   ├── web.Dockerfile
-│   ├── scanner.Dockerfile
-│   ├── scanner-entrypoint.sh
-│   ├── docgen.Dockerfile
-│   └── pdf.Dockerfile
-├── docker-compose.yml      # Full service orchestration
-├── .env.example            # All environment variables documented
-├── requirements-pdf.txt    # Python deps for PDF conversion
-└── requirements-seleniumbase.txt  # Python deps for SeleniumBase scripts
+│   └── schema.prisma       # Database schema
+├── scripts/                # CLI scripts for local scanning
+└── render.yaml             # Render deployment config
 ```
 
-## License
+## Admin Panel Pages
 
-Private / personal use.
+| Page | URL | Purpose |
+|------|-----|---------|
+| Dashboard | `/admin` | Stats overview (jobs, docs, recent scans) |
+| API Keys | `/admin/api-keys` | OpenAI key, Google Sheets creds, admin password |
+| Prompts | `/admin/prompts` | Edit resume & cover letter prompt templates |
+| Scanners | `/admin/scanners` | Configure boards, search URLs, manual Run Now |
+| Skip Rules | `/admin/skip-rules` | CRUD for blocked companies/titles/URLs |
+| Profiles | `/admin/profiles` | User profiles with base resume text |
+| Logs | `/admin/logs` | Scan history and generation history |
+
+## Database Schema
+
+### Core Tables
+- `JobApplication` — Full job listings with metadata
+- `OneClickJob` — 1-Click/Easy Apply jobs
+- `JobDescription` — Scraped job descriptions
+- `TailoredResume` — AI-generated tailored resumes
+- `CoverLetter` — AI-generated cover letters
+- `Resume` — Base resume storage
+
+### Admin Tables
+- `AppConfig` — Key-value configuration (API keys, prompts, settings)
+- `SkipRule` — Auto-skip rules (company, title, URL patterns)
+- `UserProfile` — User profiles with base resume text
+- `ScanLog` — Scan execution history
+- `GenerationLog` — Document generation history
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check (pings DB) |
+| GET | `/api/jobs` | List job applications |
+| POST | `/api/jobs/[id]/generate` | Generate resume + cover letter |
+| DELETE | `/api/jobs/[id]/documents` | Delete generated documents |
+| POST | `/api/admin/auth` | Admin login |
+| GET/PUT | `/api/admin/config` | Read/write admin config |
+| GET | `/api/admin/stats` | Dashboard statistics |
+| GET/POST | `/api/admin/skip-rules` | CRUD skip rules |
+| GET/POST | `/api/admin/profiles` | CRUD user profiles |
+| GET | `/api/admin/logs` | Scan & generation logs |
+| POST | `/api/admin/sheets-sync` | Full sync to Google Sheets |
+| POST | `/api/admin/scanners/run` | Trigger manual scan |
+
+## Keep-Alive
+
+To prevent Render and Supabase from pausing due to inactivity:
+1. Set up [UptimeRobot](https://uptimerobot.com) (free) to ping `/api/health` every 14 minutes
+2. The health endpoint pings Supabase, keeping both services active
+
+## Scanner Scripts (Local Only)
+
+```bash
+npm run jobright:scan       # Scan Jobright
+npm run ziprecruiter:scan   # Scan ZipRecruiter
+npm run glassdoor:scan      # Scan Glassdoor
+npm run dice:scan           # Scan Dice
+npm run simplify:scan       # Scan Simplify
+```
+
+Scanners require Playwright + Chromium and are meant for local use. Cloud scanning via the admin panel "Run Now" button is planned for future implementation.

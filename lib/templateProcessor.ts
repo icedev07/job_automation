@@ -42,7 +42,7 @@ export async function replaceTextInTemplate(
     const buffer = doc.getZip().generate({
       type: "nodebuffer",
       compression: "DEFLATE",
-    });
+    }) as unknown as Uint8Array;
 
     fs.writeFileSync(outputPath, buffer);
   } catch (error: any) {
@@ -61,15 +61,11 @@ export async function replaceTextContentInDocx(
   outputPath: string
 ): Promise<void> {
   try {
-    // Read the template
     const content = fs.readFileSync(templatePath, "binary");
     const zip = new PizZip(content);
     
-    // Get the main document XML
     const docXml = zip.files["word/document.xml"].asText();
     
-    // Replace text content (simple approach - replace in XML)
-    // This is a basic implementation - for production, you'd want more sophisticated replacement
     const updatedXml = docXml.replace(
       new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
       newText
@@ -80,7 +76,7 @@ export async function replaceTextContentInDocx(
     const buffer = zip.generate({
       type: "nodebuffer",
       compression: "DEFLATE",
-    });
+    }) as unknown as Uint8Array;
     
     fs.writeFileSync(outputPath, buffer);
   } catch (error: any) {

@@ -33,7 +33,7 @@ export async function upsertJobApplication(params: {
     jobrightJobId,
   } = params;
 
-  if (shouldSkipJob({ title, company, externalUrl })) {
+  if (await shouldSkipJob({ title, company, externalUrl })) {
     return null;
   }
 

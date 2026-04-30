@@ -49,10 +49,30 @@ export type TailoredResume = $Result.DefaultSelection<Prisma.$TailoredResumePayl
  */
 export type CoverLetter = $Result.DefaultSelection<Prisma.$CoverLetterPayload>
 /**
- * Model AutomationRun
+ * Model AppConfig
  * 
  */
-export type AutomationRun = $Result.DefaultSelection<Prisma.$AutomationRunPayload>
+export type AppConfig = $Result.DefaultSelection<Prisma.$AppConfigPayload>
+/**
+ * Model SkipRule
+ * 
+ */
+export type SkipRule = $Result.DefaultSelection<Prisma.$SkipRulePayload>
+/**
+ * Model UserProfile
+ * 
+ */
+export type UserProfile = $Result.DefaultSelection<Prisma.$UserProfilePayload>
+/**
+ * Model ScanLog
+ * 
+ */
+export type ScanLog = $Result.DefaultSelection<Prisma.$ScanLogPayload>
+/**
+ * Model GenerationLog
+ * 
+ */
+export type GenerationLog = $Result.DefaultSelection<Prisma.$GenerationLogPayload>
 
 /**
  * Enums
@@ -80,13 +100,13 @@ export const ApplicationStatus: {
 export type ApplicationStatus = (typeof ApplicationStatus)[keyof typeof ApplicationStatus]
 
 
-export const AutomationRunStatus: {
-  SUCCESS: 'SUCCESS',
-  FAILED: 'FAILED',
-  PARTIAL: 'PARTIAL'
+export const SkipRuleType: {
+  TITLE: 'TITLE',
+  COMPANY: 'COMPANY',
+  URL: 'URL'
 };
 
-export type AutomationRunStatus = (typeof AutomationRunStatus)[keyof typeof AutomationRunStatus]
+export type SkipRuleType = (typeof SkipRuleType)[keyof typeof SkipRuleType]
 
 }
 
@@ -98,9 +118,9 @@ export type ApplicationStatus = $Enums.ApplicationStatus
 
 export const ApplicationStatus: typeof $Enums.ApplicationStatus
 
-export type AutomationRunStatus = $Enums.AutomationRunStatus
+export type SkipRuleType = $Enums.SkipRuleType
 
-export const AutomationRunStatus: typeof $Enums.AutomationRunStatus
+export const SkipRuleType: typeof $Enums.SkipRuleType
 
 /**
  * ##  Prisma Client ʲˢ
@@ -296,14 +316,54 @@ export class PrismaClient<
   get coverLetter(): Prisma.CoverLetterDelegate<ExtArgs>;
 
   /**
-   * `prisma.automationRun`: Exposes CRUD operations for the **AutomationRun** model.
+   * `prisma.appConfig`: Exposes CRUD operations for the **AppConfig** model.
     * Example usage:
     * ```ts
-    * // Fetch zero or more AutomationRuns
-    * const automationRuns = await prisma.automationRun.findMany()
+    * // Fetch zero or more AppConfigs
+    * const appConfigs = await prisma.appConfig.findMany()
     * ```
     */
-  get automationRun(): Prisma.AutomationRunDelegate<ExtArgs>;
+  get appConfig(): Prisma.AppConfigDelegate<ExtArgs>;
+
+  /**
+   * `prisma.skipRule`: Exposes CRUD operations for the **SkipRule** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more SkipRules
+    * const skipRules = await prisma.skipRule.findMany()
+    * ```
+    */
+  get skipRule(): Prisma.SkipRuleDelegate<ExtArgs>;
+
+  /**
+   * `prisma.userProfile`: Exposes CRUD operations for the **UserProfile** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more UserProfiles
+    * const userProfiles = await prisma.userProfile.findMany()
+    * ```
+    */
+  get userProfile(): Prisma.UserProfileDelegate<ExtArgs>;
+
+  /**
+   * `prisma.scanLog`: Exposes CRUD operations for the **ScanLog** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ScanLogs
+    * const scanLogs = await prisma.scanLog.findMany()
+    * ```
+    */
+  get scanLog(): Prisma.ScanLogDelegate<ExtArgs>;
+
+  /**
+   * `prisma.generationLog`: Exposes CRUD operations for the **GenerationLog** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more GenerationLogs
+    * const generationLogs = await prisma.generationLog.findMany()
+    * ```
+    */
+  get generationLog(): Prisma.GenerationLogDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -752,7 +812,11 @@ export namespace Prisma {
     JobDescription: 'JobDescription',
     TailoredResume: 'TailoredResume',
     CoverLetter: 'CoverLetter',
-    AutomationRun: 'AutomationRun'
+    AppConfig: 'AppConfig',
+    SkipRule: 'SkipRule',
+    UserProfile: 'UserProfile',
+    ScanLog: 'ScanLog',
+    GenerationLog: 'GenerationLog'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -768,7 +832,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "user" | "oneClickJob" | "resume" | "jobApplication" | "jobDescription" | "tailoredResume" | "coverLetter" | "automationRun"
+      modelProps: "user" | "oneClickJob" | "resume" | "jobApplication" | "jobDescription" | "tailoredResume" | "coverLetter" | "appConfig" | "skipRule" | "userProfile" | "scanLog" | "generationLog"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1262,73 +1326,353 @@ export namespace Prisma {
           }
         }
       }
-      AutomationRun: {
-        payload: Prisma.$AutomationRunPayload<ExtArgs>
-        fields: Prisma.AutomationRunFieldRefs
+      AppConfig: {
+        payload: Prisma.$AppConfigPayload<ExtArgs>
+        fields: Prisma.AppConfigFieldRefs
         operations: {
           findUnique: {
-            args: Prisma.AutomationRunFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload> | null
+            args: Prisma.AppConfigFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload> | null
           }
           findUniqueOrThrow: {
-            args: Prisma.AutomationRunFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload>
+            args: Prisma.AppConfigFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload>
           }
           findFirst: {
-            args: Prisma.AutomationRunFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload> | null
+            args: Prisma.AppConfigFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload> | null
           }
           findFirstOrThrow: {
-            args: Prisma.AutomationRunFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload>
+            args: Prisma.AppConfigFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload>
           }
           findMany: {
-            args: Prisma.AutomationRunFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload>[]
+            args: Prisma.AppConfigFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload>[]
           }
           create: {
-            args: Prisma.AutomationRunCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload>
+            args: Prisma.AppConfigCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload>
           }
           createMany: {
-            args: Prisma.AutomationRunCreateManyArgs<ExtArgs>
+            args: Prisma.AppConfigCreateManyArgs<ExtArgs>
             result: BatchPayload
           }
           createManyAndReturn: {
-            args: Prisma.AutomationRunCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload>[]
+            args: Prisma.AppConfigCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload>[]
           }
           delete: {
-            args: Prisma.AutomationRunDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload>
+            args: Prisma.AppConfigDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload>
           }
           update: {
-            args: Prisma.AutomationRunUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload>
+            args: Prisma.AppConfigUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload>
           }
           deleteMany: {
-            args: Prisma.AutomationRunDeleteManyArgs<ExtArgs>
+            args: Prisma.AppConfigDeleteManyArgs<ExtArgs>
             result: BatchPayload
           }
           updateMany: {
-            args: Prisma.AutomationRunUpdateManyArgs<ExtArgs>
+            args: Prisma.AppConfigUpdateManyArgs<ExtArgs>
             result: BatchPayload
           }
           upsert: {
-            args: Prisma.AutomationRunUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$AutomationRunPayload>
+            args: Prisma.AppConfigUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AppConfigPayload>
           }
           aggregate: {
-            args: Prisma.AutomationRunAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateAutomationRun>
+            args: Prisma.AppConfigAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAppConfig>
           }
           groupBy: {
-            args: Prisma.AutomationRunGroupByArgs<ExtArgs>
-            result: $Utils.Optional<AutomationRunGroupByOutputType>[]
+            args: Prisma.AppConfigGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AppConfigGroupByOutputType>[]
           }
           count: {
-            args: Prisma.AutomationRunCountArgs<ExtArgs>
-            result: $Utils.Optional<AutomationRunCountAggregateOutputType> | number
+            args: Prisma.AppConfigCountArgs<ExtArgs>
+            result: $Utils.Optional<AppConfigCountAggregateOutputType> | number
+          }
+        }
+      }
+      SkipRule: {
+        payload: Prisma.$SkipRulePayload<ExtArgs>
+        fields: Prisma.SkipRuleFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.SkipRuleFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.SkipRuleFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload>
+          }
+          findFirst: {
+            args: Prisma.SkipRuleFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.SkipRuleFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload>
+          }
+          findMany: {
+            args: Prisma.SkipRuleFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload>[]
+          }
+          create: {
+            args: Prisma.SkipRuleCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload>
+          }
+          createMany: {
+            args: Prisma.SkipRuleCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.SkipRuleCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload>[]
+          }
+          delete: {
+            args: Prisma.SkipRuleDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload>
+          }
+          update: {
+            args: Prisma.SkipRuleUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload>
+          }
+          deleteMany: {
+            args: Prisma.SkipRuleDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.SkipRuleUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.SkipRuleUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SkipRulePayload>
+          }
+          aggregate: {
+            args: Prisma.SkipRuleAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSkipRule>
+          }
+          groupBy: {
+            args: Prisma.SkipRuleGroupByArgs<ExtArgs>
+            result: $Utils.Optional<SkipRuleGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.SkipRuleCountArgs<ExtArgs>
+            result: $Utils.Optional<SkipRuleCountAggregateOutputType> | number
+          }
+        }
+      }
+      UserProfile: {
+        payload: Prisma.$UserProfilePayload<ExtArgs>
+        fields: Prisma.UserProfileFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.UserProfileFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.UserProfileFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload>
+          }
+          findFirst: {
+            args: Prisma.UserProfileFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.UserProfileFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload>
+          }
+          findMany: {
+            args: Prisma.UserProfileFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload>[]
+          }
+          create: {
+            args: Prisma.UserProfileCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload>
+          }
+          createMany: {
+            args: Prisma.UserProfileCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.UserProfileCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload>[]
+          }
+          delete: {
+            args: Prisma.UserProfileDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload>
+          }
+          update: {
+            args: Prisma.UserProfileUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload>
+          }
+          deleteMany: {
+            args: Prisma.UserProfileDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.UserProfileUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.UserProfileUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$UserProfilePayload>
+          }
+          aggregate: {
+            args: Prisma.UserProfileAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateUserProfile>
+          }
+          groupBy: {
+            args: Prisma.UserProfileGroupByArgs<ExtArgs>
+            result: $Utils.Optional<UserProfileGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.UserProfileCountArgs<ExtArgs>
+            result: $Utils.Optional<UserProfileCountAggregateOutputType> | number
+          }
+        }
+      }
+      ScanLog: {
+        payload: Prisma.$ScanLogPayload<ExtArgs>
+        fields: Prisma.ScanLogFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ScanLogFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ScanLogFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload>
+          }
+          findFirst: {
+            args: Prisma.ScanLogFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ScanLogFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload>
+          }
+          findMany: {
+            args: Prisma.ScanLogFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload>[]
+          }
+          create: {
+            args: Prisma.ScanLogCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload>
+          }
+          createMany: {
+            args: Prisma.ScanLogCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ScanLogCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload>[]
+          }
+          delete: {
+            args: Prisma.ScanLogDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload>
+          }
+          update: {
+            args: Prisma.ScanLogUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload>
+          }
+          deleteMany: {
+            args: Prisma.ScanLogDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ScanLogUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ScanLogUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ScanLogPayload>
+          }
+          aggregate: {
+            args: Prisma.ScanLogAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateScanLog>
+          }
+          groupBy: {
+            args: Prisma.ScanLogGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ScanLogGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ScanLogCountArgs<ExtArgs>
+            result: $Utils.Optional<ScanLogCountAggregateOutputType> | number
+          }
+        }
+      }
+      GenerationLog: {
+        payload: Prisma.$GenerationLogPayload<ExtArgs>
+        fields: Prisma.GenerationLogFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.GenerationLogFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.GenerationLogFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload>
+          }
+          findFirst: {
+            args: Prisma.GenerationLogFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.GenerationLogFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload>
+          }
+          findMany: {
+            args: Prisma.GenerationLogFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload>[]
+          }
+          create: {
+            args: Prisma.GenerationLogCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload>
+          }
+          createMany: {
+            args: Prisma.GenerationLogCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.GenerationLogCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload>[]
+          }
+          delete: {
+            args: Prisma.GenerationLogDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload>
+          }
+          update: {
+            args: Prisma.GenerationLogUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload>
+          }
+          deleteMany: {
+            args: Prisma.GenerationLogDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.GenerationLogUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.GenerationLogUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GenerationLogPayload>
+          }
+          aggregate: {
+            args: Prisma.GenerationLogAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateGenerationLog>
+          }
+          groupBy: {
+            args: Prisma.GenerationLogGroupByArgs<ExtArgs>
+            result: $Utils.Optional<GenerationLogGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.GenerationLogCountArgs<ExtArgs>
+            result: $Utils.Optional<GenerationLogCountAggregateOutputType> | number
           }
         }
       }
@@ -1496,14 +1840,12 @@ export namespace Prisma {
     resumes: number
     jobApplications: number
     oneClickJobs: number
-    automationRuns: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     resumes?: boolean | UserCountOutputTypeCountResumesArgs
     jobApplications?: boolean | UserCountOutputTypeCountJobApplicationsArgs
     oneClickJobs?: boolean | UserCountOutputTypeCountOneClickJobsArgs
-    automationRuns?: boolean | UserCountOutputTypeCountAutomationRunsArgs
   }
 
   // Custom InputTypes
@@ -1536,13 +1878,6 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountOneClickJobsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: OneClickJobWhereInput
-  }
-
-  /**
-   * UserCountOutputType without action
-   */
-  export type UserCountOutputTypeCountAutomationRunsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: AutomationRunWhereInput
   }
 
 
@@ -1823,7 +2158,6 @@ export namespace Prisma {
     resumes?: boolean | User$resumesArgs<ExtArgs>
     jobApplications?: boolean | User$jobApplicationsArgs<ExtArgs>
     oneClickJobs?: boolean | User$oneClickJobsArgs<ExtArgs>
-    automationRuns?: boolean | User$automationRunsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -1845,7 +2179,6 @@ export namespace Prisma {
     resumes?: boolean | User$resumesArgs<ExtArgs>
     jobApplications?: boolean | User$jobApplicationsArgs<ExtArgs>
     oneClickJobs?: boolean | User$oneClickJobsArgs<ExtArgs>
-    automationRuns?: boolean | User$automationRunsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -1856,7 +2189,6 @@ export namespace Prisma {
       resumes: Prisma.$ResumePayload<ExtArgs>[]
       jobApplications: Prisma.$JobApplicationPayload<ExtArgs>[]
       oneClickJobs: Prisma.$OneClickJobPayload<ExtArgs>[]
-      automationRuns: Prisma.$AutomationRunPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: number
@@ -2230,7 +2562,6 @@ export namespace Prisma {
     resumes<T extends User$resumesArgs<ExtArgs> = {}>(args?: Subset<T, User$resumesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ResumePayload<ExtArgs>, T, "findMany"> | Null>
     jobApplications<T extends User$jobApplicationsArgs<ExtArgs> = {}>(args?: Subset<T, User$jobApplicationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JobApplicationPayload<ExtArgs>, T, "findMany"> | Null>
     oneClickJobs<T extends User$oneClickJobsArgs<ExtArgs> = {}>(args?: Subset<T, User$oneClickJobsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$OneClickJobPayload<ExtArgs>, T, "findMany"> | Null>
-    automationRuns<T extends User$automationRunsArgs<ExtArgs> = {}>(args?: Subset<T, User$automationRunsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "findMany"> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2635,26 +2966,6 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: OneClickJobScalarFieldEnum | OneClickJobScalarFieldEnum[]
-  }
-
-  /**
-   * User.automationRuns
-   */
-  export type User$automationRunsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the AutomationRun
-     */
-    select?: AutomationRunSelect<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: AutomationRunInclude<ExtArgs> | null
-    where?: AutomationRunWhereInput
-    orderBy?: AutomationRunOrderByWithRelationInput | AutomationRunOrderByWithRelationInput[]
-    cursor?: AutomationRunWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: AutomationRunScalarFieldEnum | AutomationRunScalarFieldEnum[]
   }
 
   /**
@@ -8909,428 +9220,306 @@ export namespace Prisma {
 
 
   /**
-   * Model AutomationRun
+   * Model AppConfig
    */
 
-  export type AggregateAutomationRun = {
-    _count: AutomationRunCountAggregateOutputType | null
-    _avg: AutomationRunAvgAggregateOutputType | null
-    _sum: AutomationRunSumAggregateOutputType | null
-    _min: AutomationRunMinAggregateOutputType | null
-    _max: AutomationRunMaxAggregateOutputType | null
+  export type AggregateAppConfig = {
+    _count: AppConfigCountAggregateOutputType | null
+    _min: AppConfigMinAggregateOutputType | null
+    _max: AppConfigMaxAggregateOutputType | null
   }
 
-  export type AutomationRunAvgAggregateOutputType = {
-    id: number | null
-    userId: number | null
-    jobsFound: number | null
-    jobsSaved: number | null
+  export type AppConfigMinAggregateOutputType = {
+    key: string | null
+    value: string | null
+    updatedAt: Date | null
   }
 
-  export type AutomationRunSumAggregateOutputType = {
-    id: number | null
-    userId: number | null
-    jobsFound: number | null
-    jobsSaved: number | null
+  export type AppConfigMaxAggregateOutputType = {
+    key: string | null
+    value: string | null
+    updatedAt: Date | null
   }
 
-  export type AutomationRunMinAggregateOutputType = {
-    id: number | null
-    userId: number | null
-    type: string | null
-    startedAt: Date | null
-    finishedAt: Date | null
-    jobsFound: number | null
-    jobsSaved: number | null
-    status: $Enums.AutomationRunStatus | null
-    logExcerpt: string | null
-  }
-
-  export type AutomationRunMaxAggregateOutputType = {
-    id: number | null
-    userId: number | null
-    type: string | null
-    startedAt: Date | null
-    finishedAt: Date | null
-    jobsFound: number | null
-    jobsSaved: number | null
-    status: $Enums.AutomationRunStatus | null
-    logExcerpt: string | null
-  }
-
-  export type AutomationRunCountAggregateOutputType = {
-    id: number
-    userId: number
-    type: number
-    startedAt: number
-    finishedAt: number
-    jobsFound: number
-    jobsSaved: number
-    status: number
-    logExcerpt: number
+  export type AppConfigCountAggregateOutputType = {
+    key: number
+    value: number
+    updatedAt: number
     _all: number
   }
 
 
-  export type AutomationRunAvgAggregateInputType = {
-    id?: true
-    userId?: true
-    jobsFound?: true
-    jobsSaved?: true
+  export type AppConfigMinAggregateInputType = {
+    key?: true
+    value?: true
+    updatedAt?: true
   }
 
-  export type AutomationRunSumAggregateInputType = {
-    id?: true
-    userId?: true
-    jobsFound?: true
-    jobsSaved?: true
+  export type AppConfigMaxAggregateInputType = {
+    key?: true
+    value?: true
+    updatedAt?: true
   }
 
-  export type AutomationRunMinAggregateInputType = {
-    id?: true
-    userId?: true
-    type?: true
-    startedAt?: true
-    finishedAt?: true
-    jobsFound?: true
-    jobsSaved?: true
-    status?: true
-    logExcerpt?: true
-  }
-
-  export type AutomationRunMaxAggregateInputType = {
-    id?: true
-    userId?: true
-    type?: true
-    startedAt?: true
-    finishedAt?: true
-    jobsFound?: true
-    jobsSaved?: true
-    status?: true
-    logExcerpt?: true
-  }
-
-  export type AutomationRunCountAggregateInputType = {
-    id?: true
-    userId?: true
-    type?: true
-    startedAt?: true
-    finishedAt?: true
-    jobsFound?: true
-    jobsSaved?: true
-    status?: true
-    logExcerpt?: true
+  export type AppConfigCountAggregateInputType = {
+    key?: true
+    value?: true
+    updatedAt?: true
     _all?: true
   }
 
-  export type AutomationRunAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Filter which AutomationRun to aggregate.
+     * Filter which AppConfig to aggregate.
      */
-    where?: AutomationRunWhereInput
+    where?: AppConfigWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of AutomationRuns to fetch.
+     * Determine the order of AppConfigs to fetch.
      */
-    orderBy?: AutomationRunOrderByWithRelationInput | AutomationRunOrderByWithRelationInput[]
+    orderBy?: AppConfigOrderByWithRelationInput | AppConfigOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
      * Sets the start position
      */
-    cursor?: AutomationRunWhereUniqueInput
+    cursor?: AppConfigWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` AutomationRuns from the position of the cursor.
+     * Take `±n` AppConfigs from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` AutomationRuns.
+     * Skip the first `n` AppConfigs.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
-     * Count returned AutomationRuns
+     * Count returned AppConfigs
     **/
-    _count?: true | AutomationRunCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to average
-    **/
-    _avg?: AutomationRunAvgAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to sum
-    **/
-    _sum?: AutomationRunSumAggregateInputType
+    _count?: true | AppConfigCountAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to find the minimum value
     **/
-    _min?: AutomationRunMinAggregateInputType
+    _min?: AppConfigMinAggregateInputType
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
      * Select which fields to find the maximum value
     **/
-    _max?: AutomationRunMaxAggregateInputType
+    _max?: AppConfigMaxAggregateInputType
   }
 
-  export type GetAutomationRunAggregateType<T extends AutomationRunAggregateArgs> = {
-        [P in keyof T & keyof AggregateAutomationRun]: P extends '_count' | 'count'
+  export type GetAppConfigAggregateType<T extends AppConfigAggregateArgs> = {
+        [P in keyof T & keyof AggregateAppConfig]: P extends '_count' | 'count'
       ? T[P] extends true
         ? number
-        : GetScalarType<T[P], AggregateAutomationRun[P]>
-      : GetScalarType<T[P], AggregateAutomationRun[P]>
+        : GetScalarType<T[P], AggregateAppConfig[P]>
+      : GetScalarType<T[P], AggregateAppConfig[P]>
   }
 
 
 
 
-  export type AutomationRunGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: AutomationRunWhereInput
-    orderBy?: AutomationRunOrderByWithAggregationInput | AutomationRunOrderByWithAggregationInput[]
-    by: AutomationRunScalarFieldEnum[] | AutomationRunScalarFieldEnum
-    having?: AutomationRunScalarWhereWithAggregatesInput
+  export type AppConfigGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AppConfigWhereInput
+    orderBy?: AppConfigOrderByWithAggregationInput | AppConfigOrderByWithAggregationInput[]
+    by: AppConfigScalarFieldEnum[] | AppConfigScalarFieldEnum
+    having?: AppConfigScalarWhereWithAggregatesInput
     take?: number
     skip?: number
-    _count?: AutomationRunCountAggregateInputType | true
-    _avg?: AutomationRunAvgAggregateInputType
-    _sum?: AutomationRunSumAggregateInputType
-    _min?: AutomationRunMinAggregateInputType
-    _max?: AutomationRunMaxAggregateInputType
+    _count?: AppConfigCountAggregateInputType | true
+    _min?: AppConfigMinAggregateInputType
+    _max?: AppConfigMaxAggregateInputType
   }
 
-  export type AutomationRunGroupByOutputType = {
-    id: number
-    userId: number
-    type: string
-    startedAt: Date
-    finishedAt: Date | null
-    jobsFound: number | null
-    jobsSaved: number | null
-    status: $Enums.AutomationRunStatus
-    logExcerpt: string | null
-    _count: AutomationRunCountAggregateOutputType | null
-    _avg: AutomationRunAvgAggregateOutputType | null
-    _sum: AutomationRunSumAggregateOutputType | null
-    _min: AutomationRunMinAggregateOutputType | null
-    _max: AutomationRunMaxAggregateOutputType | null
+  export type AppConfigGroupByOutputType = {
+    key: string
+    value: string
+    updatedAt: Date
+    _count: AppConfigCountAggregateOutputType | null
+    _min: AppConfigMinAggregateOutputType | null
+    _max: AppConfigMaxAggregateOutputType | null
   }
 
-  type GetAutomationRunGroupByPayload<T extends AutomationRunGroupByArgs> = Prisma.PrismaPromise<
+  type GetAppConfigGroupByPayload<T extends AppConfigGroupByArgs> = Prisma.PrismaPromise<
     Array<
-      PickEnumerable<AutomationRunGroupByOutputType, T['by']> &
+      PickEnumerable<AppConfigGroupByOutputType, T['by']> &
         {
-          [P in ((keyof T) & (keyof AutomationRunGroupByOutputType))]: P extends '_count'
+          [P in ((keyof T) & (keyof AppConfigGroupByOutputType))]: P extends '_count'
             ? T[P] extends boolean
               ? number
-              : GetScalarType<T[P], AutomationRunGroupByOutputType[P]>
-            : GetScalarType<T[P], AutomationRunGroupByOutputType[P]>
+              : GetScalarType<T[P], AppConfigGroupByOutputType[P]>
+            : GetScalarType<T[P], AppConfigGroupByOutputType[P]>
         }
       >
     >
 
 
-  export type AutomationRunSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    userId?: boolean
-    type?: boolean
-    startedAt?: boolean
-    finishedAt?: boolean
-    jobsFound?: boolean
-    jobsSaved?: boolean
-    status?: boolean
-    logExcerpt?: boolean
-    user?: boolean | UserDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["automationRun"]>
+  export type AppConfigSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    key?: boolean
+    value?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["appConfig"]>
 
-  export type AutomationRunSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    userId?: boolean
-    type?: boolean
-    startedAt?: boolean
-    finishedAt?: boolean
-    jobsFound?: boolean
-    jobsSaved?: boolean
-    status?: boolean
-    logExcerpt?: boolean
-    user?: boolean | UserDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["automationRun"]>
+  export type AppConfigSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    key?: boolean
+    value?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["appConfig"]>
 
-  export type AutomationRunSelectScalar = {
-    id?: boolean
-    userId?: boolean
-    type?: boolean
-    startedAt?: boolean
-    finishedAt?: boolean
-    jobsFound?: boolean
-    jobsSaved?: boolean
-    status?: boolean
-    logExcerpt?: boolean
+  export type AppConfigSelectScalar = {
+    key?: boolean
+    value?: boolean
+    updatedAt?: boolean
   }
 
-  export type AutomationRunInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    user?: boolean | UserDefaultArgs<ExtArgs>
-  }
-  export type AutomationRunIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    user?: boolean | UserDefaultArgs<ExtArgs>
-  }
 
-  export type $AutomationRunPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "AutomationRun"
-    objects: {
-      user: Prisma.$UserPayload<ExtArgs>
-    }
+  export type $AppConfigPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AppConfig"
+    objects: {}
     scalars: $Extensions.GetPayloadResult<{
-      id: number
-      userId: number
-      type: string
-      startedAt: Date
-      finishedAt: Date | null
-      jobsFound: number | null
-      jobsSaved: number | null
-      status: $Enums.AutomationRunStatus
-      logExcerpt: string | null
-    }, ExtArgs["result"]["automationRun"]>
+      key: string
+      value: string
+      updatedAt: Date
+    }, ExtArgs["result"]["appConfig"]>
     composites: {}
   }
 
-  type AutomationRunGetPayload<S extends boolean | null | undefined | AutomationRunDefaultArgs> = $Result.GetResult<Prisma.$AutomationRunPayload, S>
+  type AppConfigGetPayload<S extends boolean | null | undefined | AppConfigDefaultArgs> = $Result.GetResult<Prisma.$AppConfigPayload, S>
 
-  type AutomationRunCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
-    Omit<AutomationRunFindManyArgs, 'select' | 'include' | 'distinct'> & {
-      select?: AutomationRunCountAggregateInputType | true
+  type AppConfigCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<AppConfigFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: AppConfigCountAggregateInputType | true
     }
 
-  export interface AutomationRunDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AutomationRun'], meta: { name: 'AutomationRun' } }
+  export interface AppConfigDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AppConfig'], meta: { name: 'AppConfig' } }
     /**
-     * Find zero or one AutomationRun that matches the filter.
-     * @param {AutomationRunFindUniqueArgs} args - Arguments to find a AutomationRun
+     * Find zero or one AppConfig that matches the filter.
+     * @param {AppConfigFindUniqueArgs} args - Arguments to find a AppConfig
      * @example
-     * // Get one AutomationRun
-     * const automationRun = await prisma.automationRun.findUnique({
+     * // Get one AppConfig
+     * const appConfig = await prisma.appConfig.findUnique({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findUnique<T extends AutomationRunFindUniqueArgs>(args: SelectSubset<T, AutomationRunFindUniqueArgs<ExtArgs>>): Prisma__AutomationRunClient<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+    findUnique<T extends AppConfigFindUniqueArgs>(args: SelectSubset<T, AppConfigFindUniqueArgs<ExtArgs>>): Prisma__AppConfigClient<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
 
     /**
-     * Find one AutomationRun that matches the filter or throw an error with `error.code='P2025'` 
+     * Find one AppConfig that matches the filter or throw an error with `error.code='P2025'` 
      * if no matches were found.
-     * @param {AutomationRunFindUniqueOrThrowArgs} args - Arguments to find a AutomationRun
+     * @param {AppConfigFindUniqueOrThrowArgs} args - Arguments to find a AppConfig
      * @example
-     * // Get one AutomationRun
-     * const automationRun = await prisma.automationRun.findUniqueOrThrow({
+     * // Get one AppConfig
+     * const appConfig = await prisma.appConfig.findUniqueOrThrow({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findUniqueOrThrow<T extends AutomationRunFindUniqueOrThrowArgs>(args: SelectSubset<T, AutomationRunFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AutomationRunClient<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+    findUniqueOrThrow<T extends AppConfigFindUniqueOrThrowArgs>(args: SelectSubset<T, AppConfigFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AppConfigClient<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
 
     /**
-     * Find the first AutomationRun that matches the filter.
+     * Find the first AppConfig that matches the filter.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {AutomationRunFindFirstArgs} args - Arguments to find a AutomationRun
+     * @param {AppConfigFindFirstArgs} args - Arguments to find a AppConfig
      * @example
-     * // Get one AutomationRun
-     * const automationRun = await prisma.automationRun.findFirst({
+     * // Get one AppConfig
+     * const appConfig = await prisma.appConfig.findFirst({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findFirst<T extends AutomationRunFindFirstArgs>(args?: SelectSubset<T, AutomationRunFindFirstArgs<ExtArgs>>): Prisma__AutomationRunClient<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+    findFirst<T extends AppConfigFindFirstArgs>(args?: SelectSubset<T, AppConfigFindFirstArgs<ExtArgs>>): Prisma__AppConfigClient<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
 
     /**
-     * Find the first AutomationRun that matches the filter or
+     * Find the first AppConfig that matches the filter or
      * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {AutomationRunFindFirstOrThrowArgs} args - Arguments to find a AutomationRun
+     * @param {AppConfigFindFirstOrThrowArgs} args - Arguments to find a AppConfig
      * @example
-     * // Get one AutomationRun
-     * const automationRun = await prisma.automationRun.findFirstOrThrow({
+     * // Get one AppConfig
+     * const appConfig = await prisma.appConfig.findFirstOrThrow({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      */
-    findFirstOrThrow<T extends AutomationRunFindFirstOrThrowArgs>(args?: SelectSubset<T, AutomationRunFindFirstOrThrowArgs<ExtArgs>>): Prisma__AutomationRunClient<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+    findFirstOrThrow<T extends AppConfigFindFirstOrThrowArgs>(args?: SelectSubset<T, AppConfigFindFirstOrThrowArgs<ExtArgs>>): Prisma__AppConfigClient<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
 
     /**
-     * Find zero or more AutomationRuns that matches the filter.
+     * Find zero or more AppConfigs that matches the filter.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {AutomationRunFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @param {AppConfigFindManyArgs} args - Arguments to filter and select certain fields only.
      * @example
-     * // Get all AutomationRuns
-     * const automationRuns = await prisma.automationRun.findMany()
+     * // Get all AppConfigs
+     * const appConfigs = await prisma.appConfig.findMany()
      * 
-     * // Get first 10 AutomationRuns
-     * const automationRuns = await prisma.automationRun.findMany({ take: 10 })
+     * // Get first 10 AppConfigs
+     * const appConfigs = await prisma.appConfig.findMany({ take: 10 })
      * 
-     * // Only select the `id`
-     * const automationRunWithIdOnly = await prisma.automationRun.findMany({ select: { id: true } })
+     * // Only select the `key`
+     * const appConfigWithKeyOnly = await prisma.appConfig.findMany({ select: { key: true } })
      * 
      */
-    findMany<T extends AutomationRunFindManyArgs>(args?: SelectSubset<T, AutomationRunFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "findMany">>
+    findMany<T extends AppConfigFindManyArgs>(args?: SelectSubset<T, AppConfigFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "findMany">>
 
     /**
-     * Create a AutomationRun.
-     * @param {AutomationRunCreateArgs} args - Arguments to create a AutomationRun.
+     * Create a AppConfig.
+     * @param {AppConfigCreateArgs} args - Arguments to create a AppConfig.
      * @example
-     * // Create one AutomationRun
-     * const AutomationRun = await prisma.automationRun.create({
+     * // Create one AppConfig
+     * const AppConfig = await prisma.appConfig.create({
      *   data: {
-     *     // ... data to create a AutomationRun
+     *     // ... data to create a AppConfig
      *   }
      * })
      * 
      */
-    create<T extends AutomationRunCreateArgs>(args: SelectSubset<T, AutomationRunCreateArgs<ExtArgs>>): Prisma__AutomationRunClient<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "create">, never, ExtArgs>
+    create<T extends AppConfigCreateArgs>(args: SelectSubset<T, AppConfigCreateArgs<ExtArgs>>): Prisma__AppConfigClient<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "create">, never, ExtArgs>
 
     /**
-     * Create many AutomationRuns.
-     * @param {AutomationRunCreateManyArgs} args - Arguments to create many AutomationRuns.
+     * Create many AppConfigs.
+     * @param {AppConfigCreateManyArgs} args - Arguments to create many AppConfigs.
      * @example
-     * // Create many AutomationRuns
-     * const automationRun = await prisma.automationRun.createMany({
+     * // Create many AppConfigs
+     * const appConfig = await prisma.appConfig.createMany({
      *   data: [
      *     // ... provide data here
      *   ]
      * })
      *     
      */
-    createMany<T extends AutomationRunCreateManyArgs>(args?: SelectSubset<T, AutomationRunCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    createMany<T extends AppConfigCreateManyArgs>(args?: SelectSubset<T, AppConfigCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Create many AutomationRuns and returns the data saved in the database.
-     * @param {AutomationRunCreateManyAndReturnArgs} args - Arguments to create many AutomationRuns.
+     * Create many AppConfigs and returns the data saved in the database.
+     * @param {AppConfigCreateManyAndReturnArgs} args - Arguments to create many AppConfigs.
      * @example
-     * // Create many AutomationRuns
-     * const automationRun = await prisma.automationRun.createManyAndReturn({
+     * // Create many AppConfigs
+     * const appConfig = await prisma.appConfig.createManyAndReturn({
      *   data: [
      *     // ... provide data here
      *   ]
      * })
      * 
-     * // Create many AutomationRuns and only return the `id`
-     * const automationRunWithIdOnly = await prisma.automationRun.createManyAndReturn({ 
-     *   select: { id: true },
+     * // Create many AppConfigs and only return the `key`
+     * const appConfigWithKeyOnly = await prisma.appConfig.createManyAndReturn({ 
+     *   select: { key: true },
      *   data: [
      *     // ... provide data here
      *   ]
@@ -9339,28 +9528,28 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends AutomationRunCreateManyAndReturnArgs>(args?: SelectSubset<T, AutomationRunCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "createManyAndReturn">>
+    createManyAndReturn<T extends AppConfigCreateManyAndReturnArgs>(args?: SelectSubset<T, AppConfigCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "createManyAndReturn">>
 
     /**
-     * Delete a AutomationRun.
-     * @param {AutomationRunDeleteArgs} args - Arguments to delete one AutomationRun.
+     * Delete a AppConfig.
+     * @param {AppConfigDeleteArgs} args - Arguments to delete one AppConfig.
      * @example
-     * // Delete one AutomationRun
-     * const AutomationRun = await prisma.automationRun.delete({
+     * // Delete one AppConfig
+     * const AppConfig = await prisma.appConfig.delete({
      *   where: {
-     *     // ... filter to delete one AutomationRun
+     *     // ... filter to delete one AppConfig
      *   }
      * })
      * 
      */
-    delete<T extends AutomationRunDeleteArgs>(args: SelectSubset<T, AutomationRunDeleteArgs<ExtArgs>>): Prisma__AutomationRunClient<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+    delete<T extends AppConfigDeleteArgs>(args: SelectSubset<T, AppConfigDeleteArgs<ExtArgs>>): Prisma__AppConfigClient<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "delete">, never, ExtArgs>
 
     /**
-     * Update one AutomationRun.
-     * @param {AutomationRunUpdateArgs} args - Arguments to update one AutomationRun.
+     * Update one AppConfig.
+     * @param {AppConfigUpdateArgs} args - Arguments to update one AppConfig.
      * @example
-     * // Update one AutomationRun
-     * const automationRun = await prisma.automationRun.update({
+     * // Update one AppConfig
+     * const appConfig = await prisma.appConfig.update({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -9370,30 +9559,30 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends AutomationRunUpdateArgs>(args: SelectSubset<T, AutomationRunUpdateArgs<ExtArgs>>): Prisma__AutomationRunClient<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "update">, never, ExtArgs>
+    update<T extends AppConfigUpdateArgs>(args: SelectSubset<T, AppConfigUpdateArgs<ExtArgs>>): Prisma__AppConfigClient<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "update">, never, ExtArgs>
 
     /**
-     * Delete zero or more AutomationRuns.
-     * @param {AutomationRunDeleteManyArgs} args - Arguments to filter AutomationRuns to delete.
+     * Delete zero or more AppConfigs.
+     * @param {AppConfigDeleteManyArgs} args - Arguments to filter AppConfigs to delete.
      * @example
-     * // Delete a few AutomationRuns
-     * const { count } = await prisma.automationRun.deleteMany({
+     * // Delete a few AppConfigs
+     * const { count } = await prisma.appConfig.deleteMany({
      *   where: {
      *     // ... provide filter here
      *   }
      * })
      * 
      */
-    deleteMany<T extends AutomationRunDeleteManyArgs>(args?: SelectSubset<T, AutomationRunDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    deleteMany<T extends AppConfigDeleteManyArgs>(args?: SelectSubset<T, AppConfigDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Update zero or more AutomationRuns.
+     * Update zero or more AppConfigs.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {AutomationRunUpdateManyArgs} args - Arguments to update one or more rows.
+     * @param {AppConfigUpdateManyArgs} args - Arguments to update one or more rows.
      * @example
-     * // Update many AutomationRuns
-     * const automationRun = await prisma.automationRun.updateMany({
+     * // Update many AppConfigs
+     * const appConfig = await prisma.appConfig.updateMany({
      *   where: {
      *     // ... provide filter here
      *   },
@@ -9403,56 +9592,56 @@ export namespace Prisma {
      * })
      * 
      */
-    updateMany<T extends AutomationRunUpdateManyArgs>(args: SelectSubset<T, AutomationRunUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+    updateMany<T extends AppConfigUpdateManyArgs>(args: SelectSubset<T, AppConfigUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
 
     /**
-     * Create or update one AutomationRun.
-     * @param {AutomationRunUpsertArgs} args - Arguments to update or create a AutomationRun.
+     * Create or update one AppConfig.
+     * @param {AppConfigUpsertArgs} args - Arguments to update or create a AppConfig.
      * @example
-     * // Update or create a AutomationRun
-     * const automationRun = await prisma.automationRun.upsert({
+     * // Update or create a AppConfig
+     * const appConfig = await prisma.appConfig.upsert({
      *   create: {
-     *     // ... data to create a AutomationRun
+     *     // ... data to create a AppConfig
      *   },
      *   update: {
      *     // ... in case it already exists, update
      *   },
      *   where: {
-     *     // ... the filter for the AutomationRun we want to update
+     *     // ... the filter for the AppConfig we want to update
      *   }
      * })
      */
-    upsert<T extends AutomationRunUpsertArgs>(args: SelectSubset<T, AutomationRunUpsertArgs<ExtArgs>>): Prisma__AutomationRunClient<$Result.GetResult<Prisma.$AutomationRunPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+    upsert<T extends AppConfigUpsertArgs>(args: SelectSubset<T, AppConfigUpsertArgs<ExtArgs>>): Prisma__AppConfigClient<$Result.GetResult<Prisma.$AppConfigPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
 
 
     /**
-     * Count the number of AutomationRuns.
+     * Count the number of AppConfigs.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {AutomationRunCountArgs} args - Arguments to filter AutomationRuns to count.
+     * @param {AppConfigCountArgs} args - Arguments to filter AppConfigs to count.
      * @example
-     * // Count the number of AutomationRuns
-     * const count = await prisma.automationRun.count({
+     * // Count the number of AppConfigs
+     * const count = await prisma.appConfig.count({
      *   where: {
-     *     // ... the filter for the AutomationRuns we want to count
+     *     // ... the filter for the AppConfigs we want to count
      *   }
      * })
     **/
-    count<T extends AutomationRunCountArgs>(
-      args?: Subset<T, AutomationRunCountArgs>,
+    count<T extends AppConfigCountArgs>(
+      args?: Subset<T, AppConfigCountArgs>,
     ): Prisma.PrismaPromise<
       T extends $Utils.Record<'select', any>
         ? T['select'] extends true
           ? number
-          : GetScalarType<T['select'], AutomationRunCountAggregateOutputType>
+          : GetScalarType<T['select'], AppConfigCountAggregateOutputType>
         : number
     >
 
     /**
-     * Allows you to perform aggregations operations on a AutomationRun.
+     * Allows you to perform aggregations operations on a AppConfig.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {AutomationRunAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @param {AppConfigAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
      * @example
      * // Ordered by age ascending
      * // Where email contains prisma.io
@@ -9472,13 +9661,13 @@ export namespace Prisma {
      *   take: 10,
      * })
     **/
-    aggregate<T extends AutomationRunAggregateArgs>(args: Subset<T, AutomationRunAggregateArgs>): Prisma.PrismaPromise<GetAutomationRunAggregateType<T>>
+    aggregate<T extends AppConfigAggregateArgs>(args: Subset<T, AppConfigAggregateArgs>): Prisma.PrismaPromise<GetAppConfigAggregateType<T>>
 
     /**
-     * Group by AutomationRun.
+     * Group by AppConfig.
      * Note, that providing `undefined` is treated as the value not being there.
      * Read more here: https://pris.ly/d/null-undefined
-     * @param {AutomationRunGroupByArgs} args - Group by arguments.
+     * @param {AppConfigGroupByArgs} args - Group by arguments.
      * @example
      * // Group by city, order by createdAt, get count
      * const result = await prisma.user.groupBy({
@@ -9493,14 +9682,14 @@ export namespace Prisma {
      * 
     **/
     groupBy<
-      T extends AutomationRunGroupByArgs,
+      T extends AppConfigGroupByArgs,
       HasSelectOrTake extends Or<
         Extends<'skip', Keys<T>>,
         Extends<'take', Keys<T>>
       >,
       OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: AutomationRunGroupByArgs['orderBy'] }
-        : { orderBy?: AutomationRunGroupByArgs['orderBy'] },
+        ? { orderBy: AppConfigGroupByArgs['orderBy'] }
+        : { orderBy?: AppConfigGroupByArgs['orderBy'] },
       OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
       ByFields extends MaybeTupleToUnion<T['by']>,
       ByValid extends Has<ByFields, OrderFields>,
@@ -9549,22 +9738,21 @@ export namespace Prisma {
             ? never
             : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
         }[OrderFields]
-    >(args: SubsetIntersection<T, AutomationRunGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAutomationRunGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+    >(args: SubsetIntersection<T, AppConfigGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAppConfigGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
   /**
-   * Fields of the AutomationRun model
+   * Fields of the AppConfig model
    */
-  readonly fields: AutomationRunFieldRefs;
+  readonly fields: AppConfigFieldRefs;
   }
 
   /**
-   * The delegate class that acts as a "Promise-like" for AutomationRun.
+   * The delegate class that acts as a "Promise-like" for AppConfig.
    * Why is this prefixed with `Prisma__`?
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__AutomationRunClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__AppConfigClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow"> | Null, Null, ExtArgs>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -9591,347 +9779,4053 @@ export namespace Prisma {
 
 
   /**
-   * Fields of the AutomationRun model
+   * Fields of the AppConfig model
    */ 
-  interface AutomationRunFieldRefs {
-    readonly id: FieldRef<"AutomationRun", 'Int'>
-    readonly userId: FieldRef<"AutomationRun", 'Int'>
-    readonly type: FieldRef<"AutomationRun", 'String'>
-    readonly startedAt: FieldRef<"AutomationRun", 'DateTime'>
-    readonly finishedAt: FieldRef<"AutomationRun", 'DateTime'>
-    readonly jobsFound: FieldRef<"AutomationRun", 'Int'>
-    readonly jobsSaved: FieldRef<"AutomationRun", 'Int'>
-    readonly status: FieldRef<"AutomationRun", 'AutomationRunStatus'>
-    readonly logExcerpt: FieldRef<"AutomationRun", 'String'>
+  interface AppConfigFieldRefs {
+    readonly key: FieldRef<"AppConfig", 'String'>
+    readonly value: FieldRef<"AppConfig", 'String'>
+    readonly updatedAt: FieldRef<"AppConfig", 'DateTime'>
   }
     
 
   // Custom InputTypes
   /**
-   * AutomationRun findUnique
+   * AppConfig findUnique
    */
-  export type AutomationRunFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * Filter, which AppConfig to fetch.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
-    /**
-     * Filter, which AutomationRun to fetch.
-     */
-    where: AutomationRunWhereUniqueInput
+    where: AppConfigWhereUniqueInput
   }
 
   /**
-   * AutomationRun findUniqueOrThrow
+   * AppConfig findUniqueOrThrow
    */
-  export type AutomationRunFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * Filter, which AppConfig to fetch.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
-    /**
-     * Filter, which AutomationRun to fetch.
-     */
-    where: AutomationRunWhereUniqueInput
+    where: AppConfigWhereUniqueInput
   }
 
   /**
-   * AutomationRun findFirst
+   * AppConfig findFirst
    */
-  export type AutomationRunFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * Filter, which AppConfig to fetch.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
-    /**
-     * Filter, which AutomationRun to fetch.
-     */
-    where?: AutomationRunWhereInput
+    where?: AppConfigWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of AutomationRuns to fetch.
+     * Determine the order of AppConfigs to fetch.
      */
-    orderBy?: AutomationRunOrderByWithRelationInput | AutomationRunOrderByWithRelationInput[]
+    orderBy?: AppConfigOrderByWithRelationInput | AppConfigOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for searching for AutomationRuns.
+     * Sets the position for searching for AppConfigs.
      */
-    cursor?: AutomationRunWhereUniqueInput
+    cursor?: AppConfigWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` AutomationRuns from the position of the cursor.
+     * Take `±n` AppConfigs from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` AutomationRuns.
+     * Skip the first `n` AppConfigs.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
      * 
-     * Filter by unique combinations of AutomationRuns.
+     * Filter by unique combinations of AppConfigs.
      */
-    distinct?: AutomationRunScalarFieldEnum | AutomationRunScalarFieldEnum[]
+    distinct?: AppConfigScalarFieldEnum | AppConfigScalarFieldEnum[]
   }
 
   /**
-   * AutomationRun findFirstOrThrow
+   * AppConfig findFirstOrThrow
    */
-  export type AutomationRunFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * Filter, which AppConfig to fetch.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
-    /**
-     * Filter, which AutomationRun to fetch.
-     */
-    where?: AutomationRunWhereInput
+    where?: AppConfigWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of AutomationRuns to fetch.
+     * Determine the order of AppConfigs to fetch.
      */
-    orderBy?: AutomationRunOrderByWithRelationInput | AutomationRunOrderByWithRelationInput[]
+    orderBy?: AppConfigOrderByWithRelationInput | AppConfigOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for searching for AutomationRuns.
+     * Sets the position for searching for AppConfigs.
      */
-    cursor?: AutomationRunWhereUniqueInput
+    cursor?: AppConfigWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` AutomationRuns from the position of the cursor.
+     * Take `±n` AppConfigs from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` AutomationRuns.
+     * Skip the first `n` AppConfigs.
      */
     skip?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
      * 
-     * Filter by unique combinations of AutomationRuns.
+     * Filter by unique combinations of AppConfigs.
      */
-    distinct?: AutomationRunScalarFieldEnum | AutomationRunScalarFieldEnum[]
+    distinct?: AppConfigScalarFieldEnum | AppConfigScalarFieldEnum[]
   }
 
   /**
-   * AutomationRun findMany
+   * AppConfig findMany
    */
-  export type AutomationRunFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * Filter, which AppConfigs to fetch.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
-    /**
-     * Filter, which AutomationRuns to fetch.
-     */
-    where?: AutomationRunWhereInput
+    where?: AppConfigWhereInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
      * 
-     * Determine the order of AutomationRuns to fetch.
+     * Determine the order of AppConfigs to fetch.
      */
-    orderBy?: AutomationRunOrderByWithRelationInput | AutomationRunOrderByWithRelationInput[]
+    orderBy?: AppConfigOrderByWithRelationInput | AppConfigOrderByWithRelationInput[]
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
      * 
-     * Sets the position for listing AutomationRuns.
+     * Sets the position for listing AppConfigs.
      */
-    cursor?: AutomationRunWhereUniqueInput
+    cursor?: AppConfigWhereUniqueInput
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Take `±n` AutomationRuns from the position of the cursor.
+     * Take `±n` AppConfigs from the position of the cursor.
      */
     take?: number
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
      * 
-     * Skip the first `n` AutomationRuns.
+     * Skip the first `n` AppConfigs.
      */
     skip?: number
-    distinct?: AutomationRunScalarFieldEnum | AutomationRunScalarFieldEnum[]
+    distinct?: AppConfigScalarFieldEnum | AppConfigScalarFieldEnum[]
   }
 
   /**
-   * AutomationRun create
+   * AppConfig create
    */
-  export type AutomationRunCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * The data needed to create a AppConfig.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
-    /**
-     * The data needed to create a AutomationRun.
-     */
-    data: XOR<AutomationRunCreateInput, AutomationRunUncheckedCreateInput>
+    data: XOR<AppConfigCreateInput, AppConfigUncheckedCreateInput>
   }
 
   /**
-   * AutomationRun createMany
+   * AppConfig createMany
    */
-  export type AutomationRunCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * The data used to create many AutomationRuns.
+     * The data used to create many AppConfigs.
      */
-    data: AutomationRunCreateManyInput | AutomationRunCreateManyInput[]
+    data: AppConfigCreateManyInput | AppConfigCreateManyInput[]
     skipDuplicates?: boolean
   }
 
   /**
-   * AutomationRun createManyAndReturn
+   * AppConfig createManyAndReturn
    */
-  export type AutomationRunCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelectCreateManyAndReturn<ExtArgs> | null
+    select?: AppConfigSelectCreateManyAndReturn<ExtArgs> | null
     /**
-     * The data used to create many AutomationRuns.
+     * The data used to create many AppConfigs.
      */
-    data: AutomationRunCreateManyInput | AutomationRunCreateManyInput[]
+    data: AppConfigCreateManyInput | AppConfigCreateManyInput[]
     skipDuplicates?: boolean
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: AutomationRunIncludeCreateManyAndReturn<ExtArgs> | null
   }
 
   /**
-   * AutomationRun update
+   * AppConfig update
    */
-  export type AutomationRunUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * The data needed to update a AppConfig.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
+    data: XOR<AppConfigUpdateInput, AppConfigUncheckedUpdateInput>
     /**
-     * The data needed to update a AutomationRun.
+     * Choose, which AppConfig to update.
      */
-    data: XOR<AutomationRunUpdateInput, AutomationRunUncheckedUpdateInput>
-    /**
-     * Choose, which AutomationRun to update.
-     */
-    where: AutomationRunWhereUniqueInput
+    where: AppConfigWhereUniqueInput
   }
 
   /**
-   * AutomationRun updateMany
+   * AppConfig updateMany
    */
-  export type AutomationRunUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * The data used to update AutomationRuns.
+     * The data used to update AppConfigs.
      */
-    data: XOR<AutomationRunUpdateManyMutationInput, AutomationRunUncheckedUpdateManyInput>
+    data: XOR<AppConfigUpdateManyMutationInput, AppConfigUncheckedUpdateManyInput>
     /**
-     * Filter which AutomationRuns to update
+     * Filter which AppConfigs to update
      */
-    where?: AutomationRunWhereInput
+    where?: AppConfigWhereInput
   }
 
   /**
-   * AutomationRun upsert
+   * AppConfig upsert
    */
-  export type AutomationRunUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * The filter to search for the AppConfig to update in case it exists.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
+    where: AppConfigWhereUniqueInput
     /**
-     * The filter to search for the AutomationRun to update in case it exists.
+     * In case the AppConfig found by the `where` argument doesn't exist, create a new AppConfig with this data.
      */
-    where: AutomationRunWhereUniqueInput
+    create: XOR<AppConfigCreateInput, AppConfigUncheckedCreateInput>
     /**
-     * In case the AutomationRun found by the `where` argument doesn't exist, create a new AutomationRun with this data.
+     * In case the AppConfig was found with the provided `where` argument, update it with this data.
      */
-    create: XOR<AutomationRunCreateInput, AutomationRunUncheckedCreateInput>
-    /**
-     * In case the AutomationRun was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<AutomationRunUpdateInput, AutomationRunUncheckedUpdateInput>
+    update: XOR<AppConfigUpdateInput, AppConfigUncheckedUpdateInput>
   }
 
   /**
-   * AutomationRun delete
+   * AppConfig delete
    */
-  export type AutomationRunDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
     /**
-     * Choose, which related nodes to fetch as well
+     * Filter which AppConfig to delete.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
-    /**
-     * Filter which AutomationRun to delete.
-     */
-    where: AutomationRunWhereUniqueInput
+    where: AppConfigWhereUniqueInput
   }
 
   /**
-   * AutomationRun deleteMany
+   * AppConfig deleteMany
    */
-  export type AutomationRunDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Filter which AutomationRuns to delete
+     * Filter which AppConfigs to delete
      */
-    where?: AutomationRunWhereInput
+    where?: AppConfigWhereInput
   }
 
   /**
-   * AutomationRun without action
+   * AppConfig without action
    */
-  export type AutomationRunDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type AppConfigDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Select specific fields to fetch from the AutomationRun
+     * Select specific fields to fetch from the AppConfig
      */
-    select?: AutomationRunSelect<ExtArgs> | null
+    select?: AppConfigSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model SkipRule
+   */
+
+  export type AggregateSkipRule = {
+    _count: SkipRuleCountAggregateOutputType | null
+    _avg: SkipRuleAvgAggregateOutputType | null
+    _sum: SkipRuleSumAggregateOutputType | null
+    _min: SkipRuleMinAggregateOutputType | null
+    _max: SkipRuleMaxAggregateOutputType | null
+  }
+
+  export type SkipRuleAvgAggregateOutputType = {
+    id: number | null
+  }
+
+  export type SkipRuleSumAggregateOutputType = {
+    id: number | null
+  }
+
+  export type SkipRuleMinAggregateOutputType = {
+    id: number | null
+    type: $Enums.SkipRuleType | null
+    pattern: string | null
+    active: boolean | null
+    createdAt: Date | null
+  }
+
+  export type SkipRuleMaxAggregateOutputType = {
+    id: number | null
+    type: $Enums.SkipRuleType | null
+    pattern: string | null
+    active: boolean | null
+    createdAt: Date | null
+  }
+
+  export type SkipRuleCountAggregateOutputType = {
+    id: number
+    type: number
+    pattern: number
+    active: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type SkipRuleAvgAggregateInputType = {
+    id?: true
+  }
+
+  export type SkipRuleSumAggregateInputType = {
+    id?: true
+  }
+
+  export type SkipRuleMinAggregateInputType = {
+    id?: true
+    type?: true
+    pattern?: true
+    active?: true
+    createdAt?: true
+  }
+
+  export type SkipRuleMaxAggregateInputType = {
+    id?: true
+    type?: true
+    pattern?: true
+    active?: true
+    createdAt?: true
+  }
+
+  export type SkipRuleCountAggregateInputType = {
+    id?: true
+    type?: true
+    pattern?: true
+    active?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type SkipRuleAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     /**
-     * Choose, which related nodes to fetch as well
+     * Filter which SkipRule to aggregate.
      */
-    include?: AutomationRunInclude<ExtArgs> | null
+    where?: SkipRuleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkipRules to fetch.
+     */
+    orderBy?: SkipRuleOrderByWithRelationInput | SkipRuleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: SkipRuleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkipRules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkipRules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned SkipRules
+    **/
+    _count?: true | SkipRuleCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: SkipRuleAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: SkipRuleSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: SkipRuleMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: SkipRuleMaxAggregateInputType
+  }
+
+  export type GetSkipRuleAggregateType<T extends SkipRuleAggregateArgs> = {
+        [P in keyof T & keyof AggregateSkipRule]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSkipRule[P]>
+      : GetScalarType<T[P], AggregateSkipRule[P]>
+  }
+
+
+
+
+  export type SkipRuleGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SkipRuleWhereInput
+    orderBy?: SkipRuleOrderByWithAggregationInput | SkipRuleOrderByWithAggregationInput[]
+    by: SkipRuleScalarFieldEnum[] | SkipRuleScalarFieldEnum
+    having?: SkipRuleScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: SkipRuleCountAggregateInputType | true
+    _avg?: SkipRuleAvgAggregateInputType
+    _sum?: SkipRuleSumAggregateInputType
+    _min?: SkipRuleMinAggregateInputType
+    _max?: SkipRuleMaxAggregateInputType
+  }
+
+  export type SkipRuleGroupByOutputType = {
+    id: number
+    type: $Enums.SkipRuleType
+    pattern: string
+    active: boolean
+    createdAt: Date
+    _count: SkipRuleCountAggregateOutputType | null
+    _avg: SkipRuleAvgAggregateOutputType | null
+    _sum: SkipRuleSumAggregateOutputType | null
+    _min: SkipRuleMinAggregateOutputType | null
+    _max: SkipRuleMaxAggregateOutputType | null
+  }
+
+  type GetSkipRuleGroupByPayload<T extends SkipRuleGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<SkipRuleGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof SkipRuleGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], SkipRuleGroupByOutputType[P]>
+            : GetScalarType<T[P], SkipRuleGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type SkipRuleSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    type?: boolean
+    pattern?: boolean
+    active?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["skipRule"]>
+
+  export type SkipRuleSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    type?: boolean
+    pattern?: boolean
+    active?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["skipRule"]>
+
+  export type SkipRuleSelectScalar = {
+    id?: boolean
+    type?: boolean
+    pattern?: boolean
+    active?: boolean
+    createdAt?: boolean
+  }
+
+
+  export type $SkipRulePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "SkipRule"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      type: $Enums.SkipRuleType
+      pattern: string
+      active: boolean
+      createdAt: Date
+    }, ExtArgs["result"]["skipRule"]>
+    composites: {}
+  }
+
+  type SkipRuleGetPayload<S extends boolean | null | undefined | SkipRuleDefaultArgs> = $Result.GetResult<Prisma.$SkipRulePayload, S>
+
+  type SkipRuleCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<SkipRuleFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: SkipRuleCountAggregateInputType | true
+    }
+
+  export interface SkipRuleDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SkipRule'], meta: { name: 'SkipRule' } }
+    /**
+     * Find zero or one SkipRule that matches the filter.
+     * @param {SkipRuleFindUniqueArgs} args - Arguments to find a SkipRule
+     * @example
+     * // Get one SkipRule
+     * const skipRule = await prisma.skipRule.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends SkipRuleFindUniqueArgs>(args: SelectSubset<T, SkipRuleFindUniqueArgs<ExtArgs>>): Prisma__SkipRuleClient<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one SkipRule that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {SkipRuleFindUniqueOrThrowArgs} args - Arguments to find a SkipRule
+     * @example
+     * // Get one SkipRule
+     * const skipRule = await prisma.skipRule.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends SkipRuleFindUniqueOrThrowArgs>(args: SelectSubset<T, SkipRuleFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SkipRuleClient<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first SkipRule that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkipRuleFindFirstArgs} args - Arguments to find a SkipRule
+     * @example
+     * // Get one SkipRule
+     * const skipRule = await prisma.skipRule.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends SkipRuleFindFirstArgs>(args?: SelectSubset<T, SkipRuleFindFirstArgs<ExtArgs>>): Prisma__SkipRuleClient<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first SkipRule that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkipRuleFindFirstOrThrowArgs} args - Arguments to find a SkipRule
+     * @example
+     * // Get one SkipRule
+     * const skipRule = await prisma.skipRule.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends SkipRuleFindFirstOrThrowArgs>(args?: SelectSubset<T, SkipRuleFindFirstOrThrowArgs<ExtArgs>>): Prisma__SkipRuleClient<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more SkipRules that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkipRuleFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all SkipRules
+     * const skipRules = await prisma.skipRule.findMany()
+     * 
+     * // Get first 10 SkipRules
+     * const skipRules = await prisma.skipRule.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const skipRuleWithIdOnly = await prisma.skipRule.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends SkipRuleFindManyArgs>(args?: SelectSubset<T, SkipRuleFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a SkipRule.
+     * @param {SkipRuleCreateArgs} args - Arguments to create a SkipRule.
+     * @example
+     * // Create one SkipRule
+     * const SkipRule = await prisma.skipRule.create({
+     *   data: {
+     *     // ... data to create a SkipRule
+     *   }
+     * })
+     * 
+     */
+    create<T extends SkipRuleCreateArgs>(args: SelectSubset<T, SkipRuleCreateArgs<ExtArgs>>): Prisma__SkipRuleClient<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many SkipRules.
+     * @param {SkipRuleCreateManyArgs} args - Arguments to create many SkipRules.
+     * @example
+     * // Create many SkipRules
+     * const skipRule = await prisma.skipRule.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends SkipRuleCreateManyArgs>(args?: SelectSubset<T, SkipRuleCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many SkipRules and returns the data saved in the database.
+     * @param {SkipRuleCreateManyAndReturnArgs} args - Arguments to create many SkipRules.
+     * @example
+     * // Create many SkipRules
+     * const skipRule = await prisma.skipRule.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many SkipRules and only return the `id`
+     * const skipRuleWithIdOnly = await prisma.skipRule.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends SkipRuleCreateManyAndReturnArgs>(args?: SelectSubset<T, SkipRuleCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a SkipRule.
+     * @param {SkipRuleDeleteArgs} args - Arguments to delete one SkipRule.
+     * @example
+     * // Delete one SkipRule
+     * const SkipRule = await prisma.skipRule.delete({
+     *   where: {
+     *     // ... filter to delete one SkipRule
+     *   }
+     * })
+     * 
+     */
+    delete<T extends SkipRuleDeleteArgs>(args: SelectSubset<T, SkipRuleDeleteArgs<ExtArgs>>): Prisma__SkipRuleClient<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one SkipRule.
+     * @param {SkipRuleUpdateArgs} args - Arguments to update one SkipRule.
+     * @example
+     * // Update one SkipRule
+     * const skipRule = await prisma.skipRule.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends SkipRuleUpdateArgs>(args: SelectSubset<T, SkipRuleUpdateArgs<ExtArgs>>): Prisma__SkipRuleClient<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more SkipRules.
+     * @param {SkipRuleDeleteManyArgs} args - Arguments to filter SkipRules to delete.
+     * @example
+     * // Delete a few SkipRules
+     * const { count } = await prisma.skipRule.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends SkipRuleDeleteManyArgs>(args?: SelectSubset<T, SkipRuleDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SkipRules.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkipRuleUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many SkipRules
+     * const skipRule = await prisma.skipRule.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends SkipRuleUpdateManyArgs>(args: SelectSubset<T, SkipRuleUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one SkipRule.
+     * @param {SkipRuleUpsertArgs} args - Arguments to update or create a SkipRule.
+     * @example
+     * // Update or create a SkipRule
+     * const skipRule = await prisma.skipRule.upsert({
+     *   create: {
+     *     // ... data to create a SkipRule
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the SkipRule we want to update
+     *   }
+     * })
+     */
+    upsert<T extends SkipRuleUpsertArgs>(args: SelectSubset<T, SkipRuleUpsertArgs<ExtArgs>>): Prisma__SkipRuleClient<$Result.GetResult<Prisma.$SkipRulePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of SkipRules.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkipRuleCountArgs} args - Arguments to filter SkipRules to count.
+     * @example
+     * // Count the number of SkipRules
+     * const count = await prisma.skipRule.count({
+     *   where: {
+     *     // ... the filter for the SkipRules we want to count
+     *   }
+     * })
+    **/
+    count<T extends SkipRuleCountArgs>(
+      args?: Subset<T, SkipRuleCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], SkipRuleCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a SkipRule.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkipRuleAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends SkipRuleAggregateArgs>(args: Subset<T, SkipRuleAggregateArgs>): Prisma.PrismaPromise<GetSkipRuleAggregateType<T>>
+
+    /**
+     * Group by SkipRule.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SkipRuleGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends SkipRuleGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: SkipRuleGroupByArgs['orderBy'] }
+        : { orderBy?: SkipRuleGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, SkipRuleGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSkipRuleGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the SkipRule model
+   */
+  readonly fields: SkipRuleFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for SkipRule.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__SkipRuleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the SkipRule model
+   */ 
+  interface SkipRuleFieldRefs {
+    readonly id: FieldRef<"SkipRule", 'Int'>
+    readonly type: FieldRef<"SkipRule", 'SkipRuleType'>
+    readonly pattern: FieldRef<"SkipRule", 'String'>
+    readonly active: FieldRef<"SkipRule", 'Boolean'>
+    readonly createdAt: FieldRef<"SkipRule", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * SkipRule findUnique
+   */
+  export type SkipRuleFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkipRule to fetch.
+     */
+    where: SkipRuleWhereUniqueInput
+  }
+
+  /**
+   * SkipRule findUniqueOrThrow
+   */
+  export type SkipRuleFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkipRule to fetch.
+     */
+    where: SkipRuleWhereUniqueInput
+  }
+
+  /**
+   * SkipRule findFirst
+   */
+  export type SkipRuleFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkipRule to fetch.
+     */
+    where?: SkipRuleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkipRules to fetch.
+     */
+    orderBy?: SkipRuleOrderByWithRelationInput | SkipRuleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SkipRules.
+     */
+    cursor?: SkipRuleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkipRules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkipRules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SkipRules.
+     */
+    distinct?: SkipRuleScalarFieldEnum | SkipRuleScalarFieldEnum[]
+  }
+
+  /**
+   * SkipRule findFirstOrThrow
+   */
+  export type SkipRuleFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkipRule to fetch.
+     */
+    where?: SkipRuleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkipRules to fetch.
+     */
+    orderBy?: SkipRuleOrderByWithRelationInput | SkipRuleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SkipRules.
+     */
+    cursor?: SkipRuleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkipRules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkipRules.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SkipRules.
+     */
+    distinct?: SkipRuleScalarFieldEnum | SkipRuleScalarFieldEnum[]
+  }
+
+  /**
+   * SkipRule findMany
+   */
+  export type SkipRuleFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * Filter, which SkipRules to fetch.
+     */
+    where?: SkipRuleWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SkipRules to fetch.
+     */
+    orderBy?: SkipRuleOrderByWithRelationInput | SkipRuleOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing SkipRules.
+     */
+    cursor?: SkipRuleWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SkipRules from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SkipRules.
+     */
+    skip?: number
+    distinct?: SkipRuleScalarFieldEnum | SkipRuleScalarFieldEnum[]
+  }
+
+  /**
+   * SkipRule create
+   */
+  export type SkipRuleCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * The data needed to create a SkipRule.
+     */
+    data: XOR<SkipRuleCreateInput, SkipRuleUncheckedCreateInput>
+  }
+
+  /**
+   * SkipRule createMany
+   */
+  export type SkipRuleCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many SkipRules.
+     */
+    data: SkipRuleCreateManyInput | SkipRuleCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SkipRule createManyAndReturn
+   */
+  export type SkipRuleCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many SkipRules.
+     */
+    data: SkipRuleCreateManyInput | SkipRuleCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SkipRule update
+   */
+  export type SkipRuleUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * The data needed to update a SkipRule.
+     */
+    data: XOR<SkipRuleUpdateInput, SkipRuleUncheckedUpdateInput>
+    /**
+     * Choose, which SkipRule to update.
+     */
+    where: SkipRuleWhereUniqueInput
+  }
+
+  /**
+   * SkipRule updateMany
+   */
+  export type SkipRuleUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update SkipRules.
+     */
+    data: XOR<SkipRuleUpdateManyMutationInput, SkipRuleUncheckedUpdateManyInput>
+    /**
+     * Filter which SkipRules to update
+     */
+    where?: SkipRuleWhereInput
+  }
+
+  /**
+   * SkipRule upsert
+   */
+  export type SkipRuleUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * The filter to search for the SkipRule to update in case it exists.
+     */
+    where: SkipRuleWhereUniqueInput
+    /**
+     * In case the SkipRule found by the `where` argument doesn't exist, create a new SkipRule with this data.
+     */
+    create: XOR<SkipRuleCreateInput, SkipRuleUncheckedCreateInput>
+    /**
+     * In case the SkipRule was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<SkipRuleUpdateInput, SkipRuleUncheckedUpdateInput>
+  }
+
+  /**
+   * SkipRule delete
+   */
+  export type SkipRuleDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+    /**
+     * Filter which SkipRule to delete.
+     */
+    where: SkipRuleWhereUniqueInput
+  }
+
+  /**
+   * SkipRule deleteMany
+   */
+  export type SkipRuleDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SkipRules to delete
+     */
+    where?: SkipRuleWhereInput
+  }
+
+  /**
+   * SkipRule without action
+   */
+  export type SkipRuleDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SkipRule
+     */
+    select?: SkipRuleSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model UserProfile
+   */
+
+  export type AggregateUserProfile = {
+    _count: UserProfileCountAggregateOutputType | null
+    _avg: UserProfileAvgAggregateOutputType | null
+    _sum: UserProfileSumAggregateOutputType | null
+    _min: UserProfileMinAggregateOutputType | null
+    _max: UserProfileMaxAggregateOutputType | null
+  }
+
+  export type UserProfileAvgAggregateOutputType = {
+    id: number | null
+  }
+
+  export type UserProfileSumAggregateOutputType = {
+    id: number | null
+  }
+
+  export type UserProfileMinAggregateOutputType = {
+    id: number | null
+    name: string | null
+    email: string | null
+    baseResumeText: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type UserProfileMaxAggregateOutputType = {
+    id: number | null
+    name: string | null
+    email: string | null
+    baseResumeText: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type UserProfileCountAggregateOutputType = {
+    id: number
+    name: number
+    email: number
+    baseResumeText: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type UserProfileAvgAggregateInputType = {
+    id?: true
+  }
+
+  export type UserProfileSumAggregateInputType = {
+    id?: true
+  }
+
+  export type UserProfileMinAggregateInputType = {
+    id?: true
+    name?: true
+    email?: true
+    baseResumeText?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type UserProfileMaxAggregateInputType = {
+    id?: true
+    name?: true
+    email?: true
+    baseResumeText?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type UserProfileCountAggregateInputType = {
+    id?: true
+    name?: true
+    email?: true
+    baseResumeText?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type UserProfileAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserProfile to aggregate.
+     */
+    where?: UserProfileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserProfiles to fetch.
+     */
+    orderBy?: UserProfileOrderByWithRelationInput | UserProfileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: UserProfileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserProfiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserProfiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned UserProfiles
+    **/
+    _count?: true | UserProfileCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: UserProfileAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: UserProfileSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: UserProfileMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: UserProfileMaxAggregateInputType
+  }
+
+  export type GetUserProfileAggregateType<T extends UserProfileAggregateArgs> = {
+        [P in keyof T & keyof AggregateUserProfile]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateUserProfile[P]>
+      : GetScalarType<T[P], AggregateUserProfile[P]>
+  }
+
+
+
+
+  export type UserProfileGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserProfileWhereInput
+    orderBy?: UserProfileOrderByWithAggregationInput | UserProfileOrderByWithAggregationInput[]
+    by: UserProfileScalarFieldEnum[] | UserProfileScalarFieldEnum
+    having?: UserProfileScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: UserProfileCountAggregateInputType | true
+    _avg?: UserProfileAvgAggregateInputType
+    _sum?: UserProfileSumAggregateInputType
+    _min?: UserProfileMinAggregateInputType
+    _max?: UserProfileMaxAggregateInputType
+  }
+
+  export type UserProfileGroupByOutputType = {
+    id: number
+    name: string
+    email: string
+    baseResumeText: string
+    createdAt: Date
+    updatedAt: Date
+    _count: UserProfileCountAggregateOutputType | null
+    _avg: UserProfileAvgAggregateOutputType | null
+    _sum: UserProfileSumAggregateOutputType | null
+    _min: UserProfileMinAggregateOutputType | null
+    _max: UserProfileMaxAggregateOutputType | null
+  }
+
+  type GetUserProfileGroupByPayload<T extends UserProfileGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<UserProfileGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof UserProfileGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], UserProfileGroupByOutputType[P]>
+            : GetScalarType<T[P], UserProfileGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type UserProfileSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    email?: boolean
+    baseResumeText?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["userProfile"]>
+
+  export type UserProfileSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    email?: boolean
+    baseResumeText?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["userProfile"]>
+
+  export type UserProfileSelectScalar = {
+    id?: boolean
+    name?: boolean
+    email?: boolean
+    baseResumeText?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+
+  export type $UserProfilePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "UserProfile"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      name: string
+      email: string
+      baseResumeText: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["userProfile"]>
+    composites: {}
+  }
+
+  type UserProfileGetPayload<S extends boolean | null | undefined | UserProfileDefaultArgs> = $Result.GetResult<Prisma.$UserProfilePayload, S>
+
+  type UserProfileCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<UserProfileFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: UserProfileCountAggregateInputType | true
+    }
+
+  export interface UserProfileDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['UserProfile'], meta: { name: 'UserProfile' } }
+    /**
+     * Find zero or one UserProfile that matches the filter.
+     * @param {UserProfileFindUniqueArgs} args - Arguments to find a UserProfile
+     * @example
+     * // Get one UserProfile
+     * const userProfile = await prisma.userProfile.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends UserProfileFindUniqueArgs>(args: SelectSubset<T, UserProfileFindUniqueArgs<ExtArgs>>): Prisma__UserProfileClient<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one UserProfile that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {UserProfileFindUniqueOrThrowArgs} args - Arguments to find a UserProfile
+     * @example
+     * // Get one UserProfile
+     * const userProfile = await prisma.userProfile.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends UserProfileFindUniqueOrThrowArgs>(args: SelectSubset<T, UserProfileFindUniqueOrThrowArgs<ExtArgs>>): Prisma__UserProfileClient<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first UserProfile that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProfileFindFirstArgs} args - Arguments to find a UserProfile
+     * @example
+     * // Get one UserProfile
+     * const userProfile = await prisma.userProfile.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends UserProfileFindFirstArgs>(args?: SelectSubset<T, UserProfileFindFirstArgs<ExtArgs>>): Prisma__UserProfileClient<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first UserProfile that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProfileFindFirstOrThrowArgs} args - Arguments to find a UserProfile
+     * @example
+     * // Get one UserProfile
+     * const userProfile = await prisma.userProfile.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends UserProfileFindFirstOrThrowArgs>(args?: SelectSubset<T, UserProfileFindFirstOrThrowArgs<ExtArgs>>): Prisma__UserProfileClient<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more UserProfiles that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProfileFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all UserProfiles
+     * const userProfiles = await prisma.userProfile.findMany()
+     * 
+     * // Get first 10 UserProfiles
+     * const userProfiles = await prisma.userProfile.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const userProfileWithIdOnly = await prisma.userProfile.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends UserProfileFindManyArgs>(args?: SelectSubset<T, UserProfileFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a UserProfile.
+     * @param {UserProfileCreateArgs} args - Arguments to create a UserProfile.
+     * @example
+     * // Create one UserProfile
+     * const UserProfile = await prisma.userProfile.create({
+     *   data: {
+     *     // ... data to create a UserProfile
+     *   }
+     * })
+     * 
+     */
+    create<T extends UserProfileCreateArgs>(args: SelectSubset<T, UserProfileCreateArgs<ExtArgs>>): Prisma__UserProfileClient<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many UserProfiles.
+     * @param {UserProfileCreateManyArgs} args - Arguments to create many UserProfiles.
+     * @example
+     * // Create many UserProfiles
+     * const userProfile = await prisma.userProfile.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends UserProfileCreateManyArgs>(args?: SelectSubset<T, UserProfileCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many UserProfiles and returns the data saved in the database.
+     * @param {UserProfileCreateManyAndReturnArgs} args - Arguments to create many UserProfiles.
+     * @example
+     * // Create many UserProfiles
+     * const userProfile = await prisma.userProfile.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many UserProfiles and only return the `id`
+     * const userProfileWithIdOnly = await prisma.userProfile.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends UserProfileCreateManyAndReturnArgs>(args?: SelectSubset<T, UserProfileCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a UserProfile.
+     * @param {UserProfileDeleteArgs} args - Arguments to delete one UserProfile.
+     * @example
+     * // Delete one UserProfile
+     * const UserProfile = await prisma.userProfile.delete({
+     *   where: {
+     *     // ... filter to delete one UserProfile
+     *   }
+     * })
+     * 
+     */
+    delete<T extends UserProfileDeleteArgs>(args: SelectSubset<T, UserProfileDeleteArgs<ExtArgs>>): Prisma__UserProfileClient<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one UserProfile.
+     * @param {UserProfileUpdateArgs} args - Arguments to update one UserProfile.
+     * @example
+     * // Update one UserProfile
+     * const userProfile = await prisma.userProfile.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends UserProfileUpdateArgs>(args: SelectSubset<T, UserProfileUpdateArgs<ExtArgs>>): Prisma__UserProfileClient<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more UserProfiles.
+     * @param {UserProfileDeleteManyArgs} args - Arguments to filter UserProfiles to delete.
+     * @example
+     * // Delete a few UserProfiles
+     * const { count } = await prisma.userProfile.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends UserProfileDeleteManyArgs>(args?: SelectSubset<T, UserProfileDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more UserProfiles.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProfileUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many UserProfiles
+     * const userProfile = await prisma.userProfile.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends UserProfileUpdateManyArgs>(args: SelectSubset<T, UserProfileUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one UserProfile.
+     * @param {UserProfileUpsertArgs} args - Arguments to update or create a UserProfile.
+     * @example
+     * // Update or create a UserProfile
+     * const userProfile = await prisma.userProfile.upsert({
+     *   create: {
+     *     // ... data to create a UserProfile
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the UserProfile we want to update
+     *   }
+     * })
+     */
+    upsert<T extends UserProfileUpsertArgs>(args: SelectSubset<T, UserProfileUpsertArgs<ExtArgs>>): Prisma__UserProfileClient<$Result.GetResult<Prisma.$UserProfilePayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of UserProfiles.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProfileCountArgs} args - Arguments to filter UserProfiles to count.
+     * @example
+     * // Count the number of UserProfiles
+     * const count = await prisma.userProfile.count({
+     *   where: {
+     *     // ... the filter for the UserProfiles we want to count
+     *   }
+     * })
+    **/
+    count<T extends UserProfileCountArgs>(
+      args?: Subset<T, UserProfileCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], UserProfileCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a UserProfile.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProfileAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends UserProfileAggregateArgs>(args: Subset<T, UserProfileAggregateArgs>): Prisma.PrismaPromise<GetUserProfileAggregateType<T>>
+
+    /**
+     * Group by UserProfile.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {UserProfileGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends UserProfileGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: UserProfileGroupByArgs['orderBy'] }
+        : { orderBy?: UserProfileGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, UserProfileGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetUserProfileGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the UserProfile model
+   */
+  readonly fields: UserProfileFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for UserProfile.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__UserProfileClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the UserProfile model
+   */ 
+  interface UserProfileFieldRefs {
+    readonly id: FieldRef<"UserProfile", 'Int'>
+    readonly name: FieldRef<"UserProfile", 'String'>
+    readonly email: FieldRef<"UserProfile", 'String'>
+    readonly baseResumeText: FieldRef<"UserProfile", 'String'>
+    readonly createdAt: FieldRef<"UserProfile", 'DateTime'>
+    readonly updatedAt: FieldRef<"UserProfile", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * UserProfile findUnique
+   */
+  export type UserProfileFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * Filter, which UserProfile to fetch.
+     */
+    where: UserProfileWhereUniqueInput
+  }
+
+  /**
+   * UserProfile findUniqueOrThrow
+   */
+  export type UserProfileFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * Filter, which UserProfile to fetch.
+     */
+    where: UserProfileWhereUniqueInput
+  }
+
+  /**
+   * UserProfile findFirst
+   */
+  export type UserProfileFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * Filter, which UserProfile to fetch.
+     */
+    where?: UserProfileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserProfiles to fetch.
+     */
+    orderBy?: UserProfileOrderByWithRelationInput | UserProfileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserProfiles.
+     */
+    cursor?: UserProfileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserProfiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserProfiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserProfiles.
+     */
+    distinct?: UserProfileScalarFieldEnum | UserProfileScalarFieldEnum[]
+  }
+
+  /**
+   * UserProfile findFirstOrThrow
+   */
+  export type UserProfileFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * Filter, which UserProfile to fetch.
+     */
+    where?: UserProfileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserProfiles to fetch.
+     */
+    orderBy?: UserProfileOrderByWithRelationInput | UserProfileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for UserProfiles.
+     */
+    cursor?: UserProfileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserProfiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserProfiles.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of UserProfiles.
+     */
+    distinct?: UserProfileScalarFieldEnum | UserProfileScalarFieldEnum[]
+  }
+
+  /**
+   * UserProfile findMany
+   */
+  export type UserProfileFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * Filter, which UserProfiles to fetch.
+     */
+    where?: UserProfileWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of UserProfiles to fetch.
+     */
+    orderBy?: UserProfileOrderByWithRelationInput | UserProfileOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing UserProfiles.
+     */
+    cursor?: UserProfileWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` UserProfiles from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` UserProfiles.
+     */
+    skip?: number
+    distinct?: UserProfileScalarFieldEnum | UserProfileScalarFieldEnum[]
+  }
+
+  /**
+   * UserProfile create
+   */
+  export type UserProfileCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * The data needed to create a UserProfile.
+     */
+    data: XOR<UserProfileCreateInput, UserProfileUncheckedCreateInput>
+  }
+
+  /**
+   * UserProfile createMany
+   */
+  export type UserProfileCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many UserProfiles.
+     */
+    data: UserProfileCreateManyInput | UserProfileCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserProfile createManyAndReturn
+   */
+  export type UserProfileCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many UserProfiles.
+     */
+    data: UserProfileCreateManyInput | UserProfileCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * UserProfile update
+   */
+  export type UserProfileUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * The data needed to update a UserProfile.
+     */
+    data: XOR<UserProfileUpdateInput, UserProfileUncheckedUpdateInput>
+    /**
+     * Choose, which UserProfile to update.
+     */
+    where: UserProfileWhereUniqueInput
+  }
+
+  /**
+   * UserProfile updateMany
+   */
+  export type UserProfileUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update UserProfiles.
+     */
+    data: XOR<UserProfileUpdateManyMutationInput, UserProfileUncheckedUpdateManyInput>
+    /**
+     * Filter which UserProfiles to update
+     */
+    where?: UserProfileWhereInput
+  }
+
+  /**
+   * UserProfile upsert
+   */
+  export type UserProfileUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * The filter to search for the UserProfile to update in case it exists.
+     */
+    where: UserProfileWhereUniqueInput
+    /**
+     * In case the UserProfile found by the `where` argument doesn't exist, create a new UserProfile with this data.
+     */
+    create: XOR<UserProfileCreateInput, UserProfileUncheckedCreateInput>
+    /**
+     * In case the UserProfile was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<UserProfileUpdateInput, UserProfileUncheckedUpdateInput>
+  }
+
+  /**
+   * UserProfile delete
+   */
+  export type UserProfileDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+    /**
+     * Filter which UserProfile to delete.
+     */
+    where: UserProfileWhereUniqueInput
+  }
+
+  /**
+   * UserProfile deleteMany
+   */
+  export type UserProfileDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which UserProfiles to delete
+     */
+    where?: UserProfileWhereInput
+  }
+
+  /**
+   * UserProfile without action
+   */
+  export type UserProfileDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the UserProfile
+     */
+    select?: UserProfileSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ScanLog
+   */
+
+  export type AggregateScanLog = {
+    _count: ScanLogCountAggregateOutputType | null
+    _avg: ScanLogAvgAggregateOutputType | null
+    _sum: ScanLogSumAggregateOutputType | null
+    _min: ScanLogMinAggregateOutputType | null
+    _max: ScanLogMaxAggregateOutputType | null
+  }
+
+  export type ScanLogAvgAggregateOutputType = {
+    id: number | null
+    jobsFound: number | null
+    jobsSaved: number | null
+    durationMs: number | null
+  }
+
+  export type ScanLogSumAggregateOutputType = {
+    id: number | null
+    jobsFound: number | null
+    jobsSaved: number | null
+    durationMs: number | null
+  }
+
+  export type ScanLogMinAggregateOutputType = {
+    id: number | null
+    board: string | null
+    jobsFound: number | null
+    jobsSaved: number | null
+    errors: string | null
+    durationMs: number | null
+    createdAt: Date | null
+  }
+
+  export type ScanLogMaxAggregateOutputType = {
+    id: number | null
+    board: string | null
+    jobsFound: number | null
+    jobsSaved: number | null
+    errors: string | null
+    durationMs: number | null
+    createdAt: Date | null
+  }
+
+  export type ScanLogCountAggregateOutputType = {
+    id: number
+    board: number
+    jobsFound: number
+    jobsSaved: number
+    errors: number
+    durationMs: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type ScanLogAvgAggregateInputType = {
+    id?: true
+    jobsFound?: true
+    jobsSaved?: true
+    durationMs?: true
+  }
+
+  export type ScanLogSumAggregateInputType = {
+    id?: true
+    jobsFound?: true
+    jobsSaved?: true
+    durationMs?: true
+  }
+
+  export type ScanLogMinAggregateInputType = {
+    id?: true
+    board?: true
+    jobsFound?: true
+    jobsSaved?: true
+    errors?: true
+    durationMs?: true
+    createdAt?: true
+  }
+
+  export type ScanLogMaxAggregateInputType = {
+    id?: true
+    board?: true
+    jobsFound?: true
+    jobsSaved?: true
+    errors?: true
+    durationMs?: true
+    createdAt?: true
+  }
+
+  export type ScanLogCountAggregateInputType = {
+    id?: true
+    board?: true
+    jobsFound?: true
+    jobsSaved?: true
+    errors?: true
+    durationMs?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type ScanLogAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ScanLog to aggregate.
+     */
+    where?: ScanLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ScanLogs to fetch.
+     */
+    orderBy?: ScanLogOrderByWithRelationInput | ScanLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ScanLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ScanLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ScanLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ScanLogs
+    **/
+    _count?: true | ScanLogCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ScanLogAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ScanLogSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ScanLogMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ScanLogMaxAggregateInputType
+  }
+
+  export type GetScanLogAggregateType<T extends ScanLogAggregateArgs> = {
+        [P in keyof T & keyof AggregateScanLog]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateScanLog[P]>
+      : GetScalarType<T[P], AggregateScanLog[P]>
+  }
+
+
+
+
+  export type ScanLogGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ScanLogWhereInput
+    orderBy?: ScanLogOrderByWithAggregationInput | ScanLogOrderByWithAggregationInput[]
+    by: ScanLogScalarFieldEnum[] | ScanLogScalarFieldEnum
+    having?: ScanLogScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ScanLogCountAggregateInputType | true
+    _avg?: ScanLogAvgAggregateInputType
+    _sum?: ScanLogSumAggregateInputType
+    _min?: ScanLogMinAggregateInputType
+    _max?: ScanLogMaxAggregateInputType
+  }
+
+  export type ScanLogGroupByOutputType = {
+    id: number
+    board: string
+    jobsFound: number
+    jobsSaved: number
+    errors: string | null
+    durationMs: number | null
+    createdAt: Date
+    _count: ScanLogCountAggregateOutputType | null
+    _avg: ScanLogAvgAggregateOutputType | null
+    _sum: ScanLogSumAggregateOutputType | null
+    _min: ScanLogMinAggregateOutputType | null
+    _max: ScanLogMaxAggregateOutputType | null
+  }
+
+  type GetScanLogGroupByPayload<T extends ScanLogGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ScanLogGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ScanLogGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ScanLogGroupByOutputType[P]>
+            : GetScalarType<T[P], ScanLogGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ScanLogSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    board?: boolean
+    jobsFound?: boolean
+    jobsSaved?: boolean
+    errors?: boolean
+    durationMs?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["scanLog"]>
+
+  export type ScanLogSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    board?: boolean
+    jobsFound?: boolean
+    jobsSaved?: boolean
+    errors?: boolean
+    durationMs?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["scanLog"]>
+
+  export type ScanLogSelectScalar = {
+    id?: boolean
+    board?: boolean
+    jobsFound?: boolean
+    jobsSaved?: boolean
+    errors?: boolean
+    durationMs?: boolean
+    createdAt?: boolean
+  }
+
+
+  export type $ScanLogPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ScanLog"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      board: string
+      jobsFound: number
+      jobsSaved: number
+      errors: string | null
+      durationMs: number | null
+      createdAt: Date
+    }, ExtArgs["result"]["scanLog"]>
+    composites: {}
+  }
+
+  type ScanLogGetPayload<S extends boolean | null | undefined | ScanLogDefaultArgs> = $Result.GetResult<Prisma.$ScanLogPayload, S>
+
+  type ScanLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ScanLogFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: ScanLogCountAggregateInputType | true
+    }
+
+  export interface ScanLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ScanLog'], meta: { name: 'ScanLog' } }
+    /**
+     * Find zero or one ScanLog that matches the filter.
+     * @param {ScanLogFindUniqueArgs} args - Arguments to find a ScanLog
+     * @example
+     * // Get one ScanLog
+     * const scanLog = await prisma.scanLog.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ScanLogFindUniqueArgs>(args: SelectSubset<T, ScanLogFindUniqueArgs<ExtArgs>>): Prisma__ScanLogClient<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one ScanLog that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {ScanLogFindUniqueOrThrowArgs} args - Arguments to find a ScanLog
+     * @example
+     * // Get one ScanLog
+     * const scanLog = await prisma.scanLog.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ScanLogFindUniqueOrThrowArgs>(args: SelectSubset<T, ScanLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ScanLogClient<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first ScanLog that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ScanLogFindFirstArgs} args - Arguments to find a ScanLog
+     * @example
+     * // Get one ScanLog
+     * const scanLog = await prisma.scanLog.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ScanLogFindFirstArgs>(args?: SelectSubset<T, ScanLogFindFirstArgs<ExtArgs>>): Prisma__ScanLogClient<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first ScanLog that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ScanLogFindFirstOrThrowArgs} args - Arguments to find a ScanLog
+     * @example
+     * // Get one ScanLog
+     * const scanLog = await prisma.scanLog.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ScanLogFindFirstOrThrowArgs>(args?: SelectSubset<T, ScanLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__ScanLogClient<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more ScanLogs that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ScanLogFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ScanLogs
+     * const scanLogs = await prisma.scanLog.findMany()
+     * 
+     * // Get first 10 ScanLogs
+     * const scanLogs = await prisma.scanLog.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const scanLogWithIdOnly = await prisma.scanLog.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ScanLogFindManyArgs>(args?: SelectSubset<T, ScanLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a ScanLog.
+     * @param {ScanLogCreateArgs} args - Arguments to create a ScanLog.
+     * @example
+     * // Create one ScanLog
+     * const ScanLog = await prisma.scanLog.create({
+     *   data: {
+     *     // ... data to create a ScanLog
+     *   }
+     * })
+     * 
+     */
+    create<T extends ScanLogCreateArgs>(args: SelectSubset<T, ScanLogCreateArgs<ExtArgs>>): Prisma__ScanLogClient<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many ScanLogs.
+     * @param {ScanLogCreateManyArgs} args - Arguments to create many ScanLogs.
+     * @example
+     * // Create many ScanLogs
+     * const scanLog = await prisma.scanLog.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ScanLogCreateManyArgs>(args?: SelectSubset<T, ScanLogCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ScanLogs and returns the data saved in the database.
+     * @param {ScanLogCreateManyAndReturnArgs} args - Arguments to create many ScanLogs.
+     * @example
+     * // Create many ScanLogs
+     * const scanLog = await prisma.scanLog.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ScanLogs and only return the `id`
+     * const scanLogWithIdOnly = await prisma.scanLog.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ScanLogCreateManyAndReturnArgs>(args?: SelectSubset<T, ScanLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a ScanLog.
+     * @param {ScanLogDeleteArgs} args - Arguments to delete one ScanLog.
+     * @example
+     * // Delete one ScanLog
+     * const ScanLog = await prisma.scanLog.delete({
+     *   where: {
+     *     // ... filter to delete one ScanLog
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ScanLogDeleteArgs>(args: SelectSubset<T, ScanLogDeleteArgs<ExtArgs>>): Prisma__ScanLogClient<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one ScanLog.
+     * @param {ScanLogUpdateArgs} args - Arguments to update one ScanLog.
+     * @example
+     * // Update one ScanLog
+     * const scanLog = await prisma.scanLog.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ScanLogUpdateArgs>(args: SelectSubset<T, ScanLogUpdateArgs<ExtArgs>>): Prisma__ScanLogClient<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more ScanLogs.
+     * @param {ScanLogDeleteManyArgs} args - Arguments to filter ScanLogs to delete.
+     * @example
+     * // Delete a few ScanLogs
+     * const { count } = await prisma.scanLog.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ScanLogDeleteManyArgs>(args?: SelectSubset<T, ScanLogDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ScanLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ScanLogUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ScanLogs
+     * const scanLog = await prisma.scanLog.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ScanLogUpdateManyArgs>(args: SelectSubset<T, ScanLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ScanLog.
+     * @param {ScanLogUpsertArgs} args - Arguments to update or create a ScanLog.
+     * @example
+     * // Update or create a ScanLog
+     * const scanLog = await prisma.scanLog.upsert({
+     *   create: {
+     *     // ... data to create a ScanLog
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ScanLog we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ScanLogUpsertArgs>(args: SelectSubset<T, ScanLogUpsertArgs<ExtArgs>>): Prisma__ScanLogClient<$Result.GetResult<Prisma.$ScanLogPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of ScanLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ScanLogCountArgs} args - Arguments to filter ScanLogs to count.
+     * @example
+     * // Count the number of ScanLogs
+     * const count = await prisma.scanLog.count({
+     *   where: {
+     *     // ... the filter for the ScanLogs we want to count
+     *   }
+     * })
+    **/
+    count<T extends ScanLogCountArgs>(
+      args?: Subset<T, ScanLogCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ScanLogCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ScanLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ScanLogAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ScanLogAggregateArgs>(args: Subset<T, ScanLogAggregateArgs>): Prisma.PrismaPromise<GetScanLogAggregateType<T>>
+
+    /**
+     * Group by ScanLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ScanLogGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ScanLogGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ScanLogGroupByArgs['orderBy'] }
+        : { orderBy?: ScanLogGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ScanLogGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetScanLogGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ScanLog model
+   */
+  readonly fields: ScanLogFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ScanLog.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ScanLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ScanLog model
+   */ 
+  interface ScanLogFieldRefs {
+    readonly id: FieldRef<"ScanLog", 'Int'>
+    readonly board: FieldRef<"ScanLog", 'String'>
+    readonly jobsFound: FieldRef<"ScanLog", 'Int'>
+    readonly jobsSaved: FieldRef<"ScanLog", 'Int'>
+    readonly errors: FieldRef<"ScanLog", 'String'>
+    readonly durationMs: FieldRef<"ScanLog", 'Int'>
+    readonly createdAt: FieldRef<"ScanLog", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ScanLog findUnique
+   */
+  export type ScanLogFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ScanLog to fetch.
+     */
+    where: ScanLogWhereUniqueInput
+  }
+
+  /**
+   * ScanLog findUniqueOrThrow
+   */
+  export type ScanLogFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ScanLog to fetch.
+     */
+    where: ScanLogWhereUniqueInput
+  }
+
+  /**
+   * ScanLog findFirst
+   */
+  export type ScanLogFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ScanLog to fetch.
+     */
+    where?: ScanLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ScanLogs to fetch.
+     */
+    orderBy?: ScanLogOrderByWithRelationInput | ScanLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ScanLogs.
+     */
+    cursor?: ScanLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ScanLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ScanLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ScanLogs.
+     */
+    distinct?: ScanLogScalarFieldEnum | ScanLogScalarFieldEnum[]
+  }
+
+  /**
+   * ScanLog findFirstOrThrow
+   */
+  export type ScanLogFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ScanLog to fetch.
+     */
+    where?: ScanLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ScanLogs to fetch.
+     */
+    orderBy?: ScanLogOrderByWithRelationInput | ScanLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ScanLogs.
+     */
+    cursor?: ScanLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ScanLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ScanLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ScanLogs.
+     */
+    distinct?: ScanLogScalarFieldEnum | ScanLogScalarFieldEnum[]
+  }
+
+  /**
+   * ScanLog findMany
+   */
+  export type ScanLogFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ScanLogs to fetch.
+     */
+    where?: ScanLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ScanLogs to fetch.
+     */
+    orderBy?: ScanLogOrderByWithRelationInput | ScanLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ScanLogs.
+     */
+    cursor?: ScanLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ScanLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ScanLogs.
+     */
+    skip?: number
+    distinct?: ScanLogScalarFieldEnum | ScanLogScalarFieldEnum[]
+  }
+
+  /**
+   * ScanLog create
+   */
+  export type ScanLogCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * The data needed to create a ScanLog.
+     */
+    data: XOR<ScanLogCreateInput, ScanLogUncheckedCreateInput>
+  }
+
+  /**
+   * ScanLog createMany
+   */
+  export type ScanLogCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ScanLogs.
+     */
+    data: ScanLogCreateManyInput | ScanLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ScanLog createManyAndReturn
+   */
+  export type ScanLogCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many ScanLogs.
+     */
+    data: ScanLogCreateManyInput | ScanLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ScanLog update
+   */
+  export type ScanLogUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * The data needed to update a ScanLog.
+     */
+    data: XOR<ScanLogUpdateInput, ScanLogUncheckedUpdateInput>
+    /**
+     * Choose, which ScanLog to update.
+     */
+    where: ScanLogWhereUniqueInput
+  }
+
+  /**
+   * ScanLog updateMany
+   */
+  export type ScanLogUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ScanLogs.
+     */
+    data: XOR<ScanLogUpdateManyMutationInput, ScanLogUncheckedUpdateManyInput>
+    /**
+     * Filter which ScanLogs to update
+     */
+    where?: ScanLogWhereInput
+  }
+
+  /**
+   * ScanLog upsert
+   */
+  export type ScanLogUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * The filter to search for the ScanLog to update in case it exists.
+     */
+    where: ScanLogWhereUniqueInput
+    /**
+     * In case the ScanLog found by the `where` argument doesn't exist, create a new ScanLog with this data.
+     */
+    create: XOR<ScanLogCreateInput, ScanLogUncheckedCreateInput>
+    /**
+     * In case the ScanLog was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ScanLogUpdateInput, ScanLogUncheckedUpdateInput>
+  }
+
+  /**
+   * ScanLog delete
+   */
+  export type ScanLogDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+    /**
+     * Filter which ScanLog to delete.
+     */
+    where: ScanLogWhereUniqueInput
+  }
+
+  /**
+   * ScanLog deleteMany
+   */
+  export type ScanLogDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ScanLogs to delete
+     */
+    where?: ScanLogWhereInput
+  }
+
+  /**
+   * ScanLog without action
+   */
+  export type ScanLogDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScanLog
+     */
+    select?: ScanLogSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model GenerationLog
+   */
+
+  export type AggregateGenerationLog = {
+    _count: GenerationLogCountAggregateOutputType | null
+    _avg: GenerationLogAvgAggregateOutputType | null
+    _sum: GenerationLogSumAggregateOutputType | null
+    _min: GenerationLogMinAggregateOutputType | null
+    _max: GenerationLogMaxAggregateOutputType | null
+  }
+
+  export type GenerationLogAvgAggregateOutputType = {
+    id: number | null
+    jobApplicationId: number | null
+    tokensUsed: number | null
+    durationMs: number | null
+  }
+
+  export type GenerationLogSumAggregateOutputType = {
+    id: number | null
+    jobApplicationId: number | null
+    tokensUsed: number | null
+    durationMs: number | null
+  }
+
+  export type GenerationLogMinAggregateOutputType = {
+    id: number | null
+    jobApplicationId: number | null
+    model: string | null
+    promptVersion: string | null
+    success: boolean | null
+    error: string | null
+    tokensUsed: number | null
+    durationMs: number | null
+    createdAt: Date | null
+  }
+
+  export type GenerationLogMaxAggregateOutputType = {
+    id: number | null
+    jobApplicationId: number | null
+    model: string | null
+    promptVersion: string | null
+    success: boolean | null
+    error: string | null
+    tokensUsed: number | null
+    durationMs: number | null
+    createdAt: Date | null
+  }
+
+  export type GenerationLogCountAggregateOutputType = {
+    id: number
+    jobApplicationId: number
+    model: number
+    promptVersion: number
+    success: number
+    error: number
+    tokensUsed: number
+    durationMs: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type GenerationLogAvgAggregateInputType = {
+    id?: true
+    jobApplicationId?: true
+    tokensUsed?: true
+    durationMs?: true
+  }
+
+  export type GenerationLogSumAggregateInputType = {
+    id?: true
+    jobApplicationId?: true
+    tokensUsed?: true
+    durationMs?: true
+  }
+
+  export type GenerationLogMinAggregateInputType = {
+    id?: true
+    jobApplicationId?: true
+    model?: true
+    promptVersion?: true
+    success?: true
+    error?: true
+    tokensUsed?: true
+    durationMs?: true
+    createdAt?: true
+  }
+
+  export type GenerationLogMaxAggregateInputType = {
+    id?: true
+    jobApplicationId?: true
+    model?: true
+    promptVersion?: true
+    success?: true
+    error?: true
+    tokensUsed?: true
+    durationMs?: true
+    createdAt?: true
+  }
+
+  export type GenerationLogCountAggregateInputType = {
+    id?: true
+    jobApplicationId?: true
+    model?: true
+    promptVersion?: true
+    success?: true
+    error?: true
+    tokensUsed?: true
+    durationMs?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type GenerationLogAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GenerationLog to aggregate.
+     */
+    where?: GenerationLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GenerationLogs to fetch.
+     */
+    orderBy?: GenerationLogOrderByWithRelationInput | GenerationLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: GenerationLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GenerationLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GenerationLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned GenerationLogs
+    **/
+    _count?: true | GenerationLogCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: GenerationLogAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: GenerationLogSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: GenerationLogMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: GenerationLogMaxAggregateInputType
+  }
+
+  export type GetGenerationLogAggregateType<T extends GenerationLogAggregateArgs> = {
+        [P in keyof T & keyof AggregateGenerationLog]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateGenerationLog[P]>
+      : GetScalarType<T[P], AggregateGenerationLog[P]>
+  }
+
+
+
+
+  export type GenerationLogGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GenerationLogWhereInput
+    orderBy?: GenerationLogOrderByWithAggregationInput | GenerationLogOrderByWithAggregationInput[]
+    by: GenerationLogScalarFieldEnum[] | GenerationLogScalarFieldEnum
+    having?: GenerationLogScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: GenerationLogCountAggregateInputType | true
+    _avg?: GenerationLogAvgAggregateInputType
+    _sum?: GenerationLogSumAggregateInputType
+    _min?: GenerationLogMinAggregateInputType
+    _max?: GenerationLogMaxAggregateInputType
+  }
+
+  export type GenerationLogGroupByOutputType = {
+    id: number
+    jobApplicationId: number
+    model: string
+    promptVersion: string
+    success: boolean
+    error: string | null
+    tokensUsed: number | null
+    durationMs: number | null
+    createdAt: Date
+    _count: GenerationLogCountAggregateOutputType | null
+    _avg: GenerationLogAvgAggregateOutputType | null
+    _sum: GenerationLogSumAggregateOutputType | null
+    _min: GenerationLogMinAggregateOutputType | null
+    _max: GenerationLogMaxAggregateOutputType | null
+  }
+
+  type GetGenerationLogGroupByPayload<T extends GenerationLogGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<GenerationLogGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof GenerationLogGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], GenerationLogGroupByOutputType[P]>
+            : GetScalarType<T[P], GenerationLogGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type GenerationLogSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobApplicationId?: boolean
+    model?: boolean
+    promptVersion?: boolean
+    success?: boolean
+    error?: boolean
+    tokensUsed?: boolean
+    durationMs?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["generationLog"]>
+
+  export type GenerationLogSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    jobApplicationId?: boolean
+    model?: boolean
+    promptVersion?: boolean
+    success?: boolean
+    error?: boolean
+    tokensUsed?: boolean
+    durationMs?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["generationLog"]>
+
+  export type GenerationLogSelectScalar = {
+    id?: boolean
+    jobApplicationId?: boolean
+    model?: boolean
+    promptVersion?: boolean
+    success?: boolean
+    error?: boolean
+    tokensUsed?: boolean
+    durationMs?: boolean
+    createdAt?: boolean
+  }
+
+
+  export type $GenerationLogPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "GenerationLog"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      jobApplicationId: number
+      model: string
+      promptVersion: string
+      success: boolean
+      error: string | null
+      tokensUsed: number | null
+      durationMs: number | null
+      createdAt: Date
+    }, ExtArgs["result"]["generationLog"]>
+    composites: {}
+  }
+
+  type GenerationLogGetPayload<S extends boolean | null | undefined | GenerationLogDefaultArgs> = $Result.GetResult<Prisma.$GenerationLogPayload, S>
+
+  type GenerationLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<GenerationLogFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: GenerationLogCountAggregateInputType | true
+    }
+
+  export interface GenerationLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GenerationLog'], meta: { name: 'GenerationLog' } }
+    /**
+     * Find zero or one GenerationLog that matches the filter.
+     * @param {GenerationLogFindUniqueArgs} args - Arguments to find a GenerationLog
+     * @example
+     * // Get one GenerationLog
+     * const generationLog = await prisma.generationLog.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends GenerationLogFindUniqueArgs>(args: SelectSubset<T, GenerationLogFindUniqueArgs<ExtArgs>>): Prisma__GenerationLogClient<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one GenerationLog that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {GenerationLogFindUniqueOrThrowArgs} args - Arguments to find a GenerationLog
+     * @example
+     * // Get one GenerationLog
+     * const generationLog = await prisma.generationLog.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends GenerationLogFindUniqueOrThrowArgs>(args: SelectSubset<T, GenerationLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GenerationLogClient<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first GenerationLog that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GenerationLogFindFirstArgs} args - Arguments to find a GenerationLog
+     * @example
+     * // Get one GenerationLog
+     * const generationLog = await prisma.generationLog.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends GenerationLogFindFirstArgs>(args?: SelectSubset<T, GenerationLogFindFirstArgs<ExtArgs>>): Prisma__GenerationLogClient<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first GenerationLog that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GenerationLogFindFirstOrThrowArgs} args - Arguments to find a GenerationLog
+     * @example
+     * // Get one GenerationLog
+     * const generationLog = await prisma.generationLog.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends GenerationLogFindFirstOrThrowArgs>(args?: SelectSubset<T, GenerationLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__GenerationLogClient<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more GenerationLogs that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GenerationLogFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all GenerationLogs
+     * const generationLogs = await prisma.generationLog.findMany()
+     * 
+     * // Get first 10 GenerationLogs
+     * const generationLogs = await prisma.generationLog.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const generationLogWithIdOnly = await prisma.generationLog.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends GenerationLogFindManyArgs>(args?: SelectSubset<T, GenerationLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a GenerationLog.
+     * @param {GenerationLogCreateArgs} args - Arguments to create a GenerationLog.
+     * @example
+     * // Create one GenerationLog
+     * const GenerationLog = await prisma.generationLog.create({
+     *   data: {
+     *     // ... data to create a GenerationLog
+     *   }
+     * })
+     * 
+     */
+    create<T extends GenerationLogCreateArgs>(args: SelectSubset<T, GenerationLogCreateArgs<ExtArgs>>): Prisma__GenerationLogClient<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many GenerationLogs.
+     * @param {GenerationLogCreateManyArgs} args - Arguments to create many GenerationLogs.
+     * @example
+     * // Create many GenerationLogs
+     * const generationLog = await prisma.generationLog.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends GenerationLogCreateManyArgs>(args?: SelectSubset<T, GenerationLogCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many GenerationLogs and returns the data saved in the database.
+     * @param {GenerationLogCreateManyAndReturnArgs} args - Arguments to create many GenerationLogs.
+     * @example
+     * // Create many GenerationLogs
+     * const generationLog = await prisma.generationLog.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many GenerationLogs and only return the `id`
+     * const generationLogWithIdOnly = await prisma.generationLog.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends GenerationLogCreateManyAndReturnArgs>(args?: SelectSubset<T, GenerationLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a GenerationLog.
+     * @param {GenerationLogDeleteArgs} args - Arguments to delete one GenerationLog.
+     * @example
+     * // Delete one GenerationLog
+     * const GenerationLog = await prisma.generationLog.delete({
+     *   where: {
+     *     // ... filter to delete one GenerationLog
+     *   }
+     * })
+     * 
+     */
+    delete<T extends GenerationLogDeleteArgs>(args: SelectSubset<T, GenerationLogDeleteArgs<ExtArgs>>): Prisma__GenerationLogClient<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one GenerationLog.
+     * @param {GenerationLogUpdateArgs} args - Arguments to update one GenerationLog.
+     * @example
+     * // Update one GenerationLog
+     * const generationLog = await prisma.generationLog.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends GenerationLogUpdateArgs>(args: SelectSubset<T, GenerationLogUpdateArgs<ExtArgs>>): Prisma__GenerationLogClient<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more GenerationLogs.
+     * @param {GenerationLogDeleteManyArgs} args - Arguments to filter GenerationLogs to delete.
+     * @example
+     * // Delete a few GenerationLogs
+     * const { count } = await prisma.generationLog.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends GenerationLogDeleteManyArgs>(args?: SelectSubset<T, GenerationLogDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GenerationLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GenerationLogUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many GenerationLogs
+     * const generationLog = await prisma.generationLog.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends GenerationLogUpdateManyArgs>(args: SelectSubset<T, GenerationLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one GenerationLog.
+     * @param {GenerationLogUpsertArgs} args - Arguments to update or create a GenerationLog.
+     * @example
+     * // Update or create a GenerationLog
+     * const generationLog = await prisma.generationLog.upsert({
+     *   create: {
+     *     // ... data to create a GenerationLog
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the GenerationLog we want to update
+     *   }
+     * })
+     */
+    upsert<T extends GenerationLogUpsertArgs>(args: SelectSubset<T, GenerationLogUpsertArgs<ExtArgs>>): Prisma__GenerationLogClient<$Result.GetResult<Prisma.$GenerationLogPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of GenerationLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GenerationLogCountArgs} args - Arguments to filter GenerationLogs to count.
+     * @example
+     * // Count the number of GenerationLogs
+     * const count = await prisma.generationLog.count({
+     *   where: {
+     *     // ... the filter for the GenerationLogs we want to count
+     *   }
+     * })
+    **/
+    count<T extends GenerationLogCountArgs>(
+      args?: Subset<T, GenerationLogCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], GenerationLogCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a GenerationLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GenerationLogAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends GenerationLogAggregateArgs>(args: Subset<T, GenerationLogAggregateArgs>): Prisma.PrismaPromise<GetGenerationLogAggregateType<T>>
+
+    /**
+     * Group by GenerationLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GenerationLogGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends GenerationLogGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: GenerationLogGroupByArgs['orderBy'] }
+        : { orderBy?: GenerationLogGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, GenerationLogGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGenerationLogGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the GenerationLog model
+   */
+  readonly fields: GenerationLogFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for GenerationLog.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__GenerationLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the GenerationLog model
+   */ 
+  interface GenerationLogFieldRefs {
+    readonly id: FieldRef<"GenerationLog", 'Int'>
+    readonly jobApplicationId: FieldRef<"GenerationLog", 'Int'>
+    readonly model: FieldRef<"GenerationLog", 'String'>
+    readonly promptVersion: FieldRef<"GenerationLog", 'String'>
+    readonly success: FieldRef<"GenerationLog", 'Boolean'>
+    readonly error: FieldRef<"GenerationLog", 'String'>
+    readonly tokensUsed: FieldRef<"GenerationLog", 'Int'>
+    readonly durationMs: FieldRef<"GenerationLog", 'Int'>
+    readonly createdAt: FieldRef<"GenerationLog", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * GenerationLog findUnique
+   */
+  export type GenerationLogFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * Filter, which GenerationLog to fetch.
+     */
+    where: GenerationLogWhereUniqueInput
+  }
+
+  /**
+   * GenerationLog findUniqueOrThrow
+   */
+  export type GenerationLogFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * Filter, which GenerationLog to fetch.
+     */
+    where: GenerationLogWhereUniqueInput
+  }
+
+  /**
+   * GenerationLog findFirst
+   */
+  export type GenerationLogFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * Filter, which GenerationLog to fetch.
+     */
+    where?: GenerationLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GenerationLogs to fetch.
+     */
+    orderBy?: GenerationLogOrderByWithRelationInput | GenerationLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GenerationLogs.
+     */
+    cursor?: GenerationLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GenerationLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GenerationLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GenerationLogs.
+     */
+    distinct?: GenerationLogScalarFieldEnum | GenerationLogScalarFieldEnum[]
+  }
+
+  /**
+   * GenerationLog findFirstOrThrow
+   */
+  export type GenerationLogFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * Filter, which GenerationLog to fetch.
+     */
+    where?: GenerationLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GenerationLogs to fetch.
+     */
+    orderBy?: GenerationLogOrderByWithRelationInput | GenerationLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GenerationLogs.
+     */
+    cursor?: GenerationLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GenerationLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GenerationLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GenerationLogs.
+     */
+    distinct?: GenerationLogScalarFieldEnum | GenerationLogScalarFieldEnum[]
+  }
+
+  /**
+   * GenerationLog findMany
+   */
+  export type GenerationLogFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * Filter, which GenerationLogs to fetch.
+     */
+    where?: GenerationLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GenerationLogs to fetch.
+     */
+    orderBy?: GenerationLogOrderByWithRelationInput | GenerationLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing GenerationLogs.
+     */
+    cursor?: GenerationLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GenerationLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GenerationLogs.
+     */
+    skip?: number
+    distinct?: GenerationLogScalarFieldEnum | GenerationLogScalarFieldEnum[]
+  }
+
+  /**
+   * GenerationLog create
+   */
+  export type GenerationLogCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * The data needed to create a GenerationLog.
+     */
+    data: XOR<GenerationLogCreateInput, GenerationLogUncheckedCreateInput>
+  }
+
+  /**
+   * GenerationLog createMany
+   */
+  export type GenerationLogCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many GenerationLogs.
+     */
+    data: GenerationLogCreateManyInput | GenerationLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GenerationLog createManyAndReturn
+   */
+  export type GenerationLogCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many GenerationLogs.
+     */
+    data: GenerationLogCreateManyInput | GenerationLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GenerationLog update
+   */
+  export type GenerationLogUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * The data needed to update a GenerationLog.
+     */
+    data: XOR<GenerationLogUpdateInput, GenerationLogUncheckedUpdateInput>
+    /**
+     * Choose, which GenerationLog to update.
+     */
+    where: GenerationLogWhereUniqueInput
+  }
+
+  /**
+   * GenerationLog updateMany
+   */
+  export type GenerationLogUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update GenerationLogs.
+     */
+    data: XOR<GenerationLogUpdateManyMutationInput, GenerationLogUncheckedUpdateManyInput>
+    /**
+     * Filter which GenerationLogs to update
+     */
+    where?: GenerationLogWhereInput
+  }
+
+  /**
+   * GenerationLog upsert
+   */
+  export type GenerationLogUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * The filter to search for the GenerationLog to update in case it exists.
+     */
+    where: GenerationLogWhereUniqueInput
+    /**
+     * In case the GenerationLog found by the `where` argument doesn't exist, create a new GenerationLog with this data.
+     */
+    create: XOR<GenerationLogCreateInput, GenerationLogUncheckedCreateInput>
+    /**
+     * In case the GenerationLog was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<GenerationLogUpdateInput, GenerationLogUncheckedUpdateInput>
+  }
+
+  /**
+   * GenerationLog delete
+   */
+  export type GenerationLogDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
+    /**
+     * Filter which GenerationLog to delete.
+     */
+    where: GenerationLogWhereUniqueInput
+  }
+
+  /**
+   * GenerationLog deleteMany
+   */
+  export type GenerationLogDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GenerationLogs to delete
+     */
+    where?: GenerationLogWhereInput
+  }
+
+  /**
+   * GenerationLog without action
+   */
+  export type GenerationLogDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GenerationLog
+     */
+    select?: GenerationLogSelect<ExtArgs> | null
   }
 
 
@@ -10046,19 +13940,64 @@ export namespace Prisma {
   export type CoverLetterScalarFieldEnum = (typeof CoverLetterScalarFieldEnum)[keyof typeof CoverLetterScalarFieldEnum]
 
 
-  export const AutomationRunScalarFieldEnum: {
-    id: 'id',
-    userId: 'userId',
-    type: 'type',
-    startedAt: 'startedAt',
-    finishedAt: 'finishedAt',
-    jobsFound: 'jobsFound',
-    jobsSaved: 'jobsSaved',
-    status: 'status',
-    logExcerpt: 'logExcerpt'
+  export const AppConfigScalarFieldEnum: {
+    key: 'key',
+    value: 'value',
+    updatedAt: 'updatedAt'
   };
 
-  export type AutomationRunScalarFieldEnum = (typeof AutomationRunScalarFieldEnum)[keyof typeof AutomationRunScalarFieldEnum]
+  export type AppConfigScalarFieldEnum = (typeof AppConfigScalarFieldEnum)[keyof typeof AppConfigScalarFieldEnum]
+
+
+  export const SkipRuleScalarFieldEnum: {
+    id: 'id',
+    type: 'type',
+    pattern: 'pattern',
+    active: 'active',
+    createdAt: 'createdAt'
+  };
+
+  export type SkipRuleScalarFieldEnum = (typeof SkipRuleScalarFieldEnum)[keyof typeof SkipRuleScalarFieldEnum]
+
+
+  export const UserProfileScalarFieldEnum: {
+    id: 'id',
+    name: 'name',
+    email: 'email',
+    baseResumeText: 'baseResumeText',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type UserProfileScalarFieldEnum = (typeof UserProfileScalarFieldEnum)[keyof typeof UserProfileScalarFieldEnum]
+
+
+  export const ScanLogScalarFieldEnum: {
+    id: 'id',
+    board: 'board',
+    jobsFound: 'jobsFound',
+    jobsSaved: 'jobsSaved',
+    errors: 'errors',
+    durationMs: 'durationMs',
+    createdAt: 'createdAt'
+  };
+
+  export type ScanLogScalarFieldEnum = (typeof ScanLogScalarFieldEnum)[keyof typeof ScanLogScalarFieldEnum]
+
+
+  export const GenerationLogScalarFieldEnum: {
+    id: 'id',
+    jobApplicationId: 'jobApplicationId',
+    model: 'model',
+    promptVersion: 'promptVersion',
+    success: 'success',
+    error: 'error',
+    tokensUsed: 'tokensUsed',
+    durationMs: 'durationMs',
+    createdAt: 'createdAt'
+  };
+
+  export type GenerationLogScalarFieldEnum = (typeof GenerationLogScalarFieldEnum)[keyof typeof GenerationLogScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -10182,16 +14121,16 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'AutomationRunStatus'
+   * Reference to a field of type 'SkipRuleType'
    */
-  export type EnumAutomationRunStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AutomationRunStatus'>
+  export type EnumSkipRuleTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SkipRuleType'>
     
 
 
   /**
-   * Reference to a field of type 'AutomationRunStatus[]'
+   * Reference to a field of type 'SkipRuleType[]'
    */
-  export type ListEnumAutomationRunStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AutomationRunStatus[]'>
+  export type ListEnumSkipRuleTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SkipRuleType[]'>
     
   /**
    * Deep Input Types
@@ -10209,7 +14148,6 @@ export namespace Prisma {
     resumes?: ResumeListRelationFilter
     jobApplications?: JobApplicationListRelationFilter
     oneClickJobs?: OneClickJobListRelationFilter
-    automationRuns?: AutomationRunListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -10220,7 +14158,6 @@ export namespace Prisma {
     resumes?: ResumeOrderByRelationAggregateInput
     jobApplications?: JobApplicationOrderByRelationAggregateInput
     oneClickJobs?: OneClickJobOrderByRelationAggregateInput
-    automationRuns?: AutomationRunOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -10234,7 +14171,6 @@ export namespace Prisma {
     resumes?: ResumeListRelationFilter
     jobApplications?: JobApplicationListRelationFilter
     oneClickJobs?: OneClickJobListRelationFilter
-    automationRuns?: AutomationRunListRelationFilter
   }, "id" | "email">
 
   export type UserOrderByWithAggregationInput = {
@@ -10730,81 +14666,297 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"CoverLetter"> | Date | string
   }
 
-  export type AutomationRunWhereInput = {
-    AND?: AutomationRunWhereInput | AutomationRunWhereInput[]
-    OR?: AutomationRunWhereInput[]
-    NOT?: AutomationRunWhereInput | AutomationRunWhereInput[]
-    id?: IntFilter<"AutomationRun"> | number
-    userId?: IntFilter<"AutomationRun"> | number
-    type?: StringFilter<"AutomationRun"> | string
-    startedAt?: DateTimeFilter<"AutomationRun"> | Date | string
-    finishedAt?: DateTimeNullableFilter<"AutomationRun"> | Date | string | null
-    jobsFound?: IntNullableFilter<"AutomationRun"> | number | null
-    jobsSaved?: IntNullableFilter<"AutomationRun"> | number | null
-    status?: EnumAutomationRunStatusFilter<"AutomationRun"> | $Enums.AutomationRunStatus
-    logExcerpt?: StringNullableFilter<"AutomationRun"> | string | null
-    user?: XOR<UserRelationFilter, UserWhereInput>
+  export type AppConfigWhereInput = {
+    AND?: AppConfigWhereInput | AppConfigWhereInput[]
+    OR?: AppConfigWhereInput[]
+    NOT?: AppConfigWhereInput | AppConfigWhereInput[]
+    key?: StringFilter<"AppConfig"> | string
+    value?: StringFilter<"AppConfig"> | string
+    updatedAt?: DateTimeFilter<"AppConfig"> | Date | string
   }
 
-  export type AutomationRunOrderByWithRelationInput = {
+  export type AppConfigOrderByWithRelationInput = {
+    key?: SortOrder
+    value?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AppConfigWhereUniqueInput = Prisma.AtLeast<{
+    key?: string
+    AND?: AppConfigWhereInput | AppConfigWhereInput[]
+    OR?: AppConfigWhereInput[]
+    NOT?: AppConfigWhereInput | AppConfigWhereInput[]
+    value?: StringFilter<"AppConfig"> | string
+    updatedAt?: DateTimeFilter<"AppConfig"> | Date | string
+  }, "key">
+
+  export type AppConfigOrderByWithAggregationInput = {
+    key?: SortOrder
+    value?: SortOrder
+    updatedAt?: SortOrder
+    _count?: AppConfigCountOrderByAggregateInput
+    _max?: AppConfigMaxOrderByAggregateInput
+    _min?: AppConfigMinOrderByAggregateInput
+  }
+
+  export type AppConfigScalarWhereWithAggregatesInput = {
+    AND?: AppConfigScalarWhereWithAggregatesInput | AppConfigScalarWhereWithAggregatesInput[]
+    OR?: AppConfigScalarWhereWithAggregatesInput[]
+    NOT?: AppConfigScalarWhereWithAggregatesInput | AppConfigScalarWhereWithAggregatesInput[]
+    key?: StringWithAggregatesFilter<"AppConfig"> | string
+    value?: StringWithAggregatesFilter<"AppConfig"> | string
+    updatedAt?: DateTimeWithAggregatesFilter<"AppConfig"> | Date | string
+  }
+
+  export type SkipRuleWhereInput = {
+    AND?: SkipRuleWhereInput | SkipRuleWhereInput[]
+    OR?: SkipRuleWhereInput[]
+    NOT?: SkipRuleWhereInput | SkipRuleWhereInput[]
+    id?: IntFilter<"SkipRule"> | number
+    type?: EnumSkipRuleTypeFilter<"SkipRule"> | $Enums.SkipRuleType
+    pattern?: StringFilter<"SkipRule"> | string
+    active?: BoolFilter<"SkipRule"> | boolean
+    createdAt?: DateTimeFilter<"SkipRule"> | Date | string
+  }
+
+  export type SkipRuleOrderByWithRelationInput = {
     id?: SortOrder
-    userId?: SortOrder
     type?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrderInput | SortOrder
-    jobsFound?: SortOrderInput | SortOrder
-    jobsSaved?: SortOrderInput | SortOrder
-    status?: SortOrder
-    logExcerpt?: SortOrderInput | SortOrder
-    user?: UserOrderByWithRelationInput
+    pattern?: SortOrder
+    active?: SortOrder
+    createdAt?: SortOrder
   }
 
-  export type AutomationRunWhereUniqueInput = Prisma.AtLeast<{
+  export type SkipRuleWhereUniqueInput = Prisma.AtLeast<{
     id?: number
-    AND?: AutomationRunWhereInput | AutomationRunWhereInput[]
-    OR?: AutomationRunWhereInput[]
-    NOT?: AutomationRunWhereInput | AutomationRunWhereInput[]
-    userId?: IntFilter<"AutomationRun"> | number
-    type?: StringFilter<"AutomationRun"> | string
-    startedAt?: DateTimeFilter<"AutomationRun"> | Date | string
-    finishedAt?: DateTimeNullableFilter<"AutomationRun"> | Date | string | null
-    jobsFound?: IntNullableFilter<"AutomationRun"> | number | null
-    jobsSaved?: IntNullableFilter<"AutomationRun"> | number | null
-    status?: EnumAutomationRunStatusFilter<"AutomationRun"> | $Enums.AutomationRunStatus
-    logExcerpt?: StringNullableFilter<"AutomationRun"> | string | null
-    user?: XOR<UserRelationFilter, UserWhereInput>
+    AND?: SkipRuleWhereInput | SkipRuleWhereInput[]
+    OR?: SkipRuleWhereInput[]
+    NOT?: SkipRuleWhereInput | SkipRuleWhereInput[]
+    type?: EnumSkipRuleTypeFilter<"SkipRule"> | $Enums.SkipRuleType
+    pattern?: StringFilter<"SkipRule"> | string
+    active?: BoolFilter<"SkipRule"> | boolean
+    createdAt?: DateTimeFilter<"SkipRule"> | Date | string
   }, "id">
 
-  export type AutomationRunOrderByWithAggregationInput = {
+  export type SkipRuleOrderByWithAggregationInput = {
     id?: SortOrder
-    userId?: SortOrder
     type?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrderInput | SortOrder
-    jobsFound?: SortOrderInput | SortOrder
-    jobsSaved?: SortOrderInput | SortOrder
-    status?: SortOrder
-    logExcerpt?: SortOrderInput | SortOrder
-    _count?: AutomationRunCountOrderByAggregateInput
-    _avg?: AutomationRunAvgOrderByAggregateInput
-    _max?: AutomationRunMaxOrderByAggregateInput
-    _min?: AutomationRunMinOrderByAggregateInput
-    _sum?: AutomationRunSumOrderByAggregateInput
+    pattern?: SortOrder
+    active?: SortOrder
+    createdAt?: SortOrder
+    _count?: SkipRuleCountOrderByAggregateInput
+    _avg?: SkipRuleAvgOrderByAggregateInput
+    _max?: SkipRuleMaxOrderByAggregateInput
+    _min?: SkipRuleMinOrderByAggregateInput
+    _sum?: SkipRuleSumOrderByAggregateInput
   }
 
-  export type AutomationRunScalarWhereWithAggregatesInput = {
-    AND?: AutomationRunScalarWhereWithAggregatesInput | AutomationRunScalarWhereWithAggregatesInput[]
-    OR?: AutomationRunScalarWhereWithAggregatesInput[]
-    NOT?: AutomationRunScalarWhereWithAggregatesInput | AutomationRunScalarWhereWithAggregatesInput[]
-    id?: IntWithAggregatesFilter<"AutomationRun"> | number
-    userId?: IntWithAggregatesFilter<"AutomationRun"> | number
-    type?: StringWithAggregatesFilter<"AutomationRun"> | string
-    startedAt?: DateTimeWithAggregatesFilter<"AutomationRun"> | Date | string
-    finishedAt?: DateTimeNullableWithAggregatesFilter<"AutomationRun"> | Date | string | null
-    jobsFound?: IntNullableWithAggregatesFilter<"AutomationRun"> | number | null
-    jobsSaved?: IntNullableWithAggregatesFilter<"AutomationRun"> | number | null
-    status?: EnumAutomationRunStatusWithAggregatesFilter<"AutomationRun"> | $Enums.AutomationRunStatus
-    logExcerpt?: StringNullableWithAggregatesFilter<"AutomationRun"> | string | null
+  export type SkipRuleScalarWhereWithAggregatesInput = {
+    AND?: SkipRuleScalarWhereWithAggregatesInput | SkipRuleScalarWhereWithAggregatesInput[]
+    OR?: SkipRuleScalarWhereWithAggregatesInput[]
+    NOT?: SkipRuleScalarWhereWithAggregatesInput | SkipRuleScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"SkipRule"> | number
+    type?: EnumSkipRuleTypeWithAggregatesFilter<"SkipRule"> | $Enums.SkipRuleType
+    pattern?: StringWithAggregatesFilter<"SkipRule"> | string
+    active?: BoolWithAggregatesFilter<"SkipRule"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"SkipRule"> | Date | string
+  }
+
+  export type UserProfileWhereInput = {
+    AND?: UserProfileWhereInput | UserProfileWhereInput[]
+    OR?: UserProfileWhereInput[]
+    NOT?: UserProfileWhereInput | UserProfileWhereInput[]
+    id?: IntFilter<"UserProfile"> | number
+    name?: StringFilter<"UserProfile"> | string
+    email?: StringFilter<"UserProfile"> | string
+    baseResumeText?: StringFilter<"UserProfile"> | string
+    createdAt?: DateTimeFilter<"UserProfile"> | Date | string
+    updatedAt?: DateTimeFilter<"UserProfile"> | Date | string
+  }
+
+  export type UserProfileOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    email?: SortOrder
+    baseResumeText?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserProfileWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    email?: string
+    AND?: UserProfileWhereInput | UserProfileWhereInput[]
+    OR?: UserProfileWhereInput[]
+    NOT?: UserProfileWhereInput | UserProfileWhereInput[]
+    name?: StringFilter<"UserProfile"> | string
+    baseResumeText?: StringFilter<"UserProfile"> | string
+    createdAt?: DateTimeFilter<"UserProfile"> | Date | string
+    updatedAt?: DateTimeFilter<"UserProfile"> | Date | string
+  }, "id" | "email">
+
+  export type UserProfileOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrder
+    email?: SortOrder
+    baseResumeText?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: UserProfileCountOrderByAggregateInput
+    _avg?: UserProfileAvgOrderByAggregateInput
+    _max?: UserProfileMaxOrderByAggregateInput
+    _min?: UserProfileMinOrderByAggregateInput
+    _sum?: UserProfileSumOrderByAggregateInput
+  }
+
+  export type UserProfileScalarWhereWithAggregatesInput = {
+    AND?: UserProfileScalarWhereWithAggregatesInput | UserProfileScalarWhereWithAggregatesInput[]
+    OR?: UserProfileScalarWhereWithAggregatesInput[]
+    NOT?: UserProfileScalarWhereWithAggregatesInput | UserProfileScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"UserProfile"> | number
+    name?: StringWithAggregatesFilter<"UserProfile"> | string
+    email?: StringWithAggregatesFilter<"UserProfile"> | string
+    baseResumeText?: StringWithAggregatesFilter<"UserProfile"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"UserProfile"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"UserProfile"> | Date | string
+  }
+
+  export type ScanLogWhereInput = {
+    AND?: ScanLogWhereInput | ScanLogWhereInput[]
+    OR?: ScanLogWhereInput[]
+    NOT?: ScanLogWhereInput | ScanLogWhereInput[]
+    id?: IntFilter<"ScanLog"> | number
+    board?: StringFilter<"ScanLog"> | string
+    jobsFound?: IntFilter<"ScanLog"> | number
+    jobsSaved?: IntFilter<"ScanLog"> | number
+    errors?: StringNullableFilter<"ScanLog"> | string | null
+    durationMs?: IntNullableFilter<"ScanLog"> | number | null
+    createdAt?: DateTimeFilter<"ScanLog"> | Date | string
+  }
+
+  export type ScanLogOrderByWithRelationInput = {
+    id?: SortOrder
+    board?: SortOrder
+    jobsFound?: SortOrder
+    jobsSaved?: SortOrder
+    errors?: SortOrderInput | SortOrder
+    durationMs?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ScanLogWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    AND?: ScanLogWhereInput | ScanLogWhereInput[]
+    OR?: ScanLogWhereInput[]
+    NOT?: ScanLogWhereInput | ScanLogWhereInput[]
+    board?: StringFilter<"ScanLog"> | string
+    jobsFound?: IntFilter<"ScanLog"> | number
+    jobsSaved?: IntFilter<"ScanLog"> | number
+    errors?: StringNullableFilter<"ScanLog"> | string | null
+    durationMs?: IntNullableFilter<"ScanLog"> | number | null
+    createdAt?: DateTimeFilter<"ScanLog"> | Date | string
+  }, "id">
+
+  export type ScanLogOrderByWithAggregationInput = {
+    id?: SortOrder
+    board?: SortOrder
+    jobsFound?: SortOrder
+    jobsSaved?: SortOrder
+    errors?: SortOrderInput | SortOrder
+    durationMs?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: ScanLogCountOrderByAggregateInput
+    _avg?: ScanLogAvgOrderByAggregateInput
+    _max?: ScanLogMaxOrderByAggregateInput
+    _min?: ScanLogMinOrderByAggregateInput
+    _sum?: ScanLogSumOrderByAggregateInput
+  }
+
+  export type ScanLogScalarWhereWithAggregatesInput = {
+    AND?: ScanLogScalarWhereWithAggregatesInput | ScanLogScalarWhereWithAggregatesInput[]
+    OR?: ScanLogScalarWhereWithAggregatesInput[]
+    NOT?: ScanLogScalarWhereWithAggregatesInput | ScanLogScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"ScanLog"> | number
+    board?: StringWithAggregatesFilter<"ScanLog"> | string
+    jobsFound?: IntWithAggregatesFilter<"ScanLog"> | number
+    jobsSaved?: IntWithAggregatesFilter<"ScanLog"> | number
+    errors?: StringNullableWithAggregatesFilter<"ScanLog"> | string | null
+    durationMs?: IntNullableWithAggregatesFilter<"ScanLog"> | number | null
+    createdAt?: DateTimeWithAggregatesFilter<"ScanLog"> | Date | string
+  }
+
+  export type GenerationLogWhereInput = {
+    AND?: GenerationLogWhereInput | GenerationLogWhereInput[]
+    OR?: GenerationLogWhereInput[]
+    NOT?: GenerationLogWhereInput | GenerationLogWhereInput[]
+    id?: IntFilter<"GenerationLog"> | number
+    jobApplicationId?: IntFilter<"GenerationLog"> | number
+    model?: StringFilter<"GenerationLog"> | string
+    promptVersion?: StringFilter<"GenerationLog"> | string
+    success?: BoolFilter<"GenerationLog"> | boolean
+    error?: StringNullableFilter<"GenerationLog"> | string | null
+    tokensUsed?: IntNullableFilter<"GenerationLog"> | number | null
+    durationMs?: IntNullableFilter<"GenerationLog"> | number | null
+    createdAt?: DateTimeFilter<"GenerationLog"> | Date | string
+  }
+
+  export type GenerationLogOrderByWithRelationInput = {
+    id?: SortOrder
+    jobApplicationId?: SortOrder
+    model?: SortOrder
+    promptVersion?: SortOrder
+    success?: SortOrder
+    error?: SortOrderInput | SortOrder
+    tokensUsed?: SortOrderInput | SortOrder
+    durationMs?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type GenerationLogWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    AND?: GenerationLogWhereInput | GenerationLogWhereInput[]
+    OR?: GenerationLogWhereInput[]
+    NOT?: GenerationLogWhereInput | GenerationLogWhereInput[]
+    jobApplicationId?: IntFilter<"GenerationLog"> | number
+    model?: StringFilter<"GenerationLog"> | string
+    promptVersion?: StringFilter<"GenerationLog"> | string
+    success?: BoolFilter<"GenerationLog"> | boolean
+    error?: StringNullableFilter<"GenerationLog"> | string | null
+    tokensUsed?: IntNullableFilter<"GenerationLog"> | number | null
+    durationMs?: IntNullableFilter<"GenerationLog"> | number | null
+    createdAt?: DateTimeFilter<"GenerationLog"> | Date | string
+  }, "id">
+
+  export type GenerationLogOrderByWithAggregationInput = {
+    id?: SortOrder
+    jobApplicationId?: SortOrder
+    model?: SortOrder
+    promptVersion?: SortOrder
+    success?: SortOrder
+    error?: SortOrderInput | SortOrder
+    tokensUsed?: SortOrderInput | SortOrder
+    durationMs?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: GenerationLogCountOrderByAggregateInput
+    _avg?: GenerationLogAvgOrderByAggregateInput
+    _max?: GenerationLogMaxOrderByAggregateInput
+    _min?: GenerationLogMinOrderByAggregateInput
+    _sum?: GenerationLogSumOrderByAggregateInput
+  }
+
+  export type GenerationLogScalarWhereWithAggregatesInput = {
+    AND?: GenerationLogScalarWhereWithAggregatesInput | GenerationLogScalarWhereWithAggregatesInput[]
+    OR?: GenerationLogScalarWhereWithAggregatesInput[]
+    NOT?: GenerationLogScalarWhereWithAggregatesInput | GenerationLogScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"GenerationLog"> | number
+    jobApplicationId?: IntWithAggregatesFilter<"GenerationLog"> | number
+    model?: StringWithAggregatesFilter<"GenerationLog"> | string
+    promptVersion?: StringWithAggregatesFilter<"GenerationLog"> | string
+    success?: BoolWithAggregatesFilter<"GenerationLog"> | boolean
+    error?: StringNullableWithAggregatesFilter<"GenerationLog"> | string | null
+    tokensUsed?: IntNullableWithAggregatesFilter<"GenerationLog"> | number | null
+    durationMs?: IntNullableWithAggregatesFilter<"GenerationLog"> | number | null
+    createdAt?: DateTimeWithAggregatesFilter<"GenerationLog"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -10814,7 +14966,6 @@ export namespace Prisma {
     resumes?: ResumeCreateNestedManyWithoutUserInput
     jobApplications?: JobApplicationCreateNestedManyWithoutUserInput
     oneClickJobs?: OneClickJobCreateNestedManyWithoutUserInput
-    automationRuns?: AutomationRunCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -10825,7 +14976,6 @@ export namespace Prisma {
     resumes?: ResumeUncheckedCreateNestedManyWithoutUserInput
     jobApplications?: JobApplicationUncheckedCreateNestedManyWithoutUserInput
     oneClickJobs?: OneClickJobUncheckedCreateNestedManyWithoutUserInput
-    automationRuns?: AutomationRunUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -10835,7 +14985,6 @@ export namespace Prisma {
     resumes?: ResumeUpdateManyWithoutUserNestedInput
     jobApplications?: JobApplicationUpdateManyWithoutUserNestedInput
     oneClickJobs?: OneClickJobUpdateManyWithoutUserNestedInput
-    automationRuns?: AutomationRunUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -10846,7 +14995,6 @@ export namespace Prisma {
     resumes?: ResumeUncheckedUpdateManyWithoutUserNestedInput
     jobApplications?: JobApplicationUncheckedUpdateManyWithoutUserNestedInput
     oneClickJobs?: OneClickJobUncheckedUpdateManyWithoutUserNestedInput
-    automationRuns?: AutomationRunUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -11346,84 +15494,307 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type AutomationRunCreateInput = {
-    type: string
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    jobsFound?: number | null
-    jobsSaved?: number | null
-    status?: $Enums.AutomationRunStatus
-    logExcerpt?: string | null
-    user: UserCreateNestedOneWithoutAutomationRunsInput
+  export type AppConfigCreateInput = {
+    key: string
+    value: string
+    updatedAt?: Date | string
   }
 
-  export type AutomationRunUncheckedCreateInput = {
+  export type AppConfigUncheckedCreateInput = {
+    key: string
+    value: string
+    updatedAt?: Date | string
+  }
+
+  export type AppConfigUpdateInput = {
+    key?: StringFieldUpdateOperationsInput | string
+    value?: StringFieldUpdateOperationsInput | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AppConfigUncheckedUpdateInput = {
+    key?: StringFieldUpdateOperationsInput | string
+    value?: StringFieldUpdateOperationsInput | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AppConfigCreateManyInput = {
+    key: string
+    value: string
+    updatedAt?: Date | string
+  }
+
+  export type AppConfigUpdateManyMutationInput = {
+    key?: StringFieldUpdateOperationsInput | string
+    value?: StringFieldUpdateOperationsInput | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AppConfigUncheckedUpdateManyInput = {
+    key?: StringFieldUpdateOperationsInput | string
+    value?: StringFieldUpdateOperationsInput | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SkipRuleCreateInput = {
+    type: $Enums.SkipRuleType
+    pattern: string
+    active?: boolean
+    createdAt?: Date | string
+  }
+
+  export type SkipRuleUncheckedCreateInput = {
     id?: number
-    userId: number
-    type: string
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    jobsFound?: number | null
-    jobsSaved?: number | null
-    status?: $Enums.AutomationRunStatus
-    logExcerpt?: string | null
+    type: $Enums.SkipRuleType
+    pattern: string
+    active?: boolean
+    createdAt?: Date | string
   }
 
-  export type AutomationRunUpdateInput = {
-    type?: StringFieldUpdateOperationsInput | string
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    jobsFound?: NullableIntFieldUpdateOperationsInput | number | null
-    jobsSaved?: NullableIntFieldUpdateOperationsInput | number | null
-    status?: EnumAutomationRunStatusFieldUpdateOperationsInput | $Enums.AutomationRunStatus
-    logExcerpt?: NullableStringFieldUpdateOperationsInput | string | null
-    user?: UserUpdateOneRequiredWithoutAutomationRunsNestedInput
+  export type SkipRuleUpdateInput = {
+    type?: EnumSkipRuleTypeFieldUpdateOperationsInput | $Enums.SkipRuleType
+    pattern?: StringFieldUpdateOperationsInput | string
+    active?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type AutomationRunUncheckedUpdateInput = {
+  export type SkipRuleUncheckedUpdateInput = {
     id?: IntFieldUpdateOperationsInput | number
-    userId?: IntFieldUpdateOperationsInput | number
-    type?: StringFieldUpdateOperationsInput | string
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    jobsFound?: NullableIntFieldUpdateOperationsInput | number | null
-    jobsSaved?: NullableIntFieldUpdateOperationsInput | number | null
-    status?: EnumAutomationRunStatusFieldUpdateOperationsInput | $Enums.AutomationRunStatus
-    logExcerpt?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: EnumSkipRuleTypeFieldUpdateOperationsInput | $Enums.SkipRuleType
+    pattern?: StringFieldUpdateOperationsInput | string
+    active?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type AutomationRunCreateManyInput = {
+  export type SkipRuleCreateManyInput = {
     id?: number
-    userId: number
-    type: string
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    jobsFound?: number | null
-    jobsSaved?: number | null
-    status?: $Enums.AutomationRunStatus
-    logExcerpt?: string | null
+    type: $Enums.SkipRuleType
+    pattern: string
+    active?: boolean
+    createdAt?: Date | string
   }
 
-  export type AutomationRunUpdateManyMutationInput = {
-    type?: StringFieldUpdateOperationsInput | string
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    jobsFound?: NullableIntFieldUpdateOperationsInput | number | null
-    jobsSaved?: NullableIntFieldUpdateOperationsInput | number | null
-    status?: EnumAutomationRunStatusFieldUpdateOperationsInput | $Enums.AutomationRunStatus
-    logExcerpt?: NullableStringFieldUpdateOperationsInput | string | null
+  export type SkipRuleUpdateManyMutationInput = {
+    type?: EnumSkipRuleTypeFieldUpdateOperationsInput | $Enums.SkipRuleType
+    pattern?: StringFieldUpdateOperationsInput | string
+    active?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type AutomationRunUncheckedUpdateManyInput = {
+  export type SkipRuleUncheckedUpdateManyInput = {
     id?: IntFieldUpdateOperationsInput | number
-    userId?: IntFieldUpdateOperationsInput | number
-    type?: StringFieldUpdateOperationsInput | string
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    jobsFound?: NullableIntFieldUpdateOperationsInput | number | null
-    jobsSaved?: NullableIntFieldUpdateOperationsInput | number | null
-    status?: EnumAutomationRunStatusFieldUpdateOperationsInput | $Enums.AutomationRunStatus
-    logExcerpt?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: EnumSkipRuleTypeFieldUpdateOperationsInput | $Enums.SkipRuleType
+    pattern?: StringFieldUpdateOperationsInput | string
+    active?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserProfileCreateInput = {
+    name: string
+    email: string
+    baseResumeText: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserProfileUncheckedCreateInput = {
+    id?: number
+    name: string
+    email: string
+    baseResumeText: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserProfileUpdateInput = {
+    name?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    baseResumeText?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserProfileUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    name?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    baseResumeText?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserProfileCreateManyInput = {
+    id?: number
+    name: string
+    email: string
+    baseResumeText: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type UserProfileUpdateManyMutationInput = {
+    name?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    baseResumeText?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserProfileUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    name?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    baseResumeText?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ScanLogCreateInput = {
+    board: string
+    jobsFound?: number
+    jobsSaved?: number
+    errors?: string | null
+    durationMs?: number | null
+    createdAt?: Date | string
+  }
+
+  export type ScanLogUncheckedCreateInput = {
+    id?: number
+    board: string
+    jobsFound?: number
+    jobsSaved?: number
+    errors?: string | null
+    durationMs?: number | null
+    createdAt?: Date | string
+  }
+
+  export type ScanLogUpdateInput = {
+    board?: StringFieldUpdateOperationsInput | string
+    jobsFound?: IntFieldUpdateOperationsInput | number
+    jobsSaved?: IntFieldUpdateOperationsInput | number
+    errors?: NullableStringFieldUpdateOperationsInput | string | null
+    durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ScanLogUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    board?: StringFieldUpdateOperationsInput | string
+    jobsFound?: IntFieldUpdateOperationsInput | number
+    jobsSaved?: IntFieldUpdateOperationsInput | number
+    errors?: NullableStringFieldUpdateOperationsInput | string | null
+    durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ScanLogCreateManyInput = {
+    id?: number
+    board: string
+    jobsFound?: number
+    jobsSaved?: number
+    errors?: string | null
+    durationMs?: number | null
+    createdAt?: Date | string
+  }
+
+  export type ScanLogUpdateManyMutationInput = {
+    board?: StringFieldUpdateOperationsInput | string
+    jobsFound?: IntFieldUpdateOperationsInput | number
+    jobsSaved?: IntFieldUpdateOperationsInput | number
+    errors?: NullableStringFieldUpdateOperationsInput | string | null
+    durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ScanLogUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    board?: StringFieldUpdateOperationsInput | string
+    jobsFound?: IntFieldUpdateOperationsInput | number
+    jobsSaved?: IntFieldUpdateOperationsInput | number
+    errors?: NullableStringFieldUpdateOperationsInput | string | null
+    durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GenerationLogCreateInput = {
+    jobApplicationId: number
+    model: string
+    promptVersion: string
+    success?: boolean
+    error?: string | null
+    tokensUsed?: number | null
+    durationMs?: number | null
+    createdAt?: Date | string
+  }
+
+  export type GenerationLogUncheckedCreateInput = {
+    id?: number
+    jobApplicationId: number
+    model: string
+    promptVersion: string
+    success?: boolean
+    error?: string | null
+    tokensUsed?: number | null
+    durationMs?: number | null
+    createdAt?: Date | string
+  }
+
+  export type GenerationLogUpdateInput = {
+    jobApplicationId?: IntFieldUpdateOperationsInput | number
+    model?: StringFieldUpdateOperationsInput | string
+    promptVersion?: StringFieldUpdateOperationsInput | string
+    success?: BoolFieldUpdateOperationsInput | boolean
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    tokensUsed?: NullableIntFieldUpdateOperationsInput | number | null
+    durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GenerationLogUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    jobApplicationId?: IntFieldUpdateOperationsInput | number
+    model?: StringFieldUpdateOperationsInput | string
+    promptVersion?: StringFieldUpdateOperationsInput | string
+    success?: BoolFieldUpdateOperationsInput | boolean
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    tokensUsed?: NullableIntFieldUpdateOperationsInput | number | null
+    durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GenerationLogCreateManyInput = {
+    id?: number
+    jobApplicationId: number
+    model: string
+    promptVersion: string
+    success?: boolean
+    error?: string | null
+    tokensUsed?: number | null
+    durationMs?: number | null
+    createdAt?: Date | string
+  }
+
+  export type GenerationLogUpdateManyMutationInput = {
+    jobApplicationId?: IntFieldUpdateOperationsInput | number
+    model?: StringFieldUpdateOperationsInput | string
+    promptVersion?: StringFieldUpdateOperationsInput | string
+    success?: BoolFieldUpdateOperationsInput | boolean
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    tokensUsed?: NullableIntFieldUpdateOperationsInput | number | null
+    durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GenerationLogUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    jobApplicationId?: IntFieldUpdateOperationsInput | number
+    model?: StringFieldUpdateOperationsInput | string
+    promptVersion?: StringFieldUpdateOperationsInput | string
+    success?: BoolFieldUpdateOperationsInput | boolean
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    tokensUsed?: NullableIntFieldUpdateOperationsInput | number | null
+    durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type IntFilter<$PrismaModel = never> = {
@@ -11481,12 +15852,6 @@ export namespace Prisma {
     none?: OneClickJobWhereInput
   }
 
-  export type AutomationRunListRelationFilter = {
-    every?: AutomationRunWhereInput
-    some?: AutomationRunWhereInput
-    none?: AutomationRunWhereInput
-  }
-
   export type ResumeOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -11496,10 +15861,6 @@ export namespace Prisma {
   }
 
   export type OneClickJobOrderByRelationAggregateInput = {
-    _count?: SortOrder
-  }
-
-  export type AutomationRunOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -12078,71 +16439,200 @@ export namespace Prisma {
     _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
-  export type EnumAutomationRunStatusFilter<$PrismaModel = never> = {
-    equals?: $Enums.AutomationRunStatus | EnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.AutomationRunStatus[] | ListEnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.AutomationRunStatus[] | ListEnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumAutomationRunStatusFilter<$PrismaModel> | $Enums.AutomationRunStatus
+  export type AppConfigCountOrderByAggregateInput = {
+    key?: SortOrder
+    value?: SortOrder
+    updatedAt?: SortOrder
   }
 
-  export type AutomationRunCountOrderByAggregateInput = {
+  export type AppConfigMaxOrderByAggregateInput = {
+    key?: SortOrder
+    value?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type AppConfigMinOrderByAggregateInput = {
+    key?: SortOrder
+    value?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnumSkipRuleTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.SkipRuleType | EnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.SkipRuleType[] | ListEnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SkipRuleType[] | ListEnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumSkipRuleTypeFilter<$PrismaModel> | $Enums.SkipRuleType
+  }
+
+  export type SkipRuleCountOrderByAggregateInput = {
     id?: SortOrder
-    userId?: SortOrder
     type?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrder
-    jobsFound?: SortOrder
-    jobsSaved?: SortOrder
-    status?: SortOrder
-    logExcerpt?: SortOrder
+    pattern?: SortOrder
+    active?: SortOrder
+    createdAt?: SortOrder
   }
 
-  export type AutomationRunAvgOrderByAggregateInput = {
+  export type SkipRuleAvgOrderByAggregateInput = {
     id?: SortOrder
-    userId?: SortOrder
-    jobsFound?: SortOrder
-    jobsSaved?: SortOrder
   }
 
-  export type AutomationRunMaxOrderByAggregateInput = {
+  export type SkipRuleMaxOrderByAggregateInput = {
     id?: SortOrder
-    userId?: SortOrder
     type?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrder
-    jobsFound?: SortOrder
-    jobsSaved?: SortOrder
-    status?: SortOrder
-    logExcerpt?: SortOrder
+    pattern?: SortOrder
+    active?: SortOrder
+    createdAt?: SortOrder
   }
 
-  export type AutomationRunMinOrderByAggregateInput = {
+  export type SkipRuleMinOrderByAggregateInput = {
     id?: SortOrder
-    userId?: SortOrder
     type?: SortOrder
-    startedAt?: SortOrder
-    finishedAt?: SortOrder
-    jobsFound?: SortOrder
-    jobsSaved?: SortOrder
-    status?: SortOrder
-    logExcerpt?: SortOrder
+    pattern?: SortOrder
+    active?: SortOrder
+    createdAt?: SortOrder
   }
 
-  export type AutomationRunSumOrderByAggregateInput = {
+  export type SkipRuleSumOrderByAggregateInput = {
     id?: SortOrder
-    userId?: SortOrder
-    jobsFound?: SortOrder
-    jobsSaved?: SortOrder
   }
 
-  export type EnumAutomationRunStatusWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.AutomationRunStatus | EnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.AutomationRunStatus[] | ListEnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.AutomationRunStatus[] | ListEnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumAutomationRunStatusWithAggregatesFilter<$PrismaModel> | $Enums.AutomationRunStatus
+  export type EnumSkipRuleTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.SkipRuleType | EnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.SkipRuleType[] | ListEnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SkipRuleType[] | ListEnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumSkipRuleTypeWithAggregatesFilter<$PrismaModel> | $Enums.SkipRuleType
     _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumAutomationRunStatusFilter<$PrismaModel>
-    _max?: NestedEnumAutomationRunStatusFilter<$PrismaModel>
+    _min?: NestedEnumSkipRuleTypeFilter<$PrismaModel>
+    _max?: NestedEnumSkipRuleTypeFilter<$PrismaModel>
+  }
+
+  export type UserProfileCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    email?: SortOrder
+    baseResumeText?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserProfileAvgOrderByAggregateInput = {
+    id?: SortOrder
+  }
+
+  export type UserProfileMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    email?: SortOrder
+    baseResumeText?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserProfileMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+    email?: SortOrder
+    baseResumeText?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type UserProfileSumOrderByAggregateInput = {
+    id?: SortOrder
+  }
+
+  export type ScanLogCountOrderByAggregateInput = {
+    id?: SortOrder
+    board?: SortOrder
+    jobsFound?: SortOrder
+    jobsSaved?: SortOrder
+    errors?: SortOrder
+    durationMs?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ScanLogAvgOrderByAggregateInput = {
+    id?: SortOrder
+    jobsFound?: SortOrder
+    jobsSaved?: SortOrder
+    durationMs?: SortOrder
+  }
+
+  export type ScanLogMaxOrderByAggregateInput = {
+    id?: SortOrder
+    board?: SortOrder
+    jobsFound?: SortOrder
+    jobsSaved?: SortOrder
+    errors?: SortOrder
+    durationMs?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ScanLogMinOrderByAggregateInput = {
+    id?: SortOrder
+    board?: SortOrder
+    jobsFound?: SortOrder
+    jobsSaved?: SortOrder
+    errors?: SortOrder
+    durationMs?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ScanLogSumOrderByAggregateInput = {
+    id?: SortOrder
+    jobsFound?: SortOrder
+    jobsSaved?: SortOrder
+    durationMs?: SortOrder
+  }
+
+  export type GenerationLogCountOrderByAggregateInput = {
+    id?: SortOrder
+    jobApplicationId?: SortOrder
+    model?: SortOrder
+    promptVersion?: SortOrder
+    success?: SortOrder
+    error?: SortOrder
+    tokensUsed?: SortOrder
+    durationMs?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type GenerationLogAvgOrderByAggregateInput = {
+    id?: SortOrder
+    jobApplicationId?: SortOrder
+    tokensUsed?: SortOrder
+    durationMs?: SortOrder
+  }
+
+  export type GenerationLogMaxOrderByAggregateInput = {
+    id?: SortOrder
+    jobApplicationId?: SortOrder
+    model?: SortOrder
+    promptVersion?: SortOrder
+    success?: SortOrder
+    error?: SortOrder
+    tokensUsed?: SortOrder
+    durationMs?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type GenerationLogMinOrderByAggregateInput = {
+    id?: SortOrder
+    jobApplicationId?: SortOrder
+    model?: SortOrder
+    promptVersion?: SortOrder
+    success?: SortOrder
+    error?: SortOrder
+    tokensUsed?: SortOrder
+    durationMs?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type GenerationLogSumOrderByAggregateInput = {
+    id?: SortOrder
+    jobApplicationId?: SortOrder
+    tokensUsed?: SortOrder
+    durationMs?: SortOrder
   }
 
   export type ResumeCreateNestedManyWithoutUserInput = {
@@ -12166,13 +16656,6 @@ export namespace Prisma {
     connect?: OneClickJobWhereUniqueInput | OneClickJobWhereUniqueInput[]
   }
 
-  export type AutomationRunCreateNestedManyWithoutUserInput = {
-    create?: XOR<AutomationRunCreateWithoutUserInput, AutomationRunUncheckedCreateWithoutUserInput> | AutomationRunCreateWithoutUserInput[] | AutomationRunUncheckedCreateWithoutUserInput[]
-    connectOrCreate?: AutomationRunCreateOrConnectWithoutUserInput | AutomationRunCreateOrConnectWithoutUserInput[]
-    createMany?: AutomationRunCreateManyUserInputEnvelope
-    connect?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-  }
-
   export type ResumeUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<ResumeCreateWithoutUserInput, ResumeUncheckedCreateWithoutUserInput> | ResumeCreateWithoutUserInput[] | ResumeUncheckedCreateWithoutUserInput[]
     connectOrCreate?: ResumeCreateOrConnectWithoutUserInput | ResumeCreateOrConnectWithoutUserInput[]
@@ -12192,13 +16675,6 @@ export namespace Prisma {
     connectOrCreate?: OneClickJobCreateOrConnectWithoutUserInput | OneClickJobCreateOrConnectWithoutUserInput[]
     createMany?: OneClickJobCreateManyUserInputEnvelope
     connect?: OneClickJobWhereUniqueInput | OneClickJobWhereUniqueInput[]
-  }
-
-  export type AutomationRunUncheckedCreateNestedManyWithoutUserInput = {
-    create?: XOR<AutomationRunCreateWithoutUserInput, AutomationRunUncheckedCreateWithoutUserInput> | AutomationRunCreateWithoutUserInput[] | AutomationRunUncheckedCreateWithoutUserInput[]
-    connectOrCreate?: AutomationRunCreateOrConnectWithoutUserInput | AutomationRunCreateOrConnectWithoutUserInput[]
-    createMany?: AutomationRunCreateManyUserInputEnvelope
-    connect?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -12251,20 +16727,6 @@ export namespace Prisma {
     deleteMany?: OneClickJobScalarWhereInput | OneClickJobScalarWhereInput[]
   }
 
-  export type AutomationRunUpdateManyWithoutUserNestedInput = {
-    create?: XOR<AutomationRunCreateWithoutUserInput, AutomationRunUncheckedCreateWithoutUserInput> | AutomationRunCreateWithoutUserInput[] | AutomationRunUncheckedCreateWithoutUserInput[]
-    connectOrCreate?: AutomationRunCreateOrConnectWithoutUserInput | AutomationRunCreateOrConnectWithoutUserInput[]
-    upsert?: AutomationRunUpsertWithWhereUniqueWithoutUserInput | AutomationRunUpsertWithWhereUniqueWithoutUserInput[]
-    createMany?: AutomationRunCreateManyUserInputEnvelope
-    set?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-    disconnect?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-    delete?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-    connect?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-    update?: AutomationRunUpdateWithWhereUniqueWithoutUserInput | AutomationRunUpdateWithWhereUniqueWithoutUserInput[]
-    updateMany?: AutomationRunUpdateManyWithWhereWithoutUserInput | AutomationRunUpdateManyWithWhereWithoutUserInput[]
-    deleteMany?: AutomationRunScalarWhereInput | AutomationRunScalarWhereInput[]
-  }
-
   export type IntFieldUpdateOperationsInput = {
     set?: number
     increment?: number
@@ -12313,20 +16775,6 @@ export namespace Prisma {
     update?: OneClickJobUpdateWithWhereUniqueWithoutUserInput | OneClickJobUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: OneClickJobUpdateManyWithWhereWithoutUserInput | OneClickJobUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: OneClickJobScalarWhereInput | OneClickJobScalarWhereInput[]
-  }
-
-  export type AutomationRunUncheckedUpdateManyWithoutUserNestedInput = {
-    create?: XOR<AutomationRunCreateWithoutUserInput, AutomationRunUncheckedCreateWithoutUserInput> | AutomationRunCreateWithoutUserInput[] | AutomationRunUncheckedCreateWithoutUserInput[]
-    connectOrCreate?: AutomationRunCreateOrConnectWithoutUserInput | AutomationRunCreateOrConnectWithoutUserInput[]
-    upsert?: AutomationRunUpsertWithWhereUniqueWithoutUserInput | AutomationRunUpsertWithWhereUniqueWithoutUserInput[]
-    createMany?: AutomationRunCreateManyUserInputEnvelope
-    set?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-    disconnect?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-    delete?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-    connect?: AutomationRunWhereUniqueInput | AutomationRunWhereUniqueInput[]
-    update?: AutomationRunUpdateWithWhereUniqueWithoutUserInput | AutomationRunUpdateWithWhereUniqueWithoutUserInput[]
-    updateMany?: AutomationRunUpdateManyWithWhereWithoutUserInput | AutomationRunUpdateManyWithWhereWithoutUserInput[]
-    deleteMany?: AutomationRunScalarWhereInput | AutomationRunScalarWhereInput[]
   }
 
   export type UserCreateNestedOneWithoutOneClickJobsInput = {
@@ -12679,22 +17127,8 @@ export namespace Prisma {
     divide?: number
   }
 
-  export type UserCreateNestedOneWithoutAutomationRunsInput = {
-    create?: XOR<UserCreateWithoutAutomationRunsInput, UserUncheckedCreateWithoutAutomationRunsInput>
-    connectOrCreate?: UserCreateOrConnectWithoutAutomationRunsInput
-    connect?: UserWhereUniqueInput
-  }
-
-  export type EnumAutomationRunStatusFieldUpdateOperationsInput = {
-    set?: $Enums.AutomationRunStatus
-  }
-
-  export type UserUpdateOneRequiredWithoutAutomationRunsNestedInput = {
-    create?: XOR<UserCreateWithoutAutomationRunsInput, UserUncheckedCreateWithoutAutomationRunsInput>
-    connectOrCreate?: UserCreateOrConnectWithoutAutomationRunsInput
-    upsert?: UserUpsertWithoutAutomationRunsInput
-    connect?: UserWhereUniqueInput
-    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutAutomationRunsInput, UserUpdateWithoutAutomationRunsInput>, UserUncheckedUpdateWithoutAutomationRunsInput>
+  export type EnumSkipRuleTypeFieldUpdateOperationsInput = {
+    set?: $Enums.SkipRuleType
   }
 
   export type NestedIntFilter<$PrismaModel = never> = {
@@ -12948,21 +17382,21 @@ export namespace Prisma {
     _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
-  export type NestedEnumAutomationRunStatusFilter<$PrismaModel = never> = {
-    equals?: $Enums.AutomationRunStatus | EnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.AutomationRunStatus[] | ListEnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.AutomationRunStatus[] | ListEnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumAutomationRunStatusFilter<$PrismaModel> | $Enums.AutomationRunStatus
+  export type NestedEnumSkipRuleTypeFilter<$PrismaModel = never> = {
+    equals?: $Enums.SkipRuleType | EnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.SkipRuleType[] | ListEnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SkipRuleType[] | ListEnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumSkipRuleTypeFilter<$PrismaModel> | $Enums.SkipRuleType
   }
 
-  export type NestedEnumAutomationRunStatusWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.AutomationRunStatus | EnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.AutomationRunStatus[] | ListEnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.AutomationRunStatus[] | ListEnumAutomationRunStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumAutomationRunStatusWithAggregatesFilter<$PrismaModel> | $Enums.AutomationRunStatus
+  export type NestedEnumSkipRuleTypeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.SkipRuleType | EnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    in?: $Enums.SkipRuleType[] | ListEnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    notIn?: $Enums.SkipRuleType[] | ListEnumSkipRuleTypeFieldRefInput<$PrismaModel>
+    not?: NestedEnumSkipRuleTypeWithAggregatesFilter<$PrismaModel> | $Enums.SkipRuleType
     _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumAutomationRunStatusFilter<$PrismaModel>
-    _max?: NestedEnumAutomationRunStatusFilter<$PrismaModel>
+    _min?: NestedEnumSkipRuleTypeFilter<$PrismaModel>
+    _max?: NestedEnumSkipRuleTypeFilter<$PrismaModel>
   }
 
   export type ResumeCreateWithoutUserInput = {
@@ -13078,37 +17512,6 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
-  export type AutomationRunCreateWithoutUserInput = {
-    type: string
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    jobsFound?: number | null
-    jobsSaved?: number | null
-    status?: $Enums.AutomationRunStatus
-    logExcerpt?: string | null
-  }
-
-  export type AutomationRunUncheckedCreateWithoutUserInput = {
-    id?: number
-    type: string
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    jobsFound?: number | null
-    jobsSaved?: number | null
-    status?: $Enums.AutomationRunStatus
-    logExcerpt?: string | null
-  }
-
-  export type AutomationRunCreateOrConnectWithoutUserInput = {
-    where: AutomationRunWhereUniqueInput
-    create: XOR<AutomationRunCreateWithoutUserInput, AutomationRunUncheckedCreateWithoutUserInput>
-  }
-
-  export type AutomationRunCreateManyUserInputEnvelope = {
-    data: AutomationRunCreateManyUserInput | AutomationRunCreateManyUserInput[]
-    skipDuplicates?: boolean
-  }
-
   export type ResumeUpsertWithWhereUniqueWithoutUserInput = {
     where: ResumeWhereUniqueInput
     update: XOR<ResumeUpdateWithoutUserInput, ResumeUncheckedUpdateWithoutUserInput>
@@ -13207,44 +17610,12 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"OneClickJob"> | Date | string
   }
 
-  export type AutomationRunUpsertWithWhereUniqueWithoutUserInput = {
-    where: AutomationRunWhereUniqueInput
-    update: XOR<AutomationRunUpdateWithoutUserInput, AutomationRunUncheckedUpdateWithoutUserInput>
-    create: XOR<AutomationRunCreateWithoutUserInput, AutomationRunUncheckedCreateWithoutUserInput>
-  }
-
-  export type AutomationRunUpdateWithWhereUniqueWithoutUserInput = {
-    where: AutomationRunWhereUniqueInput
-    data: XOR<AutomationRunUpdateWithoutUserInput, AutomationRunUncheckedUpdateWithoutUserInput>
-  }
-
-  export type AutomationRunUpdateManyWithWhereWithoutUserInput = {
-    where: AutomationRunScalarWhereInput
-    data: XOR<AutomationRunUpdateManyMutationInput, AutomationRunUncheckedUpdateManyWithoutUserInput>
-  }
-
-  export type AutomationRunScalarWhereInput = {
-    AND?: AutomationRunScalarWhereInput | AutomationRunScalarWhereInput[]
-    OR?: AutomationRunScalarWhereInput[]
-    NOT?: AutomationRunScalarWhereInput | AutomationRunScalarWhereInput[]
-    id?: IntFilter<"AutomationRun"> | number
-    userId?: IntFilter<"AutomationRun"> | number
-    type?: StringFilter<"AutomationRun"> | string
-    startedAt?: DateTimeFilter<"AutomationRun"> | Date | string
-    finishedAt?: DateTimeNullableFilter<"AutomationRun"> | Date | string | null
-    jobsFound?: IntNullableFilter<"AutomationRun"> | number | null
-    jobsSaved?: IntNullableFilter<"AutomationRun"> | number | null
-    status?: EnumAutomationRunStatusFilter<"AutomationRun"> | $Enums.AutomationRunStatus
-    logExcerpt?: StringNullableFilter<"AutomationRun"> | string | null
-  }
-
   export type UserCreateWithoutOneClickJobsInput = {
     email: string
     passwordHash: string
     createdAt?: Date | string
     resumes?: ResumeCreateNestedManyWithoutUserInput
     jobApplications?: JobApplicationCreateNestedManyWithoutUserInput
-    automationRuns?: AutomationRunCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutOneClickJobsInput = {
@@ -13254,7 +17625,6 @@ export namespace Prisma {
     createdAt?: Date | string
     resumes?: ResumeUncheckedCreateNestedManyWithoutUserInput
     jobApplications?: JobApplicationUncheckedCreateNestedManyWithoutUserInput
-    automationRuns?: AutomationRunUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutOneClickJobsInput = {
@@ -13279,7 +17649,6 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resumes?: ResumeUpdateManyWithoutUserNestedInput
     jobApplications?: JobApplicationUpdateManyWithoutUserNestedInput
-    automationRuns?: AutomationRunUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutOneClickJobsInput = {
@@ -13289,7 +17658,6 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resumes?: ResumeUncheckedUpdateManyWithoutUserNestedInput
     jobApplications?: JobApplicationUncheckedUpdateManyWithoutUserNestedInput
-    automationRuns?: AutomationRunUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutResumesInput = {
@@ -13298,7 +17666,6 @@ export namespace Prisma {
     createdAt?: Date | string
     jobApplications?: JobApplicationCreateNestedManyWithoutUserInput
     oneClickJobs?: OneClickJobCreateNestedManyWithoutUserInput
-    automationRuns?: AutomationRunCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutResumesInput = {
@@ -13308,7 +17675,6 @@ export namespace Prisma {
     createdAt?: Date | string
     jobApplications?: JobApplicationUncheckedCreateNestedManyWithoutUserInput
     oneClickJobs?: OneClickJobUncheckedCreateNestedManyWithoutUserInput
-    automationRuns?: AutomationRunUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutResumesInput = {
@@ -13387,7 +17753,6 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobApplications?: JobApplicationUpdateManyWithoutUserNestedInput
     oneClickJobs?: OneClickJobUpdateManyWithoutUserNestedInput
-    automationRuns?: AutomationRunUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutResumesInput = {
@@ -13397,7 +17762,6 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     jobApplications?: JobApplicationUncheckedUpdateManyWithoutUserNestedInput
     oneClickJobs?: OneClickJobUncheckedUpdateManyWithoutUserNestedInput
-    automationRuns?: AutomationRunUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type TailoredResumeUpsertWithWhereUniqueWithoutBaseResumeInput = {
@@ -13464,7 +17828,6 @@ export namespace Prisma {
     createdAt?: Date | string
     resumes?: ResumeCreateNestedManyWithoutUserInput
     oneClickJobs?: OneClickJobCreateNestedManyWithoutUserInput
-    automationRuns?: AutomationRunCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutJobApplicationsInput = {
@@ -13474,7 +17837,6 @@ export namespace Prisma {
     createdAt?: Date | string
     resumes?: ResumeUncheckedCreateNestedManyWithoutUserInput
     oneClickJobs?: OneClickJobUncheckedCreateNestedManyWithoutUserInput
-    automationRuns?: AutomationRunUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutJobApplicationsInput = {
@@ -13571,7 +17933,6 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resumes?: ResumeUpdateManyWithoutUserNestedInput
     oneClickJobs?: OneClickJobUpdateManyWithoutUserNestedInput
-    automationRuns?: AutomationRunUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutJobApplicationsInput = {
@@ -13581,7 +17942,6 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     resumes?: ResumeUncheckedUpdateManyWithoutUserNestedInput
     oneClickJobs?: OneClickJobUncheckedUpdateManyWithoutUserNestedInput
-    automationRuns?: AutomationRunUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type JobDescriptionUpsertWithoutJobApplicationInput = {
@@ -14054,60 +18414,6 @@ export namespace Prisma {
     tailoredResumes?: TailoredResumeUncheckedUpdateManyWithoutBaseResumeNestedInput
   }
 
-  export type UserCreateWithoutAutomationRunsInput = {
-    email: string
-    passwordHash: string
-    createdAt?: Date | string
-    resumes?: ResumeCreateNestedManyWithoutUserInput
-    jobApplications?: JobApplicationCreateNestedManyWithoutUserInput
-    oneClickJobs?: OneClickJobCreateNestedManyWithoutUserInput
-  }
-
-  export type UserUncheckedCreateWithoutAutomationRunsInput = {
-    id?: number
-    email: string
-    passwordHash: string
-    createdAt?: Date | string
-    resumes?: ResumeUncheckedCreateNestedManyWithoutUserInput
-    jobApplications?: JobApplicationUncheckedCreateNestedManyWithoutUserInput
-    oneClickJobs?: OneClickJobUncheckedCreateNestedManyWithoutUserInput
-  }
-
-  export type UserCreateOrConnectWithoutAutomationRunsInput = {
-    where: UserWhereUniqueInput
-    create: XOR<UserCreateWithoutAutomationRunsInput, UserUncheckedCreateWithoutAutomationRunsInput>
-  }
-
-  export type UserUpsertWithoutAutomationRunsInput = {
-    update: XOR<UserUpdateWithoutAutomationRunsInput, UserUncheckedUpdateWithoutAutomationRunsInput>
-    create: XOR<UserCreateWithoutAutomationRunsInput, UserUncheckedCreateWithoutAutomationRunsInput>
-    where?: UserWhereInput
-  }
-
-  export type UserUpdateToOneWithWhereWithoutAutomationRunsInput = {
-    where?: UserWhereInput
-    data: XOR<UserUpdateWithoutAutomationRunsInput, UserUncheckedUpdateWithoutAutomationRunsInput>
-  }
-
-  export type UserUpdateWithoutAutomationRunsInput = {
-    email?: StringFieldUpdateOperationsInput | string
-    passwordHash?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    resumes?: ResumeUpdateManyWithoutUserNestedInput
-    jobApplications?: JobApplicationUpdateManyWithoutUserNestedInput
-    oneClickJobs?: OneClickJobUpdateManyWithoutUserNestedInput
-  }
-
-  export type UserUncheckedUpdateWithoutAutomationRunsInput = {
-    id?: IntFieldUpdateOperationsInput | number
-    email?: StringFieldUpdateOperationsInput | string
-    passwordHash?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    resumes?: ResumeUncheckedUpdateManyWithoutUserNestedInput
-    jobApplications?: JobApplicationUncheckedUpdateManyWithoutUserNestedInput
-    oneClickJobs?: OneClickJobUncheckedUpdateManyWithoutUserNestedInput
-  }
-
   export type ResumeCreateManyUserInput = {
     id?: number
     name: string
@@ -14144,17 +18450,6 @@ export namespace Prisma {
     fullText: string
     appliedAt?: Date | string | null
     createdAt?: Date | string
-  }
-
-  export type AutomationRunCreateManyUserInput = {
-    id?: number
-    type: string
-    startedAt?: Date | string
-    finishedAt?: Date | string | null
-    jobsFound?: number | null
-    jobsSaved?: number | null
-    status?: $Enums.AutomationRunStatus
-    logExcerpt?: string | null
   }
 
   export type ResumeUpdateWithoutUserInput = {
@@ -14276,38 +18571,6 @@ export namespace Prisma {
     fullText?: StringFieldUpdateOperationsInput | string
     appliedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type AutomationRunUpdateWithoutUserInput = {
-    type?: StringFieldUpdateOperationsInput | string
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    jobsFound?: NullableIntFieldUpdateOperationsInput | number | null
-    jobsSaved?: NullableIntFieldUpdateOperationsInput | number | null
-    status?: EnumAutomationRunStatusFieldUpdateOperationsInput | $Enums.AutomationRunStatus
-    logExcerpt?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type AutomationRunUncheckedUpdateWithoutUserInput = {
-    id?: IntFieldUpdateOperationsInput | number
-    type?: StringFieldUpdateOperationsInput | string
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    jobsFound?: NullableIntFieldUpdateOperationsInput | number | null
-    jobsSaved?: NullableIntFieldUpdateOperationsInput | number | null
-    status?: EnumAutomationRunStatusFieldUpdateOperationsInput | $Enums.AutomationRunStatus
-    logExcerpt?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type AutomationRunUncheckedUpdateManyWithoutUserInput = {
-    id?: IntFieldUpdateOperationsInput | number
-    type?: StringFieldUpdateOperationsInput | string
-    startedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    finishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    jobsFound?: NullableIntFieldUpdateOperationsInput | number | null
-    jobsSaved?: NullableIntFieldUpdateOperationsInput | number | null
-    status?: EnumAutomationRunStatusFieldUpdateOperationsInput | $Enums.AutomationRunStatus
-    logExcerpt?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type TailoredResumeCreateManyBaseResumeInput = {
@@ -14496,9 +18759,25 @@ export namespace Prisma {
      */
     export type CoverLetterArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = CoverLetterDefaultArgs<ExtArgs>
     /**
-     * @deprecated Use AutomationRunDefaultArgs instead
+     * @deprecated Use AppConfigDefaultArgs instead
      */
-    export type AutomationRunArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = AutomationRunDefaultArgs<ExtArgs>
+    export type AppConfigArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = AppConfigDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use SkipRuleDefaultArgs instead
+     */
+    export type SkipRuleArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = SkipRuleDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use UserProfileDefaultArgs instead
+     */
+    export type UserProfileArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = UserProfileDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use ScanLogDefaultArgs instead
+     */
+    export type ScanLogArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ScanLogDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use GenerationLogDefaultArgs instead
+     */
+    export type GenerationLogArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = GenerationLogDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany

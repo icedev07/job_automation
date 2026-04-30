@@ -1,10 +1,9 @@
 {
   "name": "job-application-bot",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo --hostname 0.0.0.0",
-    "dev:3001": "next dev --turbo -p 3001 -H 0.0.0.0",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
     "lint": "next lint",
@@ -18,7 +17,6 @@
 
     "ziprecruiter:init": "tsx scripts/ziprecruiterInit.ts",
     "ziprecruiter:scan": "tsx scripts/ziprecruiterScan.ts",
-    "ziprecruiter:seleniumbase": "python3 scripts/ziprecruiter_seleniumbase.py",
 
     "glassdoor:init": "tsx scripts/glassdoorInit.ts",
     "glassdoor:scan": "tsx scripts/glassdoorScan.ts",
@@ -29,39 +27,16 @@
     "simplify:init": "tsx scripts/simplifyInit.ts",
     "simplify:scan": "node --max-old-space-size=4096 node_modules/tsx/dist/cli.mjs scripts/simplifyScan.ts",
 
-    "indeed:seleniumbase": "python3 scripts/indeed_seleniumbase.py",
-
-    "docs:backfill": "tsx scripts/generateMissingDocuments.ts",
-    "docs:backfill:watch": "tsx scripts/backfillWatch.ts",
-    "docs:reset-user": "tsx scripts/resetUserGeneratedDocuments.ts",
-
-    "chatgpt:seleniumbase": "python3 scripts/chatgpt_seleniumbase.py",
-    "chatgpt:backfill": "python3 scripts/chatgpt_seleniumbase_backfill.py",
-
     "resume:setup": "tsx scripts/addBaseResume.ts",
     "profiles:ensure": "tsx scripts/ensureProfileUsers.ts",
-
     "cache:clean": "tsx scripts/cleanJobbotCache.ts",
-    "jobdesc:cleanup-bad": "tsx scripts/cleanupBadJobDescriptions.ts",
-
-    "convert:pdf": "python3 scripts/convertDocxToPdf.py",
-    "convert:watch": "python3 scripts/convertDocxToPdf.py --watch",
-
-    "docker:up": "docker compose up -d --build",
-    "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f",
-    "docker:ps": "docker compose ps"
+    "jobdesc:cleanup-bad": "tsx scripts/cleanupBadJobDescriptions.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
-    "dotenv": "^16.4.5",
-    "docx": "^9.5.2",
-    "docxtemplater": "^3.68.1",
-    "mammoth": "^1.11.0",
+    "googleapis": "^171.4.0",
     "next": "14.2.11",
-    "pizzip": "^3.2.0",
-    "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "openai": "^6.35.0",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },
@@ -72,6 +47,8 @@
     "eslint": "8.57.1",
     "eslint-config-next": "14.2.11",
     "playwright": "1.49.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "prisma": "5.22.0",
     "ts-node": "10.9.2",
     "tsx": "4.19.2",

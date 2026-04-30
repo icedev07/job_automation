@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-/** Quick health check - returns immediately so you can verify the server is reachable. */
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  return NextResponse.json({ ok: true, time: new Date().toISOString() });
+  let dbOk = false;
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbOk = true;
+  } catch {}
+
+  return NextResponse.json({
+    ok: true,
+    db: dbOk,
+    time: new Date().toISOString(),
+  });
 }

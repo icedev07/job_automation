@@ -24,10 +24,10 @@ enum JobType {
   ONSITE
 }
 
-enum AutomationRunStatus {
-  SUCCESS
-  FAILED
-  PARTIAL
+enum SkipRuleType {
+  TITLE
+  COMPANY
+  URL
 }
 
 model User {
@@ -38,17 +38,16 @@ model User {
   resumes         Resume[]
   jobApplications JobApplication[]
   oneClickJobs    OneClickJob[]
-  automationRuns   AutomationRun[]
 }
 
 model OneClickJob {
   id          Int       @id @default(autoincrement())
   userId      Int
-  source      String    @db.VarChar(50)   // ziprecruiter, simplify
+  source      String    @db.VarChar(50)
   title       String
   company     String
-  externalUrl String    @db.VarChar(2048) // ZipRecruiter/Simplify job page URL
-  fullText    String    // job description from the board
+  externalUrl String    @db.VarChar(2048)
+  fullText    String
   appliedAt   DateTime?
   createdAt   DateTime  @default(now())
 
@@ -73,7 +72,7 @@ model Resume {
 model JobApplication {
   id                 Int               @id @default(autoincrement())
   userId             Int
-  source             String            @default("jobright") @db.VarChar(50)  // jobright, ziprecruiter, telegram, etc.
+  source             String            @default("jobright") @db.VarChar(50)
   jobrightJobId      String?           @db.VarChar(255)
   title              String
   company            String
@@ -95,7 +94,7 @@ model JobApplication {
   coverLetters    CoverLetter[]
 
   @@unique([userId, externalUrl])
-  @@unique([userId, title, company]) // Same title+company allowed for different users; one row per user
+  @@unique([userId, title, company])
 }
 
 model JobDescription {
@@ -134,17 +133,49 @@ model CoverLetter {
   baseResume     Resume?       @relation(fields: [baseResumeId], references: [id])
 }
 
-model AutomationRun {
-  id         Int                 @id @default(autoincrement())
-  userId     Int
-  type       String
-  startedAt  DateTime            @default(now())
-  finishedAt DateTime?
-  jobsFound  Int?
-  jobsSaved  Int?
-  status     AutomationRunStatus @default(SUCCESS)
-  logExcerpt String?
+// ── Admin configuration ─────────────────────────────────────────────────────
 
-  user User @relation(fields: [userId], references: [id])
+model AppConfig {
+  key       String   @id @db.VarChar(255)
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
+model SkipRule {
+  id        Int          @id @default(autoincrement())
+  type      SkipRuleType
+  pattern   String
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+}
+
+model UserProfile {
+  id             Int      @id @default(autoincrement())
+  name           String
+  email          String   @unique
+  baseResumeText String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ScanLog {
+  id        Int      @id @default(autoincrement())
+  board     String   @db.VarChar(50)
+  jobsFound Int      @default(0)
+  jobsSaved Int      @default(0)
+  errors    String?
+  durationMs Int?
+  createdAt DateTime @default(now())
+}
+
+model GenerationLog {
+  id             Int      @id @default(autoincrement())
+  jobApplicationId Int
+  model          String   @db.VarChar(100)
+  promptVersion  String   @db.VarChar(100)
+  success        Boolean  @default(true)
+  error          String?
+  tokensUsed     Int?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+}

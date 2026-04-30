@@ -1139,7 +1139,7 @@ async function tryFastDismissByApplyUrl(url: string, page: Page, targetPage: Pag
     return true;
   }
 
-  if (shouldSkipJobFromApplyUrl(url)) {
+  if (await shouldSkipJobFromApplyUrl(url)) {
     console.log(`  ⏭️  Skipping URL from skip list (fast, no full load): ${url}`);
     if (targetPage !== page) {
       await targetPage.close().catch(() => {});
@@ -2157,7 +2157,7 @@ async function main() {
     
     const meta = await extractCardMetadata(card);
 
-    if (shouldSkipJobFromCardFields(meta)) {
+    if (await shouldSkipJobFromCardFields(meta)) {
       console.log(`  ⏭️  Card matches skip title/company rules — fast apply to dismiss only (no DB).`);
       try {
         await clickApplyAndCaptureUrl(context, page, card, { captureDescription: false });

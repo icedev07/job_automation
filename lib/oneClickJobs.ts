@@ -18,7 +18,7 @@ export async function upsertOneClickJob(params: {
 }): Promise<OneClickJob | null> {
   const { userId, source, title, company, externalUrl, fullText } = params;
 
-  if (shouldSkipJob({ title, company, externalUrl })) {
+  if (await shouldSkipJob({ title, company, externalUrl })) {
     return null;
   }
 

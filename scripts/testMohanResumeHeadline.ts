@@ -79,7 +79,7 @@ function templateWithInjectedRunPlaceholder(
   const updated = xml.replace(open, `<w:t>{${placeholderName}}</w:t>`);
   zip.file(key, updated);
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
-  fs.writeFileSync(destPath, zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer);
+  fs.writeFileSync(destPath, zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as unknown as Uint8Array);
 }
 
 /** Copy .docx and replace a text fragment inside document.xml with a placeholder token. */
@@ -103,7 +103,7 @@ function templateWithInjectedTextFragmentPlaceholder(
   const updated = xml.replace(oldTextFragment, `{${placeholderName}}`);
   zip.file(key, updated);
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
-  fs.writeFileSync(destPath, zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer);
+  fs.writeFileSync(destPath, zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as unknown as Uint8Array);
 }
 
 function assertOutputContainsHeadline(docxPath: string, expectedRole: string): void {

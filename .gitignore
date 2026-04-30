@@ -27,6 +27,7 @@ test-results
 
 # Prisma
 prisma/dev.db
+generated/
 
 # Resumes - ignore generated documents, but keep templates
 Resumes/*

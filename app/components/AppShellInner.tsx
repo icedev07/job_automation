@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-const SIDEBAR_PATHS = ["/jobs", "/one-click-jobs"];
+const SIDEBAR_PATHS = ["/jobs", "/one-click-jobs", "/admin"];
 const PROFILE_OPTIONS = [
   { label: "Jiayong", userId: 1 },
   { label: "Mohan", userId: 2 },
@@ -84,6 +84,20 @@ export default function AppShellInner({ children }: { children: React.ReactNode 
             }}
           >
             1-Click jobs
+          </Link>
+          <div style={{ borderTop: "1px solid #e5e7eb", margin: "0.5rem 0" }} />
+          <Link
+            href="/admin"
+            style={{
+              padding: "0.5rem 1rem",
+              textDecoration: "none",
+              color: pathname?.startsWith("/admin") ? "#1d4ed8" : "#374151",
+              fontWeight: pathname?.startsWith("/admin") ? 600 : 400,
+              backgroundColor: pathname?.startsWith("/admin") ? "#dbeafe" : "transparent",
+              fontSize: "0.8rem",
+            }}
+          >
+            Admin
           </Link>
         </nav>
       </aside>

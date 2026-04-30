@@ -39,7 +39,7 @@ function maybeInjectPlaceholderByTextFragment(
   const tempPath = path.join(tempOutputDir, path.basename(sourceTemplatePath));
   fs.writeFileSync(
     tempPath,
-    zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer
+    zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as unknown as Uint8Array
   );
   return tempPath;
 }
