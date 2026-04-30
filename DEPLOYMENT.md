@@ -2,15 +2,15 @@
 
 ## Services used
 
-| Service | Purpose | Free? | Notes |
-|---------|---------|-------|-------|
-| Render | hosts the Next.js web app | yes, free tier | 750 hrs/month, auto-sleep after 15min inactivity |
-| Supabase | PostgreSQL database | yes, free tier | 500 MB storage, 2 projects, pauses after 1 week inactivity |
-| Google Sheets API | output approved jobs | yes, completely free | no quota limits for typical usage |
+| Service | Purpose | Free? | Billing required? |
+|---------|---------|-------|-------------------|
+| Vercel | hosts the Next.js web app | yes, free tier | **no card required** |
+| Supabase | PostgreSQL database | yes, free tier | no card required |
+| Google Sheets API | output approved jobs | yes, completely free | no card required |
 | Google Cloud service account | authenticates Sheets API | yes, completely free | no billing required |
 | OpenAI API | AI job analysis | **paid, per-token** | uses your own API key, ~$0.01 per job with gpt-4o-mini |
 
-OpenAI is the only paid service. All infrastructure is free.
+OpenAI is the only paid service. All infrastructure is 100% free with no credit card required.
 
 ---
 
@@ -20,21 +20,22 @@ OpenAI is the only paid service. All infrastructure is free.
 2. Click "New project"
 3. Choose a name (e.g. `job-finder`), set a database password, pick a region
 4. Wait for the project to be created (1-2 minutes)
-5. Go to **Settings > Database > Connection string > URI**
-6. Copy the connection string. It looks like:
+5. Click the green **Connect** button at the top of the dashboard
+6. Click the **Direct** tab
+7. Copy the connection string URI. It looks like:
    ```
-   postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+   postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres
    ```
-7. Replace `[password]` with the password you set
-8. Save this. You'll need it as `DATABASE_URL`
+8. Replace `[YOUR-PASSWORD]` with the database password you set
+9. Save this. You'll need it as `DATABASE_URL`
 
 ### Keep Supabase alive
 
 Supabase free tier pauses databases after 1 week of inactivity. The app has a `/api/health` endpoint that pings the database. Set up a free cron job to call it:
 
-1. Go to https://cron-job.org (free account)
-2. Create a job: URL = `https://your-render-app.onrender.com/api/health`, schedule = every 10 minutes
-3. This keeps both Render and Supabase active
+1. Go to https://cron-job.org (free, no card required)
+2. Create a job: URL = `https://your-app.vercel.app/api/health`, schedule = every 10 minutes
+3. This keeps Supabase active
 
 ---
 
@@ -59,7 +60,7 @@ Supabase free tier pauses databases after 1 week of inactivity. The app has a `/
 
 1. Go to https://docs.google.com/spreadsheets and create a new spreadsheet
 2. Name it (e.g. `Job Finder Results`)
-3. Rename the first sheet tab to `Jobs` (important, the app writes to this tab)
+3. Create two sheet tabs: `Jobs` and `LinkedIn`
 4. Click **Share** and add the `client_email` from step 12 above with **Editor** access
 5. Copy the spreadsheet ID from the URL: `https://docs.google.com/spreadsheets/d/`**THIS_PART**`/edit`
 
@@ -73,35 +74,39 @@ Supabase free tier pauses databases after 1 week of inactivity. The app has a `/
 
 ---
 
-## Step 4: Deploy to Render
-
-### Option A: deploy via Render dashboard
+## Step 4: Deploy to Vercel
 
 1. Push the code to a GitHub repository
-2. Go to https://render.com and sign in
-3. Click **New > Web Service**
-4. Connect your GitHub repo
-5. Render will detect `render.yaml` and auto-configure:
-   - Build command: `npm ci && npx prisma generate && npm run build`
-   - Start command: `npx prisma migrate deploy && node .next/standalone/server.js`
-   - Plan: Free
-6. Add environment variable:
-   - `DATABASE_URL` = your Supabase connection string from step 1
+2. Go to https://vercel.com and sign in with GitHub (free, no card needed)
+3. Click **Add New > Project**
+4. Import your GitHub repository
+5. Vercel auto-detects Next.js. Leave the default settings.
+6. Under **Environment Variables**, add:
+   - `DATABASE_URL` = your Supabase connection string from Step 1
 7. Click **Deploy**
 
-### Option B: deploy via Render Blueprint
+### First deploy takes 2-3 minutes. After it's live:
 
-1. Push to GitHub
-2. Go to https://render.com/deploy and paste your repo URL
-3. Render reads `render.yaml` and sets everything up
-4. Set `DATABASE_URL` when prompted
-
-### First deploy takes 3-5 minutes. After it's live:
-
-1. Open `https://your-app.onrender.com`
+1. Open `https://your-project.vercel.app`
 2. You'll see the job listing page (empty)
-3. Go to `https://your-app.onrender.com/admin`
+3. Go to `https://your-project.vercel.app/admin`
 4. Login with password: `admin` (change it in settings)
+
+### Run database migrations
+
+After the first deploy, run migrations to create the database tables:
+
+```bash
+# on your local machine, with the same DATABASE_URL
+npm install
+npx prisma generate
+npx prisma migrate deploy
+```
+
+Or set the "Build Command" in Vercel project settings to:
+```
+npx prisma generate && npx prisma migrate deploy && next build
+```
 
 ---
 
@@ -128,6 +133,12 @@ Go to `/admin/settings` and fill in:
 | Service Account JSON | paste the **entire** JSON key file content |
 | Sheet Columns | leave blank for defaults |
 
+### LinkedIn Extension
+| Setting | Value |
+|---------|-------|
+| LinkedIn Sheet Tab | `LinkedIn` (or any name you prefer for the tab) |
+| Extension API Key | set a secret key for the Chrome extension (optional) |
+
 ### Admin
 | Setting | Value |
 |---------|-------|
@@ -137,25 +148,48 @@ Click **Save All Settings**.
 
 ---
 
-## Step 6: Run scanners (locally)
+## Step 6: Install the Chrome Extension
 
-Scanners require a browser (Playwright + Chrome) so they run on your local machine, not on Render.
+1. Open `chrome://extensions` in Chrome
+2. Enable **Developer mode** (toggle in top-right)
+3. Click **Load unpacked**
+4. Select the `extension/` folder from this project
+5. The extension icon appears in your toolbar
+
+### Configure the extension
+
+1. Open `extension/popup.js` in a text editor
+2. Change `SERVER_URL` on line 1 to your Vercel URL:
+   ```js
+   const SERVER_URL = "https://your-project.vercel.app";
+   ```
+3. Reload the extension in `chrome://extensions`
+4. (Optional) Click the extension icon and enter your Extension API Key
+
+### How to use
+
+1. Go to https://www.linkedin.com/jobs/search/ and search for jobs
+2. Click the extension icon
+3. Click **Start Scan**
+4. The extension will check every job on the page, send it to your server for AI analysis, hide unsuitable jobs, and save approved jobs to Google Sheets
+
+---
+
+## Step 7: Run scanners locally (optional)
+
+Scanners require a browser (Playwright + Chrome) so they run on your local machine.
 
 ### First-time setup
 
 ```bash
-# clone the repo
 git clone <your-repo-url>
 cd job_automation
-
-# install dependencies
 npm install
 
 # create .env file
 cp .env.example .env
 # edit .env and set DATABASE_URL to your Supabase connection string
 
-# generate prisma client
 npx prisma generate
 
 # one-time browser login for each platform
@@ -165,8 +199,6 @@ npm run glassdoor:init
 npm run dice:init
 npm run simplify:init
 ```
-
-Each init command opens Chrome for you to manually log in. After logging in, close the browser. The session is saved locally.
 
 ### Run scans
 
@@ -178,38 +210,32 @@ npm run dice:scan
 npm run simplify:scan
 ```
 
-You can enable/disable individual platforms from `/admin/scanners`.
-
 ### After scanning
 
 1. Go to `/admin/scanners` in the web UI
-2. You'll see "X jobs pending AI analysis"
-3. Click **Analyze Pending Jobs**
-4. The AI analyzes each job and automatically syncs approved ones to Google Sheets
-5. Check your Google Sheet for results
+2. Click **Analyze Pending Jobs**
+3. The AI analyzes each job and automatically syncs approved ones to Google Sheets
 
 ---
 
 ## How deduplication works
 
-This is critical for avoiding wasted time and API costs:
-
 | Layer | What it prevents | How |
 |-------|-----------------|-----|
-| Scanner URL dedup | same job URL scraped twice on same platform | normalized URL check before saving |
-| Scanner title dedup | same job title+company on same platform | exact match before saving |
-| Cross-platform dedup | same job posted on Dice AND Glassdoor | normalized title+company match across all platforms |
-| Analysis dedup | analyzing a job that was already analyzed | only `PENDING` jobs are analyzed, status checked before each API call |
-| Sheet sync dedup | syncing same job to sheet twice | `sheetSynced` flag, only `false` jobs are synced |
+| URL dedup | same job URL scraped twice | normalized URL check before saving |
+| Title+company dedup | same job on same platform | exact match before saving |
+| Cross-platform dedup | same job on Dice AND LinkedIn | normalized title+company match across all platforms |
+| Analysis dedup | analyzing a job already analyzed | only PENDING jobs are analyzed, atomic status check |
+| Sheet sync dedup | syncing same job to sheet twice | `sheetSynced` flag |
 | Skip rules | unwanted companies/titles/URLs | checked before saving, configurable from admin |
 
-Once a job is analyzed (approved or rejected), it **never gets analyzed again** even if the scanner finds it again in a future run.
+Once a job is analyzed (approved or rejected), it **never gets analyzed again** even if found again in a future scan.
 
 ---
 
 ## Google Sheet output
 
-Default columns (configurable from settings):
+### "Jobs" tab (from scanners)
 
 | Column | Description |
 |--------|------------|
@@ -223,58 +249,31 @@ Default columns (configurable from settings):
 | Salary | salary if found |
 | Date Found | when it was scraped |
 
----
+### "LinkedIn" tab (from Chrome extension)
 
-## Admin panel pages
-
-| Page | URL | Purpose |
-|------|-----|---------|
-| Dashboard | `/admin` | stats overview, manual sheet sync button |
-| Settings | `/admin/settings` | all configuration in one place |
-| Scanners | `/admin/scanners` | enable/disable platforms, run analysis |
-| Skip Rules | `/admin/skip-rules` | block companies, titles, URLs |
-| Logs | `/admin/logs` | scan history and AI analysis logs |
-
----
-
-## Project structure
-
-```
-job_automation/
-  app/
-    admin/          # admin panel pages
-    api/            # API routes
-    page.tsx        # main job listing page
-    layout.tsx      # root layout
-  lib/
-    config.ts       # app configuration
-    jobAnalyzer.ts  # AI job analysis
-    scrapedJobs.ts  # job CRUD with dedup
-    googleSheetsSync.ts  # sheets integration
-    jobSkipRules.ts # skip rule engine
-    llmClient.ts    # OpenAI client
-    prisma.ts       # database client
-  prisma/
-    schema.prisma   # database schema
-    migrations/     # migration history
-  scripts/
-    *Scan.ts        # 5 scanner scripts
-    *Init.ts        # 5 browser login scripts
-  render.yaml       # Render deployment config
-  package.json
-```
+| Column | Description |
+|--------|------------|
+| No | row number |
+| Date | date found (YYYY-MM-DD) |
+| Platform | always "LinkedIn" |
+| Job Url | LinkedIn job URL |
+| Company | company name |
+| Country | location/country |
+| Role | job title |
+| Url | same as Job Url |
 
 ---
 
 ## Troubleshooting
 
-**Render app is sleeping / slow first load**
-- Render free tier sleeps after 15 min of inactivity. First request takes ~30s to wake up.
-- Set up a cron job (see Step 1) to keep it alive.
+**Vercel function timeout**
+- Free tier has a 10-second limit on serverless functions.
+- AI analysis with `gpt-4o-mini` usually takes 3-8 seconds, so it should work fine.
+- If timeouts occur, make sure you're using `gpt-4o-mini` (faster than gpt-4o).
 
 **Supabase database is paused**
 - Supabase pauses free databases after 1 week of inactivity.
-- The `/api/health` endpoint pings the database. Use a cron job to call it regularly.
+- Set up the cron job from Step 1 to prevent this.
 
 **Scanner fails with "context directory not found"**
 - Run the init script first: `npm run <platform>:init`
@@ -284,9 +283,14 @@ job_automation/
 - Go to `/admin/settings` and enter your API key
 
 **Google Sheets not updating**
-- Make sure the sheet tab is named `Jobs`
+- Make sure the sheet tabs are named `Jobs` and `LinkedIn`
 - Make sure the service account email has Editor access to the sheet
 - Check that the Sheet ID is correct (from the URL)
 
+**Chrome extension not connecting**
+- Make sure `SERVER_URL` in `popup.js` matches your Vercel URL
+- Check that you're on a LinkedIn jobs search page
+- If using an API key, make sure it matches what's in `/admin/settings`
+
 **Jobs are being analyzed twice**
-- This should not happen. The system only analyzes `PENDING` jobs and checks status before each API call. If you see duplicates, check the logs at `/admin/logs`.
+- This should not happen. The system only analyzes PENDING jobs with an atomic status check. If you see duplicates, check `/admin/logs`.

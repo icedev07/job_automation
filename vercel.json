@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npx prisma generate && npx prisma migrate deploy && next build",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/extension/analyze/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/admin/analyze/route.ts": {
+      "maxDuration": 10
+    }
+  }
+}
