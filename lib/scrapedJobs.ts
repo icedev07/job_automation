@@ -1,6 +1,41 @@
 import { prisma } from "./prisma";
 import { shouldSkipJob } from "./jobSkipRules";
 
+function normalizeUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    u.searchParams.delete("utm_source");
+    u.searchParams.delete("utm_medium");
+    u.searchParams.delete("utm_campaign");
+    u.searchParams.delete("utm_content");
+    u.searchParams.delete("utm_term");
+    u.searchParams.delete("ref");
+    u.searchParams.delete("refId");
+    u.searchParams.delete("clickId");
+    u.searchParams.delete("trk");
+    u.searchParams.delete("source");
+    u.hash = "";
+    let path = u.pathname.replace(/\/+$/, "");
+    u.pathname = path || "/";
+    return u.toString();
+  } catch {
+    return raw.trim();
+  }
+}
+
+function normalizeTitle(title: string): string {
+  return title.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeCompany(company: string): string {
+  return company
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/,?\s*(inc\.?|llc|ltd\.?|corp\.?|co\.?|gmbh|s\.?a\.?)$/i, "")
+    .trim();
+}
+
 export async function upsertScrapedJob(params: {
   platform: string;
   title: string;
@@ -16,22 +51,41 @@ export async function upsertScrapedJob(params: {
     return null;
   }
 
-  const existing = await prisma.scrapedJob.findFirst({
-    where: { platform, url },
-  });
-  if (existing) return { id: existing.id, title: existing.title, company: existing.company };
+  const normUrl = normalizeUrl(url);
+  const normTitle = normalizeTitle(title);
+  const normCompany = normalizeCompany(company);
 
-  const titleDupe = await prisma.scrapedJob.findFirst({
+  // same-platform URL dedup
+  const byUrl = await prisma.scrapedJob.findFirst({
+    where: { platform, url: normUrl },
+  });
+  if (byUrl) return { id: byUrl.id, title: byUrl.title, company: byUrl.company };
+
+  // same-platform title+company dedup
+  const byTitle = await prisma.scrapedJob.findFirst({
     where: { platform, title, company },
   });
-  if (titleDupe) return { id: titleDupe.id, title: titleDupe.title, company: titleDupe.company };
+  if (byTitle) return { id: byTitle.id, title: byTitle.title, company: byTitle.company };
+
+  // cross-platform dedup: same normalized title+company on any platform
+  const crossPlatform = await prisma.$queryRaw<{ id: number; title: string; company: string }[]>`
+    SELECT id, title, company FROM "ScrapedJob"
+    WHERE LOWER(TRIM(title)) = ${normTitle}
+      AND LOWER(TRIM(
+        REGEXP_REPLACE(company, ',?\s*(inc\.?|llc|ltd\.?|corp\.?|co\.?|gmbh|s\.?a\.?)$', '', 'i')
+      )) = ${normCompany}
+    LIMIT 1
+  `;
+  if (crossPlatform.length > 0) {
+    return { id: crossPlatform[0].id, title: crossPlatform[0].title, company: crossPlatform[0].company };
+  }
 
   const job = await prisma.scrapedJob.create({
     data: {
       platform,
       title,
       company,
-      url,
+      url: normUrl,
       location: location || null,
       description: description || null,
       salary: salary || null,
@@ -42,6 +96,12 @@ export async function upsertScrapedJob(params: {
 }
 
 export async function saveJobDescription(jobId: number, description: string) {
+  const job = await prisma.scrapedJob.findUnique({
+    where: { id: jobId },
+    select: { description: true },
+  });
+  if (job?.description && job.description.length >= description.length) return;
+
   await prisma.scrapedJob.update({
     where: { id: jobId },
     data: { description },
@@ -76,8 +136,12 @@ export async function isDuplicate(params: {
   title: string;
   company: string;
 }): Promise<boolean> {
+  const normUrl = normalizeUrl(params.url);
+  const normTitle = normalizeTitle(params.title);
+  const normCompany = normalizeCompany(params.company);
+
   const byUrl = await prisma.scrapedJob.findFirst({
-    where: { platform: params.platform, url: params.url },
+    where: { platform: params.platform, url: normUrl },
     select: { id: true },
   });
   if (byUrl) return true;
@@ -86,5 +150,16 @@ export async function isDuplicate(params: {
     where: { platform: params.platform, title: params.title, company: params.company },
     select: { id: true },
   });
-  return !!byTitle;
+  if (byTitle) return true;
+
+  // cross-platform check
+  const crossPlatform = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT id FROM "ScrapedJob"
+    WHERE LOWER(TRIM(title)) = ${normTitle}
+      AND LOWER(TRIM(
+        REGEXP_REPLACE(company, ',?\s*(inc\.?|llc|ltd\.?|corp\.?|co\.?|gmbh|s\.?a\.?)$', '', 'i')
+      )) = ${normCompany}
+    LIMIT 1
+  `;
+  return crossPlatform.length > 0;
 }

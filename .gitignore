@@ -29,23 +29,12 @@ test-results
 prisma/dev.db
 generated/
 
-# Resumes - ignore generated documents, but keep templates
-Resumes/*
-!Resumes/Templates/
-!Resumes/Templates/**
-
-# Mohan resumes - ignore generated documents, but keep templates
-Resumes_Mohan/*
-!Resumes_Mohan/Templates/
-!Resumes_Mohan/Templates/**
-
-# Database backups
-*.sql
-*.sql.gz
-*.custom
-
 # Python
 __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Misc
+downloaded_files/
+.tmp/

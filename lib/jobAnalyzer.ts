@@ -63,8 +63,44 @@ function parseAIResponse(text: string): AnalysisResult {
 }
 
 export async function analyzeJob(jobId: number): Promise<AnalysisResult> {
+  // atomic check: only analyze if still PENDING (prevents double-analysis race condition)
+  const updated = await prisma.scrapedJob.updateMany({
+    where: { id: jobId, status: "PENDING" },
+    data: { status: "PENDING" },
+  });
+  if (updated.count === 0) {
+    const existing = await prisma.scrapedJob.findUnique({ where: { id: jobId } });
+    if (!existing) throw new Error(`Job ${jobId} not found`);
+    return {
+      approved: existing.status === "APPROVED",
+      score: existing.aiScore || 0,
+      reason: existing.aiReason || "Already analyzed",
+      techStack: existing.techStack?.split(", ") || [],
+    };
+  }
+
   const job = await prisma.scrapedJob.findUnique({ where: { id: jobId } });
   if (!job) throw new Error(`Job ${jobId} not found`);
+
+  // skip jobs with no useful description (waste of tokens)
+  if (!job.description || job.description.trim().length < 50) {
+    await prisma.scrapedJob.update({
+      where: { id: jobId },
+      data: { status: "REJECTED", aiScore: 0, aiReason: "No description available for analysis" },
+    });
+    await prisma.analysisLog.create({
+      data: {
+        scrapedJobId: jobId,
+        model: "skipped",
+        approved: false,
+        score: 0,
+        reason: "No description available for analysis",
+        tokensUsed: 0,
+        durationMs: 0,
+      },
+    });
+    return { approved: false, score: 0, reason: "No description available for analysis", techStack: [] };
+  }
 
   const config = await getConfig();
   const prompt = buildPrompt(job, config);
@@ -99,7 +135,13 @@ export async function analyzeJob(jobId: number): Promise<AnalysisResult> {
   return result;
 }
 
-export async function analyzeAllPending(): Promise<{ analyzed: number; approved: number; rejected: number }> {
+export async function analyzeAllPending(): Promise<{
+  analyzed: number;
+  approved: number;
+  rejected: number;
+  skipped: number;
+}> {
+  // only fetch PENDING jobs, exclude already analyzed
   const pending = await prisma.scrapedJob.findMany({
     where: { status: "PENDING" },
     orderBy: { createdAt: "asc" },
@@ -108,8 +150,19 @@ export async function analyzeAllPending(): Promise<{ analyzed: number; approved:
 
   let approved = 0;
   let rejected = 0;
+  let skipped = 0;
 
   for (const job of pending) {
+    // double-check status hasn't changed since the query
+    const current = await prisma.scrapedJob.findUnique({
+      where: { id: job.id },
+      select: { status: true },
+    });
+    if (!current || current.status !== "PENDING") {
+      skipped++;
+      continue;
+    }
+
     try {
       const result = await analyzeJob(job.id);
       if (result.approved) approved++;
@@ -120,5 +173,5 @@ export async function analyzeAllPending(): Promise<{ analyzed: number; approved:
     }
   }
 
-  return { analyzed: pending.length, approved, rejected };
+  return { analyzed: pending.length - skipped, approved, rejected, skipped };
 }
