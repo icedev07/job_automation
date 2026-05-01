@@ -4,13 +4,15 @@
   <meta charset="utf-8">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { width: 320px; font-family: system-ui, -apple-system, sans-serif; background: #f9fafb; padding: 16px; }
+    body { width: 340px; font-family: system-ui, -apple-system, sans-serif; background: #f9fafb; padding: 16px; }
     h1 { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 4px; }
     .subtitle { font-size: 11px; color: #6b7280; margin-bottom: 12px; }
-    .server-url { font-size: 10px; color: #9ca3af; word-break: break-all; margin-bottom: 12px; padding: 6px 8px; background: #f3f4f6; border-radius: 4px; font-family: monospace; }
-    .config-row { display: flex; gap: 6px; margin-bottom: 12px; }
-    .config-row input { flex: 1; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px; }
-    .config-row button { padding: 6px 10px; background: #6b7280; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    .config-section { margin-bottom: 12px; }
+    .config-section label { font-size: 10px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px; }
+    .config-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .config-row input { flex: 1; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px; font-family: monospace; }
+    .config-row button { padding: 6px 10px; background: #4b5563; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+    .config-row button:hover { background: #374151; }
     #startBtn { width: 100%; padding: 10px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 12px; }
     #startBtn:hover { background: #047857; }
     #startBtn.running { background: #dc2626; }
@@ -24,7 +26,10 @@
     .stat-value.rejected { color: #dc2626; }
     .stat-value.hidden { color: #d97706; }
     .stat-value.skipped { color: #6b7280; }
-    #statusMsg { font-size: 11px; color: #374151; padding: 8px; background: white; border-radius: 6px; border: 1px solid #e5e7eb; min-height: 32px; word-break: break-word; }
+    #statusMsg { font-size: 11px; color: #374151; padding: 8px; background: white; border-radius: 6px; border: 1px solid #e5e7eb; min-height: 32px; word-break: break-word; max-height: 80px; overflow-y: auto; }
+    .log-section { margin-top: 10px; }
+    .log-section summary { font-size: 11px; color: #6b7280; cursor: pointer; }
+    #logArea { font-size: 10px; font-family: monospace; background: #111827; color: #10b981; padding: 8px; border-radius: 4px; max-height: 150px; overflow-y: auto; margin-top: 6px; white-space: pre-wrap; word-break: break-all; }
     .not-on-linkedin { text-align: center; padding: 20px 0; color: #6b7280; font-size: 12px; }
   </style>
 </head>
@@ -32,9 +37,16 @@
   <h1>LinkedIn Job Scanner</h1>
   <div class="subtitle">AI-powered job filter for Armenian developers</div>
 
-  <div class="config-row">
-    <input type="text" id="apiKeyInput" placeholder="Extension API Key (optional)">
-    <button id="saveKeyBtn">Save</button>
+  <div class="config-section">
+    <label>Server URL</label>
+    <div class="config-row">
+      <input type="text" id="serverUrlInput" placeholder="https://your-app.vercel.app">
+    </div>
+    <label>API Key (optional)</label>
+    <div class="config-row">
+      <input type="text" id="apiKeyInput" placeholder="Extension API Key">
+      <button id="saveBtn">Save</button>
+    </div>
   </div>
 
   <div id="mainContent">
@@ -60,6 +72,11 @@
     </div>
 
     <div id="statusMsg">Ready. Open a LinkedIn job search page and click Start.</div>
+
+    <details class="log-section">
+      <summary>Activity Log</summary>
+      <div id="logArea"></div>
+    </details>
   </div>
 
   <div id="notOnLinkedIn" class="not-on-linkedin" style="display:none">

@@ -3,3 +3,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     chrome.runtime.sendMessage(msg).catch(() => {});
   }
 });
+
+chrome.runtime.onInstalled.addListener(() => {
+  console.log("[JobScanner] Extension installed/updated");
+});
