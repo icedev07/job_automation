@@ -18,16 +18,20 @@ OpenAI is the only paid service. All infrastructure is 100% free with no credit 
 
 1. Go to https://supabase.com and create a free account
 2. Click "New project"
-3. Choose a name (e.g. `job-finder`), set a database password, pick a region
+3. Choose a name (e.g. `job-finder`), set a database password (use only letters and numbers, avoid special characters like `@!#`), pick a region
 4. Wait for the project to be created (1-2 minutes)
 5. Click the green **Connect** button at the top of the dashboard
 6. Click the **Direct** tab
-7. Copy the connection string URI. It looks like:
+7. Under **Connection Method**, select **Session pooler**
+8. Set **Type** to **URI**
+9. Copy the connection string. It looks like:
    ```
-   postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres
+   postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-[n]-[region].pooler.supabase.com:5432/postgres
    ```
-8. Replace `[YOUR-PASSWORD]` with the database password you set
-9. Save this. You'll need it as `DATABASE_URL`
+10. Replace `[YOUR-PASSWORD]` with the database password you set
+11. Save this. You'll need it as `DATABASE_URL`
+
+**Important**: use port `5432` (session pooler), NOT `6543` (transaction pooler). The session pooler is required for Prisma to work correctly with Vercel.
 
 ### Keep Supabase alive
 
@@ -92,20 +96,22 @@ Supabase free tier pauses databases after 1 week of inactivity. The app has a `/
 3. Go to `https://your-project.vercel.app/admin`
 4. Login with password: `admin` (change it in settings)
 
-### Run database migrations
+### Create database tables
 
-After the first deploy, run migrations to create the database tables:
+After the first deploy, visit this URL once in your browser:
+
+```
+https://your-project.vercel.app/api/setup
+```
+
+You should see `{"status":"success","message":"All tables created successfully."}`. This creates all the required database tables automatically.
+
+Alternatively, run migrations from your local machine:
 
 ```bash
-# on your local machine, with the same DATABASE_URL
 npm install
 npx prisma generate
 npx prisma migrate deploy
-```
-
-Set the "Build Command" in Vercel project settings to:
-```
-npx prisma generate && next build
 ```
 
 ---
@@ -267,9 +273,10 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 ## Troubleshooting
 
 **Cannot log in to `/admin` with password `admin`**
-- If you see a message about the database being unreachable, fix `DATABASE_URL` in Vercel (use the Supabase pooler URI on port `6543`, see Step 1). Run `npx prisma migrate deploy` locally once so tables exist.
-- You can set an environment variable on Vercel: `ADMIN_PASSWORD=admin` (or any password you choose). When set, it overrides the value stored in the database for login.
-- If the page only said "Invalid password" before, open the Network tab: a `503` from `/api/admin/auth` means the app could not talk to Postgres, not a wrong password.
+- Make sure database tables exist: visit `/api/setup` first (see Step 4).
+- If you see "database may be unreachable", your `DATABASE_URL` is wrong. Use the Supabase **session pooler** URI (port `5432`, see Step 1).
+- You can set `ADMIN_PASSWORD=admin` as an environment variable on Vercel to bypass the database for login.
+- A `503` error from `/api/admin/auth` in the Network tab means the app cannot reach Postgres, not a wrong password.
 
 **Vercel function timeout**
 - Free tier has a 10-second limit on serverless functions.
