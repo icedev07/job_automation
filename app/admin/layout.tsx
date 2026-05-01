@@ -35,7 +35,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setAuthed(true);
       sessionStorage.setItem("admin_authed", "1");
     } else {
-      setError("Invalid password");
+      const data = await res.json().catch(() => ({}));
+      setError(
+        typeof data.error === "string"
+          ? data.error
+          : res.status === 401
+            ? "Invalid password"
+            : `Login failed (${res.status}). Try again or check deployment logs.`
+      );
     }
   }
 

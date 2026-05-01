@@ -266,6 +266,11 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 
 ## Troubleshooting
 
+**Cannot log in to `/admin` with password `admin`**
+- If you see a message about the database being unreachable, fix `DATABASE_URL` in Vercel (use the Supabase pooler URI on port `6543`, see Step 1). Run `npx prisma migrate deploy` locally once so tables exist.
+- You can set an environment variable on Vercel: `ADMIN_PASSWORD=admin` (or any password you choose). When set, it overrides the value stored in the database for login.
+- If the page only said "Invalid password" before, open the Network tab: a `503` from `/api/admin/auth` means the app could not talk to Postgres, not a wrong password.
+
 **Vercel function timeout**
 - Free tier has a 10-second limit on serverless functions.
 - AI analysis with `gpt-4o-mini` usually takes 3-8 seconds, so it should work fine.

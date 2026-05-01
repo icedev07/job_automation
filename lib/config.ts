@@ -36,12 +36,17 @@ export async function getAllConfig(): Promise<Record<string, string>> {
 
 export async function getConfig() {
   const all = await getAllConfig();
+  const envAdmin = process.env.ADMIN_PASSWORD?.trim();
+  const dbAdmin = all[CONFIG_KEYS.ADMIN_PASSWORD]?.trim();
+  const adminPassword =
+    envAdmin && envAdmin.length > 0 ? envAdmin : dbAdmin || "admin";
+
   return {
     openaiApiKey: all[CONFIG_KEYS.OPENAI_API_KEY] || "",
     openaiModel: all[CONFIG_KEYS.OPENAI_MODEL] || "gpt-4o-mini",
     googleSheetsCredentials: all[CONFIG_KEYS.GOOGLE_SHEETS_CREDENTIALS] || "",
     googleSheetId: all[CONFIG_KEYS.GOOGLE_SHEET_ID] || "",
-    adminPassword: all[CONFIG_KEYS.ADMIN_PASSWORD] || "admin",
+    adminPassword,
     targetMarket: all[CONFIG_KEYS.TARGET_MARKET] || "Europe, Eastern Europe, Remote worldwide",
     currentLocation: all[CONFIG_KEYS.CURRENT_LOCATION] || "Armenia",
     jobAnalysisPrompt: all[CONFIG_KEYS.JOB_ANALYSIS_PROMPT] || "",
