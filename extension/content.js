@@ -17,18 +17,19 @@
       return true;
     }
     if (msg.type === "START_SCAN") {
-      log(`START_SCAN received. serverUrl=${msg.serverUrl}`);
+      log(`START_SCAN received. serverUrl=${msg.serverUrl}, scanning=${scanning}`);
       if (scanning) {
-        log("Already scanning, ignoring.");
+        log("Already scanning, ignoring duplicate START_SCAN.");
         sendResponse({ ok: false, reason: "already scanning" });
         return true;
       }
+      scanning = true;
       serverUrl = msg.serverUrl;
       apiKey = msg.apiKey || "";
       stats = { checked: 0, approved: 0, hidden: 0, skipped: 0 };
       stopRequested = false;
-      startScan();
       sendResponse({ ok: true });
+      startScan();
       return true;
     }
     if (msg.type === "STOP_SCAN") {
@@ -71,11 +72,14 @@
 
   function getJobCards() {
     const selectors = [
+      ".scaffold-layout__list-container .scaffold-layout__list-item",
       ".scaffold-layout__list-container li.ember-view",
       ".jobs-search-results-list li.jobs-search-results__list-item",
-      ".jobs-search-results-list li.ember-view.occludable-update",
+      ".jobs-search-results-list li.ember-view",
+      "li[data-occludable-job-id]",
       ".jobs-search__results-list li",
       "ul.scaffold-layout__list-container > li",
+      ".scaffold-layout__list > div > ul > li",
     ];
     for (const sel of selectors) {
       const cards = document.querySelectorAll(sel);
@@ -84,8 +88,33 @@
         return Array.from(cards);
       }
     }
-    log("No job cards found with any selector. Page HTML classes: " +
-        document.querySelector("main")?.className?.substring(0, 200));
+
+    // Fallback: find any list items that contain job links
+    const allLis = document.querySelectorAll("li");
+    const jobLis = Array.from(allLis).filter(li => {
+      const link = li.querySelector("a[href*='/jobs/view/']");
+      return link && li.offsetHeight > 50;
+    });
+    if (jobLis.length > 0) {
+      log(`Fallback: found ${jobLis.length} li elements with job links`);
+      return jobLis;
+    }
+
+    // Debug: log what we can see
+    const mainEl = document.querySelector("main") || document.querySelector("[role='main']");
+    const listContainer = document.querySelector(".scaffold-layout__list-container") ||
+                          document.querySelector(".scaffold-layout__list") ||
+                          document.querySelector("[class*='jobs-search-results']");
+    log(`No job cards found. main=${mainEl?.className?.substring(0, 100)}, listContainer=${listContainer?.className?.substring(0, 100)}, listChildren=${listContainer?.children?.length || 0}`);
+
+    if (listContainer) {
+      const children = listContainer.querySelectorAll("li, div[data-job-id], div[class*='job-card']");
+      if (children.length > 0) {
+        log(`Found ${children.length} alternative children in list container`);
+        return Array.from(children).filter(el => el.offsetHeight > 40);
+      }
+    }
+
     return [];
   }
 
@@ -403,7 +432,6 @@
   }
 
   async function startScan() {
-    scanning = true;
     log("=== SCAN STARTED ===");
     sendProgress("Starting scan...");
 
