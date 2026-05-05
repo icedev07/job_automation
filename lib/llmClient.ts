@@ -33,11 +33,17 @@ async function generateWithOpenAI(prompt: string, apiKey: string, model: string)
   return { text, model, tokensUsed };
 }
 
-const GEMINI_FALLBACK_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b"];
+const GEMINI_FALLBACK_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-flash-latest",
+  "gemini-2.0-flash-001",
+  "gemini-2.0-flash-lite",
+];
 
 async function generateWithGemini(prompt: string, apiKey: string, model: string): Promise<LLMResult> {
   const order = [model, ...GEMINI_FALLBACK_MODELS.filter((m) => m !== model)];
-  let lastErr: Error | null = null;
+  const attempts: string[] = [];
 
   for (const m of order) {
     try {
@@ -51,11 +57,12 @@ async function generateWithGemini(prompt: string, apiKey: string, model: string)
         (usage?.promptTokenCount || 0) + (usage?.candidatesTokenCount || 0);
       return { text, model: m, tokensUsed };
     } catch (e: any) {
-      lastErr = e instanceof Error ? e : new Error(String(e?.message || e));
+      const msg = String(e?.message || e);
+      attempts.push(`${m}: ${msg}`);
     }
   }
 
-  throw lastErr || new Error("Gemini: all model attempts failed");
+  throw new Error(`Gemini: all model attempts failed → ${attempts.join(" | ")}`);
 }
 
 export async function generateText(prompt: string): Promise<LLMResult> {
@@ -65,7 +72,7 @@ export async function generateText(prompt: string): Promise<LLMResult> {
     if (!config.geminiApiKey) {
       throw new Error("Gemini API key not configured. Go to /admin/settings to set it.");
     }
-    return generateWithGemini(prompt, config.geminiApiKey, config.geminiModel || "gemini-1.5-flash");
+    return generateWithGemini(prompt, config.geminiApiKey, config.geminiModel || "gemini-2.5-flash");
   }
 
   if (!config.openaiApiKey) {

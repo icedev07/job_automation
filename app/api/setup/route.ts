@@ -43,7 +43,7 @@ async function seedDefaults() {
     admin_password: "admin",
     ai_provider: "gemini",
     openai_model: "gpt-4o-mini",
-    gemini_model: "gemini-1.5-flash",
+    gemini_model: "gemini-2.5-flash",
     target_market: "Europe, Eastern Europe, Remote worldwide",
     current_location: "Armenia",
     job_analysis_prompt: DEFAULT_ANALYSIS_PROMPT,

@@ -10,7 +10,7 @@ export async function GET() {
     openai_api_key_masked: all.openai_api_key ? maskApiKey(all.openai_api_key) : "",
     openai_model: all.openai_model || "gpt-4o-mini",
     gemini_api_key_masked: all.gemini_api_key ? maskApiKey(all.gemini_api_key) : "",
-    gemini_model: all.gemini_model || "gemini-1.5-flash",
+    gemini_model: all.gemini_model || "gemini-2.5-flash",
     google_sheet_id: all.google_sheet_id || "",
     google_sheets_credentials: !!all.google_sheets_credentials,
     target_market: all.target_market || "",
