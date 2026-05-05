@@ -42,6 +42,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Log what was received from the extension
+    console.log(`[Extension] Received: title="${title}", company="${company}", location="${location}", easyApply=${easyApply}, descLen=${description?.length || 0}, url=${url}`);
+
     if (easyApply) {
       const saved = await upsertScrapedJob({
         platform: "linkedin",
@@ -61,7 +64,19 @@ export async function POST(req: NextRequest) {
 
       await prisma.scrapedJob.update({
         where: { id: saved.id },
-        data: { status: "REJECTED", aiScore: 0, aiReason: "Easy Apply - auto rejected" },
+        data: { status: "REJECTED", aiScore: 0, aiReason: "Easy Apply - auto rejected (detected by extension)" },
+      });
+
+      await prisma.analysisLog.create({
+        data: {
+          scrapedJobId: saved.id,
+          model: "extension-auto",
+          approved: false,
+          score: 0,
+          reason: "Easy Apply - auto rejected (detected by extension)",
+          tokensUsed: 0,
+          durationMs: 0,
+        },
       });
 
       return NextResponse.json(
@@ -111,6 +126,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await analyzeJob(saved.id);
+    console.log(`[Extension] AI result for "${title}": approved=${result.approved}, score=${result.score}, reason="${result.reason}"`);
 
     if (result.approved) {
       const job = await prisma.scrapedJob.findUnique({ where: { id: saved.id } });
