@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
     // Log what was received from the extension
     console.log(`[Extension] Received: title="${title}", company="${company}", location="${location}", easyApply=${easyApply}, descLen=${description?.length || 0}, url=${url}`);
 
+    const MAX_DESC_CHARS = 120_000;
+
     if (easyApply) {
       const saved = await upsertScrapedJob({
         platform: "linkedin",
@@ -52,7 +54,8 @@ export async function POST(req: NextRequest) {
         company,
         url,
         location,
-        description,
+        description:
+          typeof description === "string" ? description.slice(0, MAX_DESC_CHARS) : description,
       });
 
       if (!saved) {
@@ -62,10 +65,20 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      await prisma.scrapedJob.update({
+      const easyUp = await prisma.scrapedJob.updateMany({
         where: { id: saved.id },
-        data: { status: "REJECTED", aiScore: 0, aiReason: "Easy Apply - auto rejected (detected by extension)" },
+        data: {
+          status: "REJECTED",
+          aiScore: 0,
+          aiReason: "Easy Apply - auto rejected (detected by extension)",
+        },
       });
+      if (easyUp.count === 0) {
+        return NextResponse.json(
+          { error: "Job record not found", action: "error", linkedInDismiss: false },
+          { status: 500, headers: corsHeaders() }
+        );
+      }
 
       await prisma.analysisLog.create({
         data: {
@@ -91,7 +104,8 @@ export async function POST(req: NextRequest) {
       company,
       url,
       location,
-      description,
+      description:
+        typeof description === "string" ? description.slice(0, MAX_DESC_CHARS) : description,
     });
 
     if (!saved) {
@@ -118,11 +132,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (description) {
-      await prisma.scrapedJob.update({
+    if (typeof description === "string" && description.length > 0) {
+      const descUp = await prisma.scrapedJob.updateMany({
         where: { id: saved.id },
-        data: { description },
+        data: { description: description.slice(0, MAX_DESC_CHARS) },
       });
+      if (descUp.count === 0) {
+        return NextResponse.json(
+          { error: "Job record not found for description update", action: "error", linkedInDismiss: false },
+          { status: 500, headers: corsHeaders() }
+        );
+      }
     }
 
     const result = await analyzeJob(saved.id);
@@ -145,12 +165,13 @@ export async function POST(req: NextRequest) {
         reason: result.reason,
         alreadyExists: false,
         score: result.score,
+        ...(!result.approved && result.linkedInDismiss === false ? { linkedInDismiss: false } : {}),
       },
       { headers: corsHeaders() }
     );
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message, action: "error" },
+      { error: error.message, action: "error", linkedInDismiss: false },
       { status: 500, headers: corsHeaders() }
     );
   }

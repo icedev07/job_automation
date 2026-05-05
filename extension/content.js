@@ -297,7 +297,9 @@
     }
 
     const result = await res.json();
-    log(`Server response: action=${result.action}, score=${result.score}, reason="${result.reason?.substring(0, 100)}"`);
+    log(
+      `Server response: action=${result.action}, linkedInDismiss=${result.linkedInDismiss}, score=${result.score}, reason="${result.reason?.substring(0, 100)}"`,
+    );
     return result;
   }
 
@@ -393,10 +395,16 @@
       }
 
       if (result.action === "rejected") {
-        stats.hidden++;
-        sendProgress(`Rejected ${index + 1}: ${title} (${result.reason?.substring(0, 50)})`);
-        await clickDismiss(card);
-        return "hidden";
+        const dismissOnLinkedIn = result.linkedInDismiss !== false;
+        if (dismissOnLinkedIn) {
+          stats.hidden++;
+          sendProgress(`Rejected ${index + 1}: ${title} (${result.reason?.substring(0, 50)})`);
+          await clickDismiss(card);
+          return "hidden";
+        }
+        stats.skipped++;
+        sendProgress(`Analysis issue (card kept): ${index + 1}: ${title} (${result.reason?.substring(0, 80)})`);
+        return "skipped";
       }
 
       if (result.action === "approved") {

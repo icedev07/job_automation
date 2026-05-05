@@ -17,9 +17,11 @@ function normalizeUrl(raw: string): string {
     u.hash = "";
     let path = u.pathname.replace(/\/+$/, "");
     u.pathname = path || "/";
-    return u.toString();
+    const s = u.toString();
+    return s.length <= 2048 ? s : s.slice(0, 2048);
   } catch {
-    return raw.trim();
+    const t = raw.trim();
+    return t.length <= 2048 ? t : t.slice(0, 2048);
   }
 }
 

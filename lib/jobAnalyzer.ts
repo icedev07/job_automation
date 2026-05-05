@@ -7,6 +7,8 @@ export type AnalysisResult = {
   score: number;
   reason: string;
   techStack: string[];
+  /** When false, extension should not click "Not interested" (e.g. AI provider outage). */
+  linkedInDismiss?: boolean;
 };
 
 const DEFAULT_ANALYSIS_PROMPT = `You are a job suitability analyzer. Evaluate whether this job is suitable for a software developer located in {{CURRENT_LOCATION}} who is looking for {{TARGET_MARKET}} positions.
@@ -110,10 +112,41 @@ export async function analyzeJob(jobId: number): Promise<AnalysisResult> {
   try {
     llmResult = await generateText(prompt);
   } catch (err: any) {
-    // Leave job PENDING so admin or a later scan can retry; do not mark REJECTED for transient API errors.
     const raw = err?.message ?? String(err);
+    const logReason = raw.length > 4000 ? raw.slice(0, 4000) : raw;
+    const reason =
+      raw.length > 700 ? `[analysis failed] ${raw.slice(0, 700)}…` : `[analysis failed] ${raw}`;
+    const durationMs = Date.now() - startTime;
     console.error(`[analyzeJob] LLM failed jobId=${jobId}: ${raw}`);
-    throw err;
+    const u = await prisma.scrapedJob.updateMany({
+      where: { id: jobId },
+      data: {
+        status: "REJECTED",
+        aiScore: 0,
+        aiReason: reason,
+        techStack: null,
+      },
+    });
+    if (u.count > 0) {
+      await prisma.analysisLog.create({
+        data: {
+          scrapedJobId: jobId,
+          model: "error",
+          approved: false,
+          score: 0,
+          reason: logReason,
+          tokensUsed: 0,
+          durationMs,
+        },
+      });
+    }
+    return {
+      approved: false,
+      score: 0,
+      reason,
+      techStack: [],
+      linkedInDismiss: false,
+    };
   }
 
   const result = parseAIResponse(llmResult.text);
