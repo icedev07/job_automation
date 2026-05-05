@@ -287,23 +287,42 @@
 
     log(`POST ${url} - title="${jobData.title}", company="${jobData.company}", easyApply=${jobData.easyApply}, descLen=${jobData.description?.length || 0}`);
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(jobData),
-    });
+    const MAX_ATTEMPTS = 2;
+    let lastErr = null;
 
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      log(`Server error ${res.status}: ${errBody}`, "error");
-      throw new Error(`Server ${res.status}: ${errBody}`);
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(jobData),
+        });
+
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => "");
+          log(`Server error ${res.status} (attempt ${attempt}/${MAX_ATTEMPTS}): ${errBody}`, "error");
+          if (res.status >= 500 && attempt < MAX_ATTEMPTS) {
+            await sleep(1500);
+            continue;
+          }
+          throw new Error(`Server ${res.status}: ${errBody}`);
+        }
+
+        const result = await res.json();
+        log(
+          `Server response: action=${result.action}, linkedInDismiss=${result.linkedInDismiss}, score=${result.score}, reason="${result.reason || ""}", error="${result.error || ""}"`,
+        );
+        return result;
+      } catch (err) {
+        lastErr = err;
+        log(`Fetch failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${err.message}`, "warn");
+        if (attempt < MAX_ATTEMPTS) {
+          await sleep(2000);
+        }
+      }
     }
 
-    const result = await res.json();
-    log(
-      `Server response: action=${result.action}, linkedInDismiss=${result.linkedInDismiss}, score=${result.score}, reason="${result.reason || ""}", error="${result.error || ""}"`,
-    );
-    return result;
+    throw lastErr || new Error("Unknown fetch failure");
   }
 
   // --- DISMISS / NOT INTERESTED ---
@@ -439,17 +458,91 @@
 
   // --- PAGINATION ---
 
+  async function scrollJobsListToBottom() {
+    // LinkedIn renders pagination only after you scroll the list container to the bottom.
+    const container =
+      document.querySelector(".jobs-search-results-list") ||
+      document.querySelector(".scaffold-layout__list-container") ||
+      document.querySelector("div[data-results-list-top-scroll-sentinel]")?.parentElement;
+    if (!container) {
+      log("No jobs list container found for scroll");
+      return;
+    }
+    log("Scrolling jobs list to bottom to reveal pagination");
+    let prev = -1;
+    for (let i = 0; i < 10; i++) {
+      container.scrollTop = container.scrollHeight;
+      await sleep(400);
+      if (container.scrollTop === prev) break;
+      prev = container.scrollTop;
+    }
+    await sleep(500);
+  }
+
+  function findActivePageNumber() {
+    // LinkedIn uses several pagination DOMs. Try each.
+    const sel = document.querySelector("li.artdeco-pagination__indicator--number.active button, li.artdeco-pagination__indicator--number.selected button, button[aria-current='true']");
+    if (sel) {
+      const t = sel.textContent.trim();
+      const n = parseInt(t, 10);
+      if (!isNaN(n)) return n;
+      const aria = sel.getAttribute("aria-label") || "";
+      const m = aria.match(/Page (\d+)/i);
+      if (m) return parseInt(m[1], 10);
+    }
+    return null;
+  }
+
+  function findPageButton(pageNum) {
+    const candidates = [
+      `button[aria-label='Page ${pageNum}']`,
+      `button[aria-label="Page ${pageNum}"]`,
+      `[data-test-pagination-page-btn='${pageNum}'] button`,
+      `li[data-test-pagination-page-btn='${pageNum}'] button`,
+    ];
+    for (const sel of candidates) {
+      const btn = document.querySelector(sel);
+      if (btn && !btn.disabled && btn.offsetParent !== null) return btn;
+    }
+    // Fallback: scan all numbered buttons
+    const all = document.querySelectorAll("li.artdeco-pagination__indicator--number button, button[aria-label^='Page ']");
+    for (const btn of all) {
+      const t = btn.textContent.trim();
+      if (parseInt(t, 10) === pageNum && !btn.disabled && btn.offsetParent !== null) return btn;
+    }
+    return null;
+  }
+
   async function goToNextPage() {
-    const selectors = [
+    await scrollJobsListToBottom();
+
+    // Strategy 1: find the active page number and click N+1.
+    const active = findActivePageNumber();
+    if (active != null) {
+      log(`Active page detected: ${active}`);
+      const nextBtn = findPageButton(active + 1);
+      if (nextBtn) {
+        log(`Clicking page ${active + 1}`);
+        nextBtn.click();
+        await sleep(3000);
+        await waitForSelector("div.job-card-container, li.ember-view a[href*='/jobs/view/']", document, 8000);
+        await sleep(1500);
+        return true;
+      }
+      log(`Page ${active + 1} button not found (likely last page)`);
+    }
+
+    // Strategy 2: explicit Next button (older DOM).
+    const nextSelectors = [
       "button[aria-label='View next page']",
       "button[aria-label='Next']",
+      "button.artdeco-pagination__button--next",
       ".artdeco-pagination__button--next",
-      "li.artdeco-pagination__indicator--number.active + li button",
     ];
-    for (const sel of selectors) {
+    for (const sel of nextSelectors) {
       const btn = document.querySelector(sel);
       if (btn && !btn.disabled && btn.offsetParent !== null) {
-        log(`Next page: ${sel}`);
+        log(`Next page via fallback selector: ${sel}`);
         btn.click();
         await sleep(3000);
         await waitForSelector("div.job-card-container, li.ember-view a[href*='/jobs/view/']", document, 8000);
@@ -457,7 +550,24 @@
         return true;
       }
     }
-    log("No next page button found or it's disabled");
+
+    // Strategy 3: URL-based pagination (start=N param).
+    try {
+      const url = new URL(window.location.href);
+      const start = parseInt(url.searchParams.get("start") || "0", 10);
+      const newStart = start + 25; // LinkedIn jobs uses 25-per-page
+      url.searchParams.set("start", String(newStart));
+      log(`Trying URL-based pagination: start=${newStart}`);
+      window.location.href = url.toString();
+      await sleep(4000);
+      await waitForSelector("div.job-card-container", document, 10000);
+      await sleep(1500);
+      return true;
+    } catch (e) {
+      log(`URL pagination failed: ${e.message}`);
+    }
+
+    log("No next page available (last page reached)");
     return false;
   }
 
