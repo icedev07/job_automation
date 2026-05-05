@@ -106,7 +106,16 @@ export async function analyzeJob(jobId: number): Promise<AnalysisResult> {
   const prompt = buildPrompt(job, config);
   const startTime = Date.now();
 
-  const llmResult = await generateText(prompt);
+  let llmResult: { text: string; model: string; tokensUsed: number };
+  try {
+    llmResult = await generateText(prompt);
+  } catch (err: any) {
+    // Leave job PENDING so admin or a later scan can retry; do not mark REJECTED for transient API errors.
+    const raw = err?.message ?? String(err);
+    console.error(`[analyzeJob] LLM failed jobId=${jobId}: ${raw}`);
+    throw err;
+  }
+
   const result = parseAIResponse(llmResult.text);
   const durationMs = Date.now() - startTime;
 

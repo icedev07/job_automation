@@ -80,7 +80,7 @@ Supabase free tier pauses databases after 1 week of inactivity. The app has a `/
 3. Click "Create API Key"
 4. Copy and save it
 
-Free tier: 1500 requests/day with `gemini-2.0-flash`. No credit card needed.
+Free tier limits depend on the model; use `gemini-1.5-flash` in Settings for the best compatibility with the free API. No credit card needed for AI Studio keys.
 
 ### Option B: OpenAI (paid alternative)
 
@@ -146,7 +146,7 @@ Select your AI provider and enter the API key:
 | Provider | Setting | Value |
 |----------|---------|-------|
 | Gemini (default, free) | API Key | `AIzaSy...` (from aistudio.google.com/apikey) |
-| Gemini | Model | `gemini-2.0-flash` (1500 req/day free) |
+| Gemini | Model | `gemini-1.5-flash` (recommended) |
 | OpenAI (alternative) | API Key | `sk-...` (from platform.openai.com) |
 | OpenAI | Model | `gpt-4o-mini` (cheapest paid option) |
 
@@ -313,6 +313,14 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 - Go to `/admin/settings` and check that you have the correct AI provider selected and an API key entered.
 - If using Gemini: get a free key at https://aistudio.google.com/apikey (no card needed).
 - If using OpenAI: make sure you have API credits at https://platform.openai.com/account/billing (separate from ChatGPT Plus).
+
+**Gemini: `Error fetching from https://generativelanguage.googleapis.com`**
+- In Settings set the model to **`gemini-1.5-flash`** and save (newer model names are not always available for every key or region).
+- Create a fresh key at https://aistudio.google.com/apikey and paste it again.
+- After fixing, use **Scanners** tab **Analyze Pending Jobs** to clear old PENDING rows, or scan again on LinkedIn.
+
+**Duplicate lines in the extension activity log**
+- Reload the extension after update: `chrome://extensions` then reload "LinkedIn Job Scanner" (background relay was removed).
 
 **Google Sheets not updating**
 - Make sure the sheet tabs are named `Jobs` and `LinkedIn`

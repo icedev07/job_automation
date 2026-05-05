@@ -33,17 +33,29 @@ async function generateWithOpenAI(prompt: string, apiKey: string, model: string)
   return { text, model, tokensUsed };
 }
 
+const GEMINI_FALLBACK_MODELS = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b"];
+
 async function generateWithGemini(prompt: string, apiKey: string, model: string): Promise<LLMResult> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const genModel = genAI.getGenerativeModel({ model });
+  const order = [model, ...GEMINI_FALLBACK_MODELS.filter((m) => m !== model)];
+  let lastErr: Error | null = null;
 
-  const result = await genModel.generateContent(prompt);
-  const response = result.response;
-  const text = response.text();
-  const usage = response.usageMetadata;
-  const tokensUsed = (usage?.promptTokenCount || 0) + (usage?.candidatesTokenCount || 0);
+  for (const m of order) {
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const genModel = genAI.getGenerativeModel({ model: m });
+      const result = await genModel.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+      const usage = response.usageMetadata;
+      const tokensUsed =
+        (usage?.promptTokenCount || 0) + (usage?.candidatesTokenCount || 0);
+      return { text, model: m, tokensUsed };
+    } catch (e: any) {
+      lastErr = e instanceof Error ? e : new Error(String(e?.message || e));
+    }
+  }
 
-  return { text, model, tokensUsed };
+  throw lastErr || new Error("Gemini: all model attempts failed");
 }
 
 export async function generateText(prompt: string): Promise<LLMResult> {
@@ -53,7 +65,7 @@ export async function generateText(prompt: string): Promise<LLMResult> {
     if (!config.geminiApiKey) {
       throw new Error("Gemini API key not configured. Go to /admin/settings to set it.");
     }
-    return generateWithGemini(prompt, config.geminiApiKey, config.geminiModel || "gemini-2.0-flash");
+    return generateWithGemini(prompt, config.geminiApiKey, config.geminiModel || "gemini-1.5-flash");
   }
 
   if (!config.openaiApiKey) {

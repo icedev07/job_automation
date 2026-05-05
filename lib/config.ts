@@ -49,7 +49,7 @@ export async function getConfig() {
     openaiApiKey: all[CONFIG_KEYS.OPENAI_API_KEY] || "",
     openaiModel: all[CONFIG_KEYS.OPENAI_MODEL] || "gpt-4o-mini",
     geminiApiKey: all[CONFIG_KEYS.GEMINI_API_KEY] || "",
-    geminiModel: all[CONFIG_KEYS.GEMINI_MODEL] || "gemini-2.0-flash",
+    geminiModel: all[CONFIG_KEYS.GEMINI_MODEL] || "gemini-1.5-flash",
     googleSheetsCredentials: all[CONFIG_KEYS.GOOGLE_SHEETS_CREDENTIALS] || "",
     googleSheetId: all[CONFIG_KEYS.GOOGLE_SHEET_ID] || "",
     adminPassword,

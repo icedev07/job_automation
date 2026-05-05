@@ -7,7 +7,7 @@ export default function SettingsPage() {
   const [openaiKey, setOpenaiKey] = useState("");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
   const [geminiKey, setGeminiKey] = useState("");
-  const [geminiModel, setGeminiModel] = useState("gemini-2.0-flash");
+  const [geminiModel, setGeminiModel] = useState("gemini-1.5-flash");
   const [sheetId, setSheetId] = useState("");
   const [sheetCreds, setSheetCreds] = useState("");
   const [sheetColumns, setSheetColumns] = useState("");
@@ -24,7 +24,7 @@ export default function SettingsPage() {
       setOpenaiKey(data.openai_api_key_masked || "");
       setOpenaiModel(data.openai_model || "gpt-4o-mini");
       setGeminiKey(data.gemini_api_key_masked || "");
-      setGeminiModel(data.gemini_model || "gemini-2.0-flash");
+      setGeminiModel(data.gemini_model || "gemini-1.5-flash");
       setSheetId(data.google_sheet_id || "");
       setSheetCreds(data.google_sheets_credentials ? "(configured)" : "");
       setSheetColumns(data.sheet_columns || "");
@@ -101,9 +101,11 @@ export default function SettingsPage() {
 
             <label style={labelStyle}>Model</label>
             <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)} style={inputStyle}>
-              <option value="gemini-2.0-flash">gemini-2.0-flash (free, 1500 req/day)</option>
-              <option value="gemini-2.5-flash">gemini-2.5-flash (free, 250 req/day)</option>
-              <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (free, 1000 req/day)</option>
+              <option value="gemini-1.5-flash">gemini-1.5-flash (recommended, widely available)</option>
+              <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+              <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b</option>
+              <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+              <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
             </select>
           </div>
         )}

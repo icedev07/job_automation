@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Job Scanner",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Scans LinkedIn job search results, analyzes suitability with AI, and saves approved jobs to Google Sheets.",
   "permissions": ["activeTab", "storage", "scripting"],
   "host_permissions": ["https://www.linkedin.com/*", "https://*.vercel.app/*"],

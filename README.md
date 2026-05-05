@@ -173,7 +173,7 @@ Default column config JSON:
 |---------|--------------|
 | Admin Password | `admin` |
 | AI Provider | `gemini` |
-| Gemini Model | `gemini-2.0-flash` |
+| Gemini Model | `gemini-1.5-flash` |
 | OpenAI Model | `gpt-4o-mini` |
 | Target Market | `Europe, Eastern Europe, Remote worldwide` |
 | Current Location | `Armenia` |
