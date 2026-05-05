@@ -10,6 +10,8 @@ export default function SettingsPage() {
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash");
+  const [openrouterKey, setOpenrouterKey] = useState("");
+  const [openrouterModel, setOpenrouterModel] = useState("deepseek/deepseek-chat-v3-0324:free");
   const [sheetId, setSheetId] = useState("");
   const [sheetCreds, setSheetCreds] = useState("");
   const [sheetColumns, setSheetColumns] = useState("");
@@ -24,10 +26,12 @@ export default function SettingsPage() {
 
   const [showGeminiKey, setShowGeminiKey] = useState(true);
   const [showOpenAIKey, setShowOpenAIKey] = useState(true);
+  const [showOpenRouterKey, setShowOpenRouterKey] = useState(true);
   const [showExtensionKey, setShowExtensionKey] = useState(true);
 
   const [geminiTest, setGeminiTest] = useState<TestResult>(null);
   const [openaiTest, setOpenaiTest] = useState<TestResult>(null);
+  const [openrouterTest, setOpenrouterTest] = useState<TestResult>(null);
   const [sheetsTest, setSheetsTest] = useState<TestResult>(null);
   const [testing, setTesting] = useState<string>("");
 
@@ -42,6 +46,8 @@ export default function SettingsPage() {
     setOpenaiModel(data.openai_model || "gpt-4o-mini");
     setGeminiKey(data.gemini_api_key || "");
     setGeminiModel(data.gemini_model || "gemini-2.5-flash");
+    setOpenrouterKey(data.openrouter_api_key || "");
+    setOpenrouterModel(data.openrouter_model || "deepseek/deepseek-chat-v3-0324:free");
     setSheetId(data.google_sheet_id || "");
     setSheetCreds(data.google_sheets_credentials || "");
     setSheetColumns(data.sheet_columns || "");
@@ -61,6 +67,8 @@ export default function SettingsPage() {
       openai_model: openaiModel,
       gemini_api_key: geminiKey,
       gemini_model: geminiModel,
+      openrouter_api_key: openrouterKey,
+      openrouter_model: openrouterModel,
       google_sheet_id: sheetId,
       google_sheets_credentials: sheetCreds,
       target_market: targetMarket,
@@ -85,10 +93,11 @@ export default function SettingsPage() {
     }
   }
 
-  async function runTest(target: "gemini" | "openai" | "sheets") {
+  async function runTest(target: "gemini" | "openai" | "openrouter" | "sheets") {
     setTesting(target);
     if (target === "gemini") setGeminiTest(null);
     if (target === "openai") setOpenaiTest(null);
+    if (target === "openrouter") setOpenrouterTest(null);
     if (target === "sheets") setSheetsTest(null);
 
     try {
@@ -100,11 +109,13 @@ export default function SettingsPage() {
       const data = await res.json();
       if (target === "gemini") setGeminiTest(data);
       if (target === "openai") setOpenaiTest(data);
+      if (target === "openrouter") setOpenrouterTest(data);
       if (target === "sheets") setSheetsTest(data);
     } catch (e: any) {
       const fail = { ok: false, error: String(e?.message || e) };
       if (target === "gemini") setGeminiTest(fail);
       if (target === "openai") setOpenaiTest(fail);
+      if (target === "openrouter") setOpenrouterTest(fail);
       if (target === "sheets") setSheetsTest(fail);
     } finally {
       setTesting("");
@@ -153,6 +164,10 @@ export default function SettingsPage() {
             <span><strong>Gemini</strong> <span style={{ color: "#16a34a", fontSize: "0.75rem" }}>(free)</span></span>
           </label>
           <label style={radioLabel}>
+            <input type="radio" name="aiProvider" value="openrouter" checked={aiProvider === "openrouter"} onChange={(e) => setAiProvider(e.target.value)} />
+            <span><strong>OpenRouter</strong> <span style={{ color: "#16a34a", fontSize: "0.75rem" }}>(free, no card)</span></span>
+          </label>
+          <label style={radioLabel}>
             <input type="radio" name="aiProvider" value="openai" checked={aiProvider === "openai"} onChange={(e) => setAiProvider(e.target.value)} />
             <span><strong>OpenAI</strong> <span style={{ color: "#6b7280", fontSize: "0.75rem" }}>(paid)</span></span>
           </label>
@@ -195,6 +210,51 @@ export default function SettingsPage() {
               Tests the value currently stored in the database against the selected model. Save first if you just edited the key.
             </p>
             {renderTest(geminiTest)}
+          </div>
+        )}
+
+        {aiProvider === "openrouter" && (
+          <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1rem" }}>
+            <label style={labelStyle}>OpenRouter API Key (stored value shown in plain text)</label>
+            <div style={keyRow}>
+              <input
+                type={showOpenRouterKey ? "text" : "password"}
+                value={openrouterKey}
+                onChange={(e) => setOpenrouterKey(e.target.value)}
+                placeholder="sk-or-v1-..."
+                style={{ ...inputStyle, marginBottom: 0, fontFamily: "monospace" }}
+              />
+              <button type="button" onClick={() => setShowOpenRouterKey((v) => !v)} style={smallBtn}>
+                {showOpenRouterKey ? "Hide" : "Show"}
+              </button>
+              <button type="button" onClick={() => navigator.clipboard.writeText(openrouterKey)} style={smallBtn}>Copy</button>
+            </div>
+            <p style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: "0.25rem", marginBottom: "1rem" }}>
+              Get a free key (no credit card required) at <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8" }}>openrouter.ai/settings/keys</a>. Browse free models at <a href="https://openrouter.ai/models?max_price=0" target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8" }}>openrouter.ai/models?max_price=0</a>.
+            </p>
+
+            <label style={labelStyle}>Model (only free `:free` models listed)</label>
+            <select value={openrouterModel} onChange={(e) => setOpenrouterModel(e.target.value)} style={inputStyle}>
+              <option value="deepseek/deepseek-chat-v3-0324:free">deepseek/deepseek-chat-v3-0324 (recommended)</option>
+              <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1 (reasoning)</option>
+              <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct</option>
+              <option value="google/gemini-2.0-flash-exp:free">google/gemini-2.0-flash-exp</option>
+              <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct</option>
+              <option value="nvidia/llama-3.1-nemotron-70b-instruct:free">nvidia/llama-3.1-nemotron-70b-instruct</option>
+              <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct (smallest)</option>
+            </select>
+            <p style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: "-0.75rem", marginBottom: "1rem" }}>
+              The selected model is tried first. If it is rate-limited or unavailable, the app automatically falls through the other free models above.
+              Free tier (no credit on account) is limited to roughly 50 requests per day per key.
+            </p>
+
+            <button type="button" onClick={() => runTest("openrouter")} disabled={testing === "openrouter"} style={testBtn}>
+              {testing === "openrouter" ? "Testing..." : "Test OpenRouter Connection"}
+            </button>
+            <p style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: "0.5rem" }}>
+              Tests the value currently stored in the database against the selected model. Save first if you just edited the key.
+            </p>
+            {renderTest(openrouterTest)}
           </div>
         )}
 

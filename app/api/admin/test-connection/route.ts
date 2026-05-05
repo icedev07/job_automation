@@ -35,6 +35,52 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (target === "openrouter") {
+    if (!config.openrouterApiKey) {
+      return NextResponse.json({ ok: false, error: "OpenRouter API key is empty in DB" });
+    }
+    const model = config.openrouterModel || "deepseek/deepseek-chat-v3-0324:free";
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.openrouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://job-automation-ten.vercel.app",
+          "X-Title": "Job Finder",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: "Reply with the single word: OK" }],
+          temperature: 0,
+        }),
+      });
+      const body = await res.text();
+      if (!res.ok) {
+        return NextResponse.json({
+          ok: false,
+          model,
+          keyPreview: config.openrouterApiKey.slice(0, 8) + "..." + config.openrouterApiKey.slice(-4),
+          error: `HTTP ${res.status}: ${body.slice(0, 400)}`,
+        });
+      }
+      const data = JSON.parse(body);
+      return NextResponse.json({
+        ok: true,
+        model,
+        keyPreview: config.openrouterApiKey.slice(0, 8) + "..." + config.openrouterApiKey.slice(-4),
+        sample: (data?.choices?.[0]?.message?.content || "").slice(0, 200),
+      });
+    } catch (e: any) {
+      return NextResponse.json({
+        ok: false,
+        model,
+        keyPreview: config.openrouterApiKey.slice(0, 8) + "..." + config.openrouterApiKey.slice(-4),
+        error: String(e?.message || e),
+      });
+    }
+  }
+
   if (target === "openai") {
     if (!config.openaiApiKey) {
       return NextResponse.json({ ok: false, error: "OpenAI API key is empty in DB" });
