@@ -141,22 +141,45 @@ startBtn.addEventListener("click", () => {
       resetStats();
       addLog(`Starting scan. Server: ${serverUrl}`);
 
-      chrome.tabs.sendMessage(tab.id, {
-        type: "START_SCAN",
-        serverUrl,
-        apiKey: data.extensionApiKey || "",
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          addLog(`ERROR sending START_SCAN: ${chrome.runtime.lastError.message}`, "error");
-          statusMsg.textContent = "Error: content script not loaded. Refresh the LinkedIn page and try again.";
-          isRunning = false;
-          startBtn.textContent = "Start Scan";
-          startBtn.classList.remove("running");
-        }
-      });
+      sendStartScan(tab.id, serverUrl, data.extensionApiKey || "", false);
     });
   });
 });
+
+function sendStartScan(tabId, serverUrl, apiKey, isRetry) {
+  chrome.tabs.sendMessage(tabId, {
+    type: "START_SCAN",
+    serverUrl,
+    apiKey,
+  }, (response) => {
+    if (chrome.runtime.lastError) {
+      if (!isRetry) {
+        addLog("Content script not found, injecting...", "warn");
+        chrome.scripting.executeScript({
+          target: { tabId },
+          files: ["content.js"],
+        }, () => {
+          if (chrome.runtime.lastError) {
+            addLog(`Injection failed: ${chrome.runtime.lastError.message}`, "error");
+            statusMsg.textContent = "Error: cannot inject script. Refresh the LinkedIn page and try again.";
+            isRunning = false;
+            startBtn.textContent = "Start Scan";
+            startBtn.classList.remove("running");
+            return;
+          }
+          addLog("Content script injected. Retrying START_SCAN...");
+          setTimeout(() => sendStartScan(tabId, serverUrl, apiKey, true), 500);
+        });
+      } else {
+        addLog(`ERROR sending START_SCAN: ${chrome.runtime.lastError.message}`, "error");
+        statusMsg.textContent = "Error: content script not responding. Refresh the LinkedIn page and try again.";
+        isRunning = false;
+        startBtn.textContent = "Start Scan";
+        startBtn.classList.remove("running");
+      }
+    }
+  });
+}
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === "SCAN_PROGRESS") {
