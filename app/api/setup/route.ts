@@ -67,6 +67,16 @@ export async function GET() {
     `;
 
     if (hasTable[0]?.exists) {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ExtensionLog" (
+          "id" SERIAL NOT NULL,
+          "level" VARCHAR(20) NOT NULL DEFAULT 'info',
+          "message" TEXT NOT NULL,
+          "sessionId" VARCHAR(100),
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "ExtensionLog_pkey" PRIMARY KEY ("id")
+        );
+      `).catch(() => {});
       await seedDefaults();
       return NextResponse.json({ status: "already_initialized", message: "Database tables already exist. Default config values seeded." });
     }
@@ -153,6 +163,17 @@ export async function GET() {
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "AnalysisLog" ADD CONSTRAINT "AnalysisLog_scrapedJobId_fkey"
       FOREIGN KEY ("scrapedJobId") REFERENCES "ScrapedJob"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "ExtensionLog" (
+        "id" SERIAL NOT NULL,
+        "level" VARCHAR(20) NOT NULL DEFAULT 'info',
+        "message" TEXT NOT NULL,
+        "sessionId" VARCHAR(100),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "ExtensionLog_pkey" PRIMARY KEY ("id")
+      );
     `);
 
     await seedDefaults();

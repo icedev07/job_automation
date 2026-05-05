@@ -175,6 +175,14 @@ exports.Prisma.AnalysisLogScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.ExtensionLogScalarFieldEnum = {
+  id: 'id',
+  level: 'level',
+  message: 'message',
+  sessionId: 'sessionId',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -206,7 +214,8 @@ exports.Prisma.ModelName = {
   AppConfig: 'AppConfig',
   SkipRule: 'SkipRule',
   ScanLog: 'ScanLog',
-  AnalysisLog: 'AnalysisLog'
+  AnalysisLog: 'AnalysisLog',
+  ExtensionLog: 'ExtensionLog'
 };
 
 /**

@@ -50,6 +50,12 @@
   </div>
 
   <div id="mainContent">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <label style="font-size:10px;display:flex;align-items:center;gap:4px;color:#374151;cursor:pointer">
+        <input type="checkbox" id="sendLogsChk"> Send logs to server
+      </label>
+    </div>
+
     <button id="startBtn">Start Scan</button>
 
     <div class="stats">
@@ -73,7 +79,9 @@
 
     <div id="statusMsg">Ready. Open a LinkedIn job search page and click Start.</div>
 
-    <details class="log-section">
+    <button id="downloadBtn" style="display:none;width:100%;padding:8px;background:#1d4ed8;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px">Download Logs</button>
+
+    <details class="log-section" open>
       <summary>Activity Log</summary>
       <div id="logArea"></div>
     </details>

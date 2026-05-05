@@ -38,6 +38,11 @@ export type ScanLog = $Result.DefaultSelection<Prisma.$ScanLogPayload>
  * 
  */
 export type AnalysisLog = $Result.DefaultSelection<Prisma.$AnalysisLogPayload>
+/**
+ * Model ExtensionLog
+ * 
+ */
+export type ExtensionLog = $Result.DefaultSelection<Prisma.$ExtensionLogPayload>
 
 /**
  * Enums
@@ -242,6 +247,16 @@ export class PrismaClient<
     * ```
     */
   get analysisLog(): Prisma.AnalysisLogDelegate<ExtArgs>;
+
+  /**
+   * `prisma.extensionLog`: Exposes CRUD operations for the **ExtensionLog** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ExtensionLogs
+    * const extensionLogs = await prisma.extensionLog.findMany()
+    * ```
+    */
+  get extensionLog(): Prisma.ExtensionLogDelegate<ExtArgs>;
 }
 
 export namespace Prisma {
@@ -687,7 +702,8 @@ export namespace Prisma {
     AppConfig: 'AppConfig',
     SkipRule: 'SkipRule',
     ScanLog: 'ScanLog',
-    AnalysisLog: 'AnalysisLog'
+    AnalysisLog: 'AnalysisLog',
+    ExtensionLog: 'ExtensionLog'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -703,7 +719,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "scrapedJob" | "appConfig" | "skipRule" | "scanLog" | "analysisLog"
+      modelProps: "scrapedJob" | "appConfig" | "skipRule" | "scanLog" | "analysisLog" | "extensionLog"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1054,6 +1070,76 @@ export namespace Prisma {
           count: {
             args: Prisma.AnalysisLogCountArgs<ExtArgs>
             result: $Utils.Optional<AnalysisLogCountAggregateOutputType> | number
+          }
+        }
+      }
+      ExtensionLog: {
+        payload: Prisma.$ExtensionLogPayload<ExtArgs>
+        fields: Prisma.ExtensionLogFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ExtensionLogFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ExtensionLogFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload>
+          }
+          findFirst: {
+            args: Prisma.ExtensionLogFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ExtensionLogFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload>
+          }
+          findMany: {
+            args: Prisma.ExtensionLogFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload>[]
+          }
+          create: {
+            args: Prisma.ExtensionLogCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload>
+          }
+          createMany: {
+            args: Prisma.ExtensionLogCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ExtensionLogCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload>[]
+          }
+          delete: {
+            args: Prisma.ExtensionLogDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload>
+          }
+          update: {
+            args: Prisma.ExtensionLogUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload>
+          }
+          deleteMany: {
+            args: Prisma.ExtensionLogDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ExtensionLogUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ExtensionLogUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ExtensionLogPayload>
+          }
+          aggregate: {
+            args: Prisma.ExtensionLogAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateExtensionLog>
+          }
+          groupBy: {
+            args: Prisma.ExtensionLogGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ExtensionLogGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ExtensionLogCountArgs<ExtArgs>
+            result: $Utils.Optional<ExtensionLogCountAggregateOutputType> | number
           }
         }
       }
@@ -6088,6 +6174,918 @@ export namespace Prisma {
 
 
   /**
+   * Model ExtensionLog
+   */
+
+  export type AggregateExtensionLog = {
+    _count: ExtensionLogCountAggregateOutputType | null
+    _avg: ExtensionLogAvgAggregateOutputType | null
+    _sum: ExtensionLogSumAggregateOutputType | null
+    _min: ExtensionLogMinAggregateOutputType | null
+    _max: ExtensionLogMaxAggregateOutputType | null
+  }
+
+  export type ExtensionLogAvgAggregateOutputType = {
+    id: number | null
+  }
+
+  export type ExtensionLogSumAggregateOutputType = {
+    id: number | null
+  }
+
+  export type ExtensionLogMinAggregateOutputType = {
+    id: number | null
+    level: string | null
+    message: string | null
+    sessionId: string | null
+    createdAt: Date | null
+  }
+
+  export type ExtensionLogMaxAggregateOutputType = {
+    id: number | null
+    level: string | null
+    message: string | null
+    sessionId: string | null
+    createdAt: Date | null
+  }
+
+  export type ExtensionLogCountAggregateOutputType = {
+    id: number
+    level: number
+    message: number
+    sessionId: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type ExtensionLogAvgAggregateInputType = {
+    id?: true
+  }
+
+  export type ExtensionLogSumAggregateInputType = {
+    id?: true
+  }
+
+  export type ExtensionLogMinAggregateInputType = {
+    id?: true
+    level?: true
+    message?: true
+    sessionId?: true
+    createdAt?: true
+  }
+
+  export type ExtensionLogMaxAggregateInputType = {
+    id?: true
+    level?: true
+    message?: true
+    sessionId?: true
+    createdAt?: true
+  }
+
+  export type ExtensionLogCountAggregateInputType = {
+    id?: true
+    level?: true
+    message?: true
+    sessionId?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type ExtensionLogAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ExtensionLog to aggregate.
+     */
+    where?: ExtensionLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ExtensionLogs to fetch.
+     */
+    orderBy?: ExtensionLogOrderByWithRelationInput | ExtensionLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ExtensionLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ExtensionLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ExtensionLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ExtensionLogs
+    **/
+    _count?: true | ExtensionLogCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ExtensionLogAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ExtensionLogSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ExtensionLogMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ExtensionLogMaxAggregateInputType
+  }
+
+  export type GetExtensionLogAggregateType<T extends ExtensionLogAggregateArgs> = {
+        [P in keyof T & keyof AggregateExtensionLog]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateExtensionLog[P]>
+      : GetScalarType<T[P], AggregateExtensionLog[P]>
+  }
+
+
+
+
+  export type ExtensionLogGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ExtensionLogWhereInput
+    orderBy?: ExtensionLogOrderByWithAggregationInput | ExtensionLogOrderByWithAggregationInput[]
+    by: ExtensionLogScalarFieldEnum[] | ExtensionLogScalarFieldEnum
+    having?: ExtensionLogScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ExtensionLogCountAggregateInputType | true
+    _avg?: ExtensionLogAvgAggregateInputType
+    _sum?: ExtensionLogSumAggregateInputType
+    _min?: ExtensionLogMinAggregateInputType
+    _max?: ExtensionLogMaxAggregateInputType
+  }
+
+  export type ExtensionLogGroupByOutputType = {
+    id: number
+    level: string
+    message: string
+    sessionId: string | null
+    createdAt: Date
+    _count: ExtensionLogCountAggregateOutputType | null
+    _avg: ExtensionLogAvgAggregateOutputType | null
+    _sum: ExtensionLogSumAggregateOutputType | null
+    _min: ExtensionLogMinAggregateOutputType | null
+    _max: ExtensionLogMaxAggregateOutputType | null
+  }
+
+  type GetExtensionLogGroupByPayload<T extends ExtensionLogGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ExtensionLogGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ExtensionLogGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ExtensionLogGroupByOutputType[P]>
+            : GetScalarType<T[P], ExtensionLogGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ExtensionLogSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    level?: boolean
+    message?: boolean
+    sessionId?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["extensionLog"]>
+
+  export type ExtensionLogSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    level?: boolean
+    message?: boolean
+    sessionId?: boolean
+    createdAt?: boolean
+  }, ExtArgs["result"]["extensionLog"]>
+
+  export type ExtensionLogSelectScalar = {
+    id?: boolean
+    level?: boolean
+    message?: boolean
+    sessionId?: boolean
+    createdAt?: boolean
+  }
+
+
+  export type $ExtensionLogPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ExtensionLog"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      level: string
+      message: string
+      sessionId: string | null
+      createdAt: Date
+    }, ExtArgs["result"]["extensionLog"]>
+    composites: {}
+  }
+
+  type ExtensionLogGetPayload<S extends boolean | null | undefined | ExtensionLogDefaultArgs> = $Result.GetResult<Prisma.$ExtensionLogPayload, S>
+
+  type ExtensionLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<ExtensionLogFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: ExtensionLogCountAggregateInputType | true
+    }
+
+  export interface ExtensionLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ExtensionLog'], meta: { name: 'ExtensionLog' } }
+    /**
+     * Find zero or one ExtensionLog that matches the filter.
+     * @param {ExtensionLogFindUniqueArgs} args - Arguments to find a ExtensionLog
+     * @example
+     * // Get one ExtensionLog
+     * const extensionLog = await prisma.extensionLog.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ExtensionLogFindUniqueArgs>(args: SelectSubset<T, ExtensionLogFindUniqueArgs<ExtArgs>>): Prisma__ExtensionLogClient<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one ExtensionLog that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {ExtensionLogFindUniqueOrThrowArgs} args - Arguments to find a ExtensionLog
+     * @example
+     * // Get one ExtensionLog
+     * const extensionLog = await prisma.extensionLog.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ExtensionLogFindUniqueOrThrowArgs>(args: SelectSubset<T, ExtensionLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ExtensionLogClient<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first ExtensionLog that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExtensionLogFindFirstArgs} args - Arguments to find a ExtensionLog
+     * @example
+     * // Get one ExtensionLog
+     * const extensionLog = await prisma.extensionLog.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ExtensionLogFindFirstArgs>(args?: SelectSubset<T, ExtensionLogFindFirstArgs<ExtArgs>>): Prisma__ExtensionLogClient<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first ExtensionLog that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExtensionLogFindFirstOrThrowArgs} args - Arguments to find a ExtensionLog
+     * @example
+     * // Get one ExtensionLog
+     * const extensionLog = await prisma.extensionLog.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ExtensionLogFindFirstOrThrowArgs>(args?: SelectSubset<T, ExtensionLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__ExtensionLogClient<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more ExtensionLogs that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExtensionLogFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ExtensionLogs
+     * const extensionLogs = await prisma.extensionLog.findMany()
+     * 
+     * // Get first 10 ExtensionLogs
+     * const extensionLogs = await prisma.extensionLog.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const extensionLogWithIdOnly = await prisma.extensionLog.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ExtensionLogFindManyArgs>(args?: SelectSubset<T, ExtensionLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a ExtensionLog.
+     * @param {ExtensionLogCreateArgs} args - Arguments to create a ExtensionLog.
+     * @example
+     * // Create one ExtensionLog
+     * const ExtensionLog = await prisma.extensionLog.create({
+     *   data: {
+     *     // ... data to create a ExtensionLog
+     *   }
+     * })
+     * 
+     */
+    create<T extends ExtensionLogCreateArgs>(args: SelectSubset<T, ExtensionLogCreateArgs<ExtArgs>>): Prisma__ExtensionLogClient<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many ExtensionLogs.
+     * @param {ExtensionLogCreateManyArgs} args - Arguments to create many ExtensionLogs.
+     * @example
+     * // Create many ExtensionLogs
+     * const extensionLog = await prisma.extensionLog.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ExtensionLogCreateManyArgs>(args?: SelectSubset<T, ExtensionLogCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many ExtensionLogs and returns the data saved in the database.
+     * @param {ExtensionLogCreateManyAndReturnArgs} args - Arguments to create many ExtensionLogs.
+     * @example
+     * // Create many ExtensionLogs
+     * const extensionLog = await prisma.extensionLog.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many ExtensionLogs and only return the `id`
+     * const extensionLogWithIdOnly = await prisma.extensionLog.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ExtensionLogCreateManyAndReturnArgs>(args?: SelectSubset<T, ExtensionLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a ExtensionLog.
+     * @param {ExtensionLogDeleteArgs} args - Arguments to delete one ExtensionLog.
+     * @example
+     * // Delete one ExtensionLog
+     * const ExtensionLog = await prisma.extensionLog.delete({
+     *   where: {
+     *     // ... filter to delete one ExtensionLog
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ExtensionLogDeleteArgs>(args: SelectSubset<T, ExtensionLogDeleteArgs<ExtArgs>>): Prisma__ExtensionLogClient<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one ExtensionLog.
+     * @param {ExtensionLogUpdateArgs} args - Arguments to update one ExtensionLog.
+     * @example
+     * // Update one ExtensionLog
+     * const extensionLog = await prisma.extensionLog.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ExtensionLogUpdateArgs>(args: SelectSubset<T, ExtensionLogUpdateArgs<ExtArgs>>): Prisma__ExtensionLogClient<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more ExtensionLogs.
+     * @param {ExtensionLogDeleteManyArgs} args - Arguments to filter ExtensionLogs to delete.
+     * @example
+     * // Delete a few ExtensionLogs
+     * const { count } = await prisma.extensionLog.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ExtensionLogDeleteManyArgs>(args?: SelectSubset<T, ExtensionLogDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ExtensionLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExtensionLogUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ExtensionLogs
+     * const extensionLog = await prisma.extensionLog.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ExtensionLogUpdateManyArgs>(args: SelectSubset<T, ExtensionLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ExtensionLog.
+     * @param {ExtensionLogUpsertArgs} args - Arguments to update or create a ExtensionLog.
+     * @example
+     * // Update or create a ExtensionLog
+     * const extensionLog = await prisma.extensionLog.upsert({
+     *   create: {
+     *     // ... data to create a ExtensionLog
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ExtensionLog we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ExtensionLogUpsertArgs>(args: SelectSubset<T, ExtensionLogUpsertArgs<ExtArgs>>): Prisma__ExtensionLogClient<$Result.GetResult<Prisma.$ExtensionLogPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of ExtensionLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExtensionLogCountArgs} args - Arguments to filter ExtensionLogs to count.
+     * @example
+     * // Count the number of ExtensionLogs
+     * const count = await prisma.extensionLog.count({
+     *   where: {
+     *     // ... the filter for the ExtensionLogs we want to count
+     *   }
+     * })
+    **/
+    count<T extends ExtensionLogCountArgs>(
+      args?: Subset<T, ExtensionLogCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ExtensionLogCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ExtensionLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExtensionLogAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ExtensionLogAggregateArgs>(args: Subset<T, ExtensionLogAggregateArgs>): Prisma.PrismaPromise<GetExtensionLogAggregateType<T>>
+
+    /**
+     * Group by ExtensionLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ExtensionLogGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ExtensionLogGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ExtensionLogGroupByArgs['orderBy'] }
+        : { orderBy?: ExtensionLogGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ExtensionLogGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetExtensionLogGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ExtensionLog model
+   */
+  readonly fields: ExtensionLogFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ExtensionLog.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ExtensionLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ExtensionLog model
+   */ 
+  interface ExtensionLogFieldRefs {
+    readonly id: FieldRef<"ExtensionLog", 'Int'>
+    readonly level: FieldRef<"ExtensionLog", 'String'>
+    readonly message: FieldRef<"ExtensionLog", 'String'>
+    readonly sessionId: FieldRef<"ExtensionLog", 'String'>
+    readonly createdAt: FieldRef<"ExtensionLog", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ExtensionLog findUnique
+   */
+  export type ExtensionLogFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ExtensionLog to fetch.
+     */
+    where: ExtensionLogWhereUniqueInput
+  }
+
+  /**
+   * ExtensionLog findUniqueOrThrow
+   */
+  export type ExtensionLogFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ExtensionLog to fetch.
+     */
+    where: ExtensionLogWhereUniqueInput
+  }
+
+  /**
+   * ExtensionLog findFirst
+   */
+  export type ExtensionLogFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ExtensionLog to fetch.
+     */
+    where?: ExtensionLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ExtensionLogs to fetch.
+     */
+    orderBy?: ExtensionLogOrderByWithRelationInput | ExtensionLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ExtensionLogs.
+     */
+    cursor?: ExtensionLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ExtensionLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ExtensionLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ExtensionLogs.
+     */
+    distinct?: ExtensionLogScalarFieldEnum | ExtensionLogScalarFieldEnum[]
+  }
+
+  /**
+   * ExtensionLog findFirstOrThrow
+   */
+  export type ExtensionLogFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ExtensionLog to fetch.
+     */
+    where?: ExtensionLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ExtensionLogs to fetch.
+     */
+    orderBy?: ExtensionLogOrderByWithRelationInput | ExtensionLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ExtensionLogs.
+     */
+    cursor?: ExtensionLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ExtensionLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ExtensionLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ExtensionLogs.
+     */
+    distinct?: ExtensionLogScalarFieldEnum | ExtensionLogScalarFieldEnum[]
+  }
+
+  /**
+   * ExtensionLog findMany
+   */
+  export type ExtensionLogFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * Filter, which ExtensionLogs to fetch.
+     */
+    where?: ExtensionLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ExtensionLogs to fetch.
+     */
+    orderBy?: ExtensionLogOrderByWithRelationInput | ExtensionLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ExtensionLogs.
+     */
+    cursor?: ExtensionLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ExtensionLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ExtensionLogs.
+     */
+    skip?: number
+    distinct?: ExtensionLogScalarFieldEnum | ExtensionLogScalarFieldEnum[]
+  }
+
+  /**
+   * ExtensionLog create
+   */
+  export type ExtensionLogCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * The data needed to create a ExtensionLog.
+     */
+    data: XOR<ExtensionLogCreateInput, ExtensionLogUncheckedCreateInput>
+  }
+
+  /**
+   * ExtensionLog createMany
+   */
+  export type ExtensionLogCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ExtensionLogs.
+     */
+    data: ExtensionLogCreateManyInput | ExtensionLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ExtensionLog createManyAndReturn
+   */
+  export type ExtensionLogCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many ExtensionLogs.
+     */
+    data: ExtensionLogCreateManyInput | ExtensionLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ExtensionLog update
+   */
+  export type ExtensionLogUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * The data needed to update a ExtensionLog.
+     */
+    data: XOR<ExtensionLogUpdateInput, ExtensionLogUncheckedUpdateInput>
+    /**
+     * Choose, which ExtensionLog to update.
+     */
+    where: ExtensionLogWhereUniqueInput
+  }
+
+  /**
+   * ExtensionLog updateMany
+   */
+  export type ExtensionLogUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ExtensionLogs.
+     */
+    data: XOR<ExtensionLogUpdateManyMutationInput, ExtensionLogUncheckedUpdateManyInput>
+    /**
+     * Filter which ExtensionLogs to update
+     */
+    where?: ExtensionLogWhereInput
+  }
+
+  /**
+   * ExtensionLog upsert
+   */
+  export type ExtensionLogUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * The filter to search for the ExtensionLog to update in case it exists.
+     */
+    where: ExtensionLogWhereUniqueInput
+    /**
+     * In case the ExtensionLog found by the `where` argument doesn't exist, create a new ExtensionLog with this data.
+     */
+    create: XOR<ExtensionLogCreateInput, ExtensionLogUncheckedCreateInput>
+    /**
+     * In case the ExtensionLog was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ExtensionLogUpdateInput, ExtensionLogUncheckedUpdateInput>
+  }
+
+  /**
+   * ExtensionLog delete
+   */
+  export type ExtensionLogDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+    /**
+     * Filter which ExtensionLog to delete.
+     */
+    where: ExtensionLogWhereUniqueInput
+  }
+
+  /**
+   * ExtensionLog deleteMany
+   */
+  export type ExtensionLogDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ExtensionLogs to delete
+     */
+    where?: ExtensionLogWhereInput
+  }
+
+  /**
+   * ExtensionLog without action
+   */
+  export type ExtensionLogDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ExtensionLog
+     */
+    select?: ExtensionLogSelect<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -6167,6 +7165,17 @@ export namespace Prisma {
   };
 
   export type AnalysisLogScalarFieldEnum = (typeof AnalysisLogScalarFieldEnum)[keyof typeof AnalysisLogScalarFieldEnum]
+
+
+  export const ExtensionLogScalarFieldEnum: {
+    id: 'id',
+    level: 'level',
+    message: 'message',
+    sessionId: 'sessionId',
+    createdAt: 'createdAt'
+  };
+
+  export type ExtensionLogScalarFieldEnum = (typeof ExtensionLogScalarFieldEnum)[keyof typeof ExtensionLogScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -6633,6 +7642,60 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"AnalysisLog"> | Date | string
   }
 
+  export type ExtensionLogWhereInput = {
+    AND?: ExtensionLogWhereInput | ExtensionLogWhereInput[]
+    OR?: ExtensionLogWhereInput[]
+    NOT?: ExtensionLogWhereInput | ExtensionLogWhereInput[]
+    id?: IntFilter<"ExtensionLog"> | number
+    level?: StringFilter<"ExtensionLog"> | string
+    message?: StringFilter<"ExtensionLog"> | string
+    sessionId?: StringNullableFilter<"ExtensionLog"> | string | null
+    createdAt?: DateTimeFilter<"ExtensionLog"> | Date | string
+  }
+
+  export type ExtensionLogOrderByWithRelationInput = {
+    id?: SortOrder
+    level?: SortOrder
+    message?: SortOrder
+    sessionId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ExtensionLogWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    AND?: ExtensionLogWhereInput | ExtensionLogWhereInput[]
+    OR?: ExtensionLogWhereInput[]
+    NOT?: ExtensionLogWhereInput | ExtensionLogWhereInput[]
+    level?: StringFilter<"ExtensionLog"> | string
+    message?: StringFilter<"ExtensionLog"> | string
+    sessionId?: StringNullableFilter<"ExtensionLog"> | string | null
+    createdAt?: DateTimeFilter<"ExtensionLog"> | Date | string
+  }, "id">
+
+  export type ExtensionLogOrderByWithAggregationInput = {
+    id?: SortOrder
+    level?: SortOrder
+    message?: SortOrder
+    sessionId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: ExtensionLogCountOrderByAggregateInput
+    _avg?: ExtensionLogAvgOrderByAggregateInput
+    _max?: ExtensionLogMaxOrderByAggregateInput
+    _min?: ExtensionLogMinOrderByAggregateInput
+    _sum?: ExtensionLogSumOrderByAggregateInput
+  }
+
+  export type ExtensionLogScalarWhereWithAggregatesInput = {
+    AND?: ExtensionLogScalarWhereWithAggregatesInput | ExtensionLogScalarWhereWithAggregatesInput[]
+    OR?: ExtensionLogScalarWhereWithAggregatesInput[]
+    NOT?: ExtensionLogScalarWhereWithAggregatesInput | ExtensionLogScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"ExtensionLog"> | number
+    level?: StringWithAggregatesFilter<"ExtensionLog"> | string
+    message?: StringWithAggregatesFilter<"ExtensionLog"> | string
+    sessionId?: StringNullableWithAggregatesFilter<"ExtensionLog"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"ExtensionLog"> | Date | string
+  }
+
   export type ScrapedJobCreateInput = {
     platform: string
     title: string
@@ -6992,6 +8055,59 @@ export namespace Prisma {
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     tokensUsed?: NullableIntFieldUpdateOperationsInput | number | null
     durationMs?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ExtensionLogCreateInput = {
+    level?: string
+    message: string
+    sessionId?: string | null
+    createdAt?: Date | string
+  }
+
+  export type ExtensionLogUncheckedCreateInput = {
+    id?: number
+    level?: string
+    message: string
+    sessionId?: string | null
+    createdAt?: Date | string
+  }
+
+  export type ExtensionLogUpdateInput = {
+    level?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    sessionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ExtensionLogUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    level?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    sessionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ExtensionLogCreateManyInput = {
+    id?: number
+    level?: string
+    message: string
+    sessionId?: string | null
+    createdAt?: Date | string
+  }
+
+  export type ExtensionLogUpdateManyMutationInput = {
+    level?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    sessionId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ExtensionLogUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    level?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    sessionId?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -7423,6 +8539,38 @@ export namespace Prisma {
     score?: SortOrder
     tokensUsed?: SortOrder
     durationMs?: SortOrder
+  }
+
+  export type ExtensionLogCountOrderByAggregateInput = {
+    id?: SortOrder
+    level?: SortOrder
+    message?: SortOrder
+    sessionId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ExtensionLogAvgOrderByAggregateInput = {
+    id?: SortOrder
+  }
+
+  export type ExtensionLogMaxOrderByAggregateInput = {
+    id?: SortOrder
+    level?: SortOrder
+    message?: SortOrder
+    sessionId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ExtensionLogMinOrderByAggregateInput = {
+    id?: SortOrder
+    level?: SortOrder
+    message?: SortOrder
+    sessionId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type ExtensionLogSumOrderByAggregateInput = {
+    id?: SortOrder
   }
 
   export type AnalysisLogCreateNestedManyWithoutScrapedJobInput = {
@@ -7947,6 +9095,10 @@ export namespace Prisma {
      * @deprecated Use AnalysisLogDefaultArgs instead
      */
     export type AnalysisLogArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = AnalysisLogDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use ExtensionLogDefaultArgs instead
+     */
+    export type ExtensionLogArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = ExtensionLogDefaultArgs<ExtArgs>
 
   /**
    * Batch Payload for updateMany & deleteMany & createMany

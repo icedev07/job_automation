@@ -10,20 +10,27 @@ const serverUrlInput = document.getElementById("serverUrlInput");
 const apiKeyInput = document.getElementById("apiKeyInput");
 const saveBtn = document.getElementById("saveBtn");
 const logArea = document.getElementById("logArea");
+const sendLogsChk = document.getElementById("sendLogsChk");
+const downloadBtn = document.getElementById("downloadBtn");
 
 let isRunning = false;
+let sessionId = null;
+let capturedLogs = [];
 
-function addLog(msg) {
+function addLog(msg, level) {
+  level = level || "info";
   const time = new Date().toLocaleTimeString();
   const line = `[${time}] ${msg}`;
   logArea.textContent += line + "\n";
   logArea.scrollTop = logArea.scrollHeight;
+  capturedLogs.push({ timestamp: new Date().toISOString(), level, message: msg });
   console.log("[JobScanner]", msg);
 }
 
-chrome.storage.local.get(["extensionApiKey", "serverUrl"], (data) => {
+chrome.storage.local.get(["extensionApiKey", "serverUrl", "sendLogsToServer"], (data) => {
   if (data.extensionApiKey) apiKeyInput.value = data.extensionApiKey;
   if (data.serverUrl) serverUrlInput.value = data.serverUrl;
+  if (data.sendLogsToServer) sendLogsChk.checked = true;
 });
 
 saveBtn.addEventListener("click", () => {
@@ -33,6 +40,43 @@ saveBtn.addEventListener("click", () => {
   statusMsg.textContent = "Settings saved.";
   addLog(`Saved: server=${url || "(empty)"}, key=${key ? "***" : "(none)"}`);
 });
+
+sendLogsChk.addEventListener("change", () => {
+  chrome.storage.local.set({ sendLogsToServer: sendLogsChk.checked });
+});
+
+downloadBtn.addEventListener("click", () => {
+  if (capturedLogs.length === 0) {
+    statusMsg.textContent = "No logs to download.";
+    return;
+  }
+  const content = capturedLogs.map(l => `[${l.timestamp}] [${l.level}] ${l.message}`).join("\n");
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `extension-logs-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  addLog("Logs downloaded.");
+});
+
+function sendLogsToServer() {
+  if (!sendLogsChk.checked || capturedLogs.length === 0) return;
+  const serverUrl = serverUrlInput.value.trim().replace(/\/$/, "");
+  if (!serverUrl) return;
+
+  const payload = { logs: capturedLogs, sessionId };
+  fetch(`${serverUrl}/api/extension/logs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).then(r => r.json()).then(data => {
+    console.log("[JobScanner] Logs sent to server:", data);
+  }).catch(err => {
+    console.log("[JobScanner] Failed to send logs:", err.message);
+  });
+}
 
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   const tab = tabs[0];
@@ -47,7 +91,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 
   chrome.tabs.sendMessage(tab.id, { type: "GET_STATUS" }, (response) => {
     if (chrome.runtime.lastError) {
-      addLog(`Content script not responding: ${chrome.runtime.lastError.message}`);
+      addLog(`Content script not responding: ${chrome.runtime.lastError.message}`, "warn");
       return;
     }
     if (response && response.running) {
@@ -73,6 +117,8 @@ startBtn.addEventListener("click", () => {
       startBtn.classList.remove("running");
       statusMsg.textContent = "Scan stopped by user.";
       addLog("User stopped scan.");
+      downloadBtn.style.display = "block";
+      sendLogsToServer();
       return;
     }
 
@@ -81,11 +127,14 @@ startBtn.addEventListener("click", () => {
 
       if (!serverUrl) {
         statusMsg.textContent = "Error: Set the Server URL first, then click Save.";
-        addLog("ERROR: No server URL configured.");
+        addLog("ERROR: No server URL configured.", "error");
         return;
       }
 
       isRunning = true;
+      sessionId = `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      capturedLogs = [];
+      downloadBtn.style.display = "none";
       startBtn.textContent = "Stop Scan";
       startBtn.classList.add("running");
       statusMsg.textContent = "Starting scan...";
@@ -98,7 +147,7 @@ startBtn.addEventListener("click", () => {
         apiKey: data.extensionApiKey || "",
       }, (response) => {
         if (chrome.runtime.lastError) {
-          addLog(`ERROR sending START_SCAN: ${chrome.runtime.lastError.message}`);
+          addLog(`ERROR sending START_SCAN: ${chrome.runtime.lastError.message}`, "error");
           statusMsg.textContent = "Error: content script not loaded. Refresh the LinkedIn page and try again.";
           isRunning = false;
           startBtn.textContent = "Start Scan";
@@ -122,6 +171,8 @@ chrome.runtime.onMessage.addListener((msg) => {
     updateStats(msg.stats);
     statusMsg.textContent = msg.statusMsg || "Scan complete.";
     addLog(`DONE: ${msg.statusMsg}`);
+    downloadBtn.style.display = "block";
+    sendLogsToServer();
   }
 });
 

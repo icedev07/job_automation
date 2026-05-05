@@ -85,3 +85,11 @@ model AnalysisLog {
 
   scrapedJob ScrapedJob @relation(fields: [scrapedJobId], references: [id], onDelete: Cascade)
 }
+
+model ExtensionLog {
+  id        Int      @id @default(autoincrement())
+  level     String   @default("info") @db.VarChar(20)
+  message   String
+  sessionId String?  @db.VarChar(100)
+  createdAt DateTime @default(now())
+}
