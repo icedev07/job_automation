@@ -11,7 +11,7 @@ export default function SettingsPage() {
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash");
   const [openrouterKey, setOpenrouterKey] = useState("");
-  const [openrouterModel, setOpenrouterModel] = useState("deepseek/deepseek-chat-v3-0324:free");
+  const [openrouterModel, setOpenrouterModel] = useState("auto");
   const [sheetId, setSheetId] = useState("");
   const [sheetCreds, setSheetCreds] = useState("");
   const [sheetColumns, setSheetColumns] = useState("");
@@ -47,7 +47,7 @@ export default function SettingsPage() {
     setGeminiKey(data.gemini_api_key || "");
     setGeminiModel(data.gemini_model || "gemini-2.5-flash");
     setOpenrouterKey(data.openrouter_api_key || "");
-    setOpenrouterModel(data.openrouter_model || "deepseek/deepseek-chat-v3-0324:free");
+    setOpenrouterModel(data.openrouter_model || "auto");
     setSheetId(data.google_sheet_id || "");
     setSheetCreds(data.google_sheets_credentials || "");
     setSheetColumns(data.sheet_columns || "");
@@ -233,18 +233,19 @@ export default function SettingsPage() {
               Get a free key (no credit card required) at <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8" }}>openrouter.ai/settings/keys</a>. Browse free models at <a href="https://openrouter.ai/models?max_price=0" target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8" }}>openrouter.ai/models?max_price=0</a>.
             </p>
 
-            <label style={labelStyle}>Model (only free `:free` models listed)</label>
+            <label style={labelStyle}>Model</label>
             <select value={openrouterModel} onChange={(e) => setOpenrouterModel(e.target.value)} style={inputStyle}>
-              <option value="deepseek/deepseek-chat-v3-0324:free">deepseek/deepseek-chat-v3-0324 (recommended)</option>
+              <option value="auto">auto (recommended — discover and rotate through all free models live)</option>
               <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1 (reasoning)</option>
               <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct</option>
               <option value="google/gemini-2.0-flash-exp:free">google/gemini-2.0-flash-exp</option>
               <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct</option>
-              <option value="nvidia/llama-3.1-nemotron-70b-instruct:free">nvidia/llama-3.1-nemotron-70b-instruct</option>
-              <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct (smallest)</option>
+              <option value="meta-llama/llama-3.2-3b-instruct:free">meta-llama/llama-3.2-3b-instruct</option>
+              <option value="google/gemma-2-9b-it:free">google/gemma-2-9b-it</option>
+              <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct</option>
             </select>
             <p style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: "-0.75rem", marginBottom: "1rem" }}>
-              The selected model is tried first. If it is rate-limited or unavailable, the app automatically falls through the other free models above.
+              <strong>auto</strong> queries OpenRouter live for every model priced at $0 and tries them in order of context size, so it never breaks when a specific id is deprecated.
               Free tier (no credit on account) is limited to roughly 50 requests per day per key.
             </p>
 

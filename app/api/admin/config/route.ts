@@ -12,7 +12,7 @@ export async function GET() {
     gemini_api_key: all.gemini_api_key || "",
     gemini_model: all.gemini_model || "gemini-2.5-flash",
     openrouter_api_key: all.openrouter_api_key || "",
-    openrouter_model: all.openrouter_model || "deepseek/deepseek-chat-v3-0324:free",
+    openrouter_model: all.openrouter_model || "auto",
     google_sheet_id: all.google_sheet_id || "",
     google_sheets_credentials: all.google_sheets_credentials || "",
     target_market: all.target_market || "",

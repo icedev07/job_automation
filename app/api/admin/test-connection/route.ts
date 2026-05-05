@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { google } from "googleapis";
 import { getConfig } from "@/lib/config";
+import { fetchOpenRouterFreeModels, callOpenRouter } from "@/lib/llmClient";
 
 export const dynamic = "force-dynamic";
 
@@ -36,49 +37,76 @@ export async function POST(req: NextRequest) {
   }
 
   if (target === "openrouter") {
-    if (!config.openrouterApiKey) {
+    const apiKey = config.openrouterApiKey;
+    if (!apiKey) {
       return NextResponse.json({ ok: false, error: "OpenRouter API key is empty in DB" });
     }
-    const model = config.openrouterModel || "deepseek/deepseek-chat-v3-0324:free";
+    const keyPreview = apiKey.slice(0, 8) + "..." + apiKey.slice(-4);
+    const requested = config.openrouterModel || "auto";
+
+    let liveFreeModels: string[] = [];
     try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${config.openrouterApiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://job-automation-ten.vercel.app",
-          "X-Title": "Job Finder",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: "Reply with the single word: OK" }],
-          temperature: 0,
-        }),
-      });
-      const body = await res.text();
-      if (!res.ok) {
-        return NextResponse.json({
-          ok: false,
-          model,
-          keyPreview: config.openrouterApiKey.slice(0, 8) + "..." + config.openrouterApiKey.slice(-4),
-          error: `HTTP ${res.status}: ${body.slice(0, 400)}`,
-        });
-      }
-      const data = JSON.parse(body);
-      return NextResponse.json({
-        ok: true,
-        model,
-        keyPreview: config.openrouterApiKey.slice(0, 8) + "..." + config.openrouterApiKey.slice(-4),
-        sample: (data?.choices?.[0]?.message?.content || "").slice(0, 200),
-      });
+      liveFreeModels = await fetchOpenRouterFreeModels(apiKey);
     } catch (e: any) {
       return NextResponse.json({
         ok: false,
-        model,
-        keyPreview: config.openrouterApiKey.slice(0, 8) + "..." + config.openrouterApiKey.slice(-4),
-        error: String(e?.message || e),
+        keyPreview,
+        requestedModel: requested,
+        error: `Could not list models: ${String(e?.message || e)}`,
       });
     }
+
+    if (liveFreeModels.length === 0) {
+      return NextResponse.json({
+        ok: false,
+        keyPreview,
+        requestedModel: requested,
+        error: "No free models returned by /v1/models for this account",
+      });
+    }
+
+    const order =
+      requested === "auto"
+        ? liveFreeModels
+        : [requested, ...liveFreeModels.filter((m) => m !== requested)];
+
+    const attempts: string[] = [];
+    for (const m of order) {
+      try {
+        const res = await callOpenRouter(apiKey, m, "Reply with the single word: OK");
+        const body = await res.text();
+        if (!res.ok) {
+          attempts.push(`${m}: HTTP ${res.status} ${body.slice(0, 160)}`);
+          continue;
+        }
+        const data = JSON.parse(body);
+        const sample = (data?.choices?.[0]?.message?.content || "").trim();
+        if (!sample) {
+          attempts.push(`${m}: empty response`);
+          continue;
+        }
+        return NextResponse.json({
+          ok: true,
+          keyPreview,
+          requestedModel: requested,
+          modelUsed: m,
+          freeModelsAvailable: liveFreeModels.length,
+          firstFreeModels: liveFreeModels.slice(0, 8),
+          sample: sample.slice(0, 200),
+        });
+      } catch (e: any) {
+        attempts.push(`${m}: ${String(e?.message || e)}`);
+      }
+    }
+
+    return NextResponse.json({
+      ok: false,
+      keyPreview,
+      requestedModel: requested,
+      freeModelsAvailable: liveFreeModels.length,
+      firstFreeModels: liveFreeModels.slice(0, 8),
+      error: `All ${order.length} attempts failed. ${attempts.slice(0, 5).join(" | ")}`,
+    });
   }
 
   if (target === "openai") {

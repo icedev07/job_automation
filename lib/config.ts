@@ -53,7 +53,7 @@ export async function getConfig() {
     geminiApiKey: all[CONFIG_KEYS.GEMINI_API_KEY] || "",
     geminiModel: all[CONFIG_KEYS.GEMINI_MODEL] || "gemini-2.5-flash",
     openrouterApiKey: all[CONFIG_KEYS.OPENROUTER_API_KEY] || "",
-    openrouterModel: all[CONFIG_KEYS.OPENROUTER_MODEL] || "deepseek/deepseek-chat-v3-0324:free",
+    openrouterModel: all[CONFIG_KEYS.OPENROUTER_MODEL] || "auto",
     googleSheetsCredentials: all[CONFIG_KEYS.GOOGLE_SHEETS_CREDENTIALS] || "",
     googleSheetId: all[CONFIG_KEYS.GOOGLE_SHEET_ID] || "",
     adminPassword,

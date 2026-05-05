@@ -44,7 +44,7 @@ async function seedDefaults() {
     ai_provider: "gemini",
     openai_model: "gpt-4o-mini",
     gemini_model: "gemini-2.5-flash",
-    openrouter_model: "deepseek/deepseek-chat-v3-0324:free",
+    openrouter_model: "auto",
     target_market: "Europe, Eastern Europe, Remote worldwide",
     current_location: "Armenia",
     job_analysis_prompt: DEFAULT_ANALYSIS_PROMPT,
