@@ -12,6 +12,9 @@ const saveBtn = document.getElementById("saveBtn");
 const logArea = document.getElementById("logArea");
 const sendLogsChk = document.getElementById("sendLogsChk");
 const hideApprovedChk = document.getElementById("hideApprovedChk");
+const showResultsChk = document.getElementById("showResultsChk");
+
+const MAX_VISIBLE_RESULTS = 100;
 const downloadBtn = document.getElementById("downloadBtn");
 const currentJobBox = document.getElementById("currentJobBox");
 const currentJobTitle = document.getElementById("currentJobTitle");
@@ -34,11 +37,14 @@ function addLog(msg, level) {
   console.log("[JobScanner]", msg);
 }
 
-chrome.storage.local.get(["extensionApiKey", "serverUrl", "sendLogsToServer", "hideApproved"], (data) => {
+chrome.storage.local.get(["extensionApiKey", "serverUrl", "sendLogsToServer", "hideApproved", "showResults"], (data) => {
   if (data.extensionApiKey) apiKeyInput.value = data.extensionApiKey;
   if (data.serverUrl) serverUrlInput.value = data.serverUrl;
   if (data.sendLogsToServer) sendLogsChk.checked = true;
   if (data.hideApproved) hideApprovedChk.checked = true;
+  // default ON unless explicitly disabled
+  showResultsChk.checked = data.showResults !== false;
+  applyShowResults();
 });
 
 saveBtn.addEventListener("click", () => {
@@ -57,6 +63,28 @@ hideApprovedChk.addEventListener("change", () => {
   chrome.storage.local.set({ hideApproved: hideApprovedChk.checked });
   addLog(`Hide approved jobs: ${hideApprovedChk.checked ? "ON" : "OFF"}`);
 });
+
+showResultsChk.addEventListener("change", () => {
+  chrome.storage.local.set({ showResults: showResultsChk.checked });
+  applyShowResults();
+  if (showResultsChk.checked) {
+    rehydrateFromBgState();
+  }
+});
+
+function applyShowResults() {
+  const section = document.querySelector(".results-section");
+  if (!section) return;
+  if (showResultsChk.checked) {
+    section.style.display = "";
+  } else {
+    section.style.display = "none";
+    // free DOM memory while disabled
+    resultsFeed.innerHTML = "";
+    renderedResultIds = new Set();
+    resultsCount.textContent = "0";
+  }
+}
 
 clearResultsBtn.addEventListener("click", () => {
   resultsFeed.innerHTML = "";
@@ -169,6 +197,7 @@ function renderResultCard(r) {
 
 function upsertResult(r) {
   if (!r || !r.id) return;
+  if (!showResultsChk.checked) return; // user disabled rendering for performance
   const existing = resultsFeed.querySelector(`.result-card[data-id="${CSS.escape(r.id)}"]`);
   const node = renderResultCard(r);
   if (existing) {
@@ -176,6 +205,18 @@ function upsertResult(r) {
   } else {
     resultsFeed.insertBefore(node, resultsFeed.firstChild);
     renderedResultIds.add(r.id);
+  }
+  // Enforce a hard ceiling on rendered cards to keep the popup snappy on
+  // long scans (≈1000 jobs would otherwise drown the DOM).
+  while (resultsFeed.children.length > MAX_VISIBLE_RESULTS) {
+    const last = resultsFeed.lastElementChild;
+    if (last) {
+      const id = last.getAttribute("data-id");
+      if (id) renderedResultIds.delete(id);
+      last.remove();
+    } else {
+      break;
+    }
   }
   resultsCount.textContent = String(renderedResultIds.size);
 }
@@ -202,11 +243,17 @@ function rehydrateFromBgState() {
     logArea.textContent = "";
     (state.logs || []).forEach((l) => appendLogLine(l.level, l.message, l.ts));
 
-    // Replay results (newest first in the feed)
+    // Replay results (newest first in the feed) only if rendering is enabled
     resultsFeed.innerHTML = "";
     renderedResultIds = new Set();
-    const sorted = [...(state.results || [])].sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
-    sorted.forEach(upsertResult);
+    if (showResultsChk.checked) {
+      const sorted = [...(state.results || [])].sort((a, b) =>
+        (a.timestamp || "").localeCompare(b.timestamp || "")
+      );
+      // Only restore the most recent slice to avoid spiking the DOM at popup open.
+      const tail = sorted.slice(-MAX_VISIBLE_RESULTS);
+      tail.forEach(upsertResult);
+    }
 
     if (!state.scanning && (state.results || []).length > 0) {
       downloadBtn.style.display = "block";

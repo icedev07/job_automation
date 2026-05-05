@@ -4,8 +4,9 @@
 // When the popup reopens, it asks for GET_BG_STATE to rehydrate the UI.
 
 const STATE_KEY = "scanState";
+// Keep memory bounded for very large scans (~1000 jobs).
 const MAX_LOGS = 500;
-const MAX_RESULTS = 300;
+const MAX_RESULTS = 200;
 
 const EMPTY_STATE = {
   scanning: false,

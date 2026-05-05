@@ -83,10 +83,15 @@
   <div id="mainContent">
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
       <label style="font-size:10px;display:flex;align-items:center;gap:4px;color:#374151;cursor:pointer">
-        <input type="checkbox" id="sendLogsChk"> Send logs to server
+        <input type="checkbox" id="showResultsChk" checked> Show results list
+        <span title="Turn OFF for very large scans (≈1000 jobs) to keep the popup snappy. Stats and current job still update live." style="color:#9ca3af;cursor:help">(?)</span>
       </label>
       <label style="font-size:10px;display:flex;align-items:center;gap:4px;color:#374151;cursor:pointer">
         <input type="checkbox" id="hideApprovedChk"> Also hide approved jobs on LinkedIn
+      </label>
+      <label style="font-size:10px;display:flex;align-items:center;gap:4px;color:#374151;cursor:pointer">
+        <input type="checkbox" id="sendLogsChk"> Send logs to server
+        <span title="Uploads all captured logs to your backend's ExtensionLog table at scan end. View them in /admin/logs → Extension Logs. Pure debugging aid, safe to leave off." style="color:#9ca3af;cursor:help">(?)</span>
       </label>
     </div>
 
