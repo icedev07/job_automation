@@ -187,6 +187,13 @@ chrome.runtime.onMessage.addListener((msg) => {
     statusMsg.textContent = msg.statusMsg || "Scanning...";
     addLog(msg.statusMsg || "progress update");
   }
+  if (msg.type === "SCAN_LOG") {
+    capturedLogs.push({
+      timestamp: new Date().toISOString(),
+      level: msg.level || "debug",
+      message: msg.message || "",
+    });
+  }
   if (msg.type === "SCAN_DONE") {
     isRunning = false;
     startBtn.textContent = "Start Scan";

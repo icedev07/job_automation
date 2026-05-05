@@ -9,8 +9,11 @@
   let serverUrl = "";
   let apiKey = "";
 
-  function log(msg) {
+  function log(msg, level) {
     console.log(`[JobScanner] ${msg}`);
+    try {
+      chrome.runtime.sendMessage({ type: "SCAN_LOG", level: level || "debug", message: msg }).catch(() => {});
+    } catch (e) {}
   }
 
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -292,13 +295,13 @@
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      log(`Server error ${res.status}: ${errBody.substring(0, 200)}`);
-      throw new Error(`Server ${res.status}: ${errBody.substring(0, 100)}`);
+      log(`Server error ${res.status}: ${errBody}`, "error");
+      throw new Error(`Server ${res.status}: ${errBody}`);
     }
 
     const result = await res.json();
     log(
-      `Server response: action=${result.action}, linkedInDismiss=${result.linkedInDismiss}, score=${result.score}, reason="${result.reason?.substring(0, 100)}"`,
+      `Server response: action=${result.action}, linkedInDismiss=${result.linkedInDismiss}, score=${result.score}, reason="${result.reason || ""}", error="${result.error || ""}"`,
     );
     return result;
   }
@@ -398,12 +401,12 @@
         const dismissOnLinkedIn = result.linkedInDismiss !== false;
         if (dismissOnLinkedIn) {
           stats.hidden++;
-          sendProgress(`Rejected ${index + 1}: ${title} (${result.reason?.substring(0, 50)})`);
+          sendProgress(`Rejected ${index + 1}: ${title} (${result.reason || ""})`);
           await clickDismiss(card);
           return "hidden";
         }
         stats.skipped++;
-        sendProgress(`Analysis issue (card kept): ${index + 1}: ${title} (${result.reason?.substring(0, 80)})`);
+        sendProgress(`Analysis issue (card kept): ${index + 1}: ${title} (${result.reason || ""})`);
         return "skipped";
       }
 
