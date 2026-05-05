@@ -43,10 +43,16 @@
     }
   });
 
-  function sendProgress(statusMsg) {
+  function sendProgress(statusMsg, currentJob) {
     currentStatus = statusMsg;
     log(`Progress: ${statusMsg}`);
-    chrome.runtime.sendMessage({ type: "SCAN_PROGRESS", stats: { ...stats }, statusMsg }).catch(() => {});
+    const payload = { type: "SCAN_PROGRESS", stats: { ...stats }, statusMsg };
+    if (currentJob !== undefined) payload.currentJob = currentJob;
+    chrome.runtime.sendMessage(payload).catch(() => {});
+  }
+
+  function sendResult(result) {
+    chrome.runtime.sendMessage({ type: "SCAN_RESULT", result }).catch(() => {});
   }
 
   function sendDone(statusMsg) {
@@ -366,6 +372,8 @@
     const cardCompanyEl = card.querySelector(".artdeco-entity-lockup__subtitle span");
     const cardCompanyText = cardCompanyEl?.textContent?.trim() || "";
 
+    const cardId = cardJobId || `idx-${index}-${Date.now()}`;
+
     log(`Card ${index + 1}: title="${cardTitleText}", company="${cardCompanyText}", easyApply=${easyApply}, jobId=${cardJobId}`);
 
     // Click the card to load the detail panel
@@ -390,12 +398,33 @@
 
     if (!title || !company) {
       stats.skipped++;
-      sendProgress(`Skipped ${index + 1}/${totalCards}: no title/company`);
+      sendProgress(`Skipped ${index + 1}/${totalCards}: no title/company`, null);
+      sendResult({
+        id: cardId,
+        index,
+        total: totalCards,
+        title: title || cardTitleText || "(unknown)",
+        company: company || cardCompanyText || "(unknown)",
+        location,
+        url: jobUrl,
+        status: "skipped",
+        reason: "Could not extract title or company from card",
+        score: 0,
+        timestamp: new Date().toISOString(),
+      });
       return "skipped";
     }
 
-    // Send to server
-    sendProgress(`Analyzing ${index + 1}/${totalCards}: ${title}...`);
+    // Mark this job as the currently-analyzing one (popup shows spinner)
+    sendProgress(`Analyzing ${index + 1}/${totalCards}: ${title}...`, {
+      id: cardId,
+      index,
+      total: totalCards,
+      title,
+      company,
+      location,
+      startedAt: Date.now(),
+    });
 
     try {
       const result = await analyzeOnServer({
@@ -409,9 +438,23 @@
 
       stats.checked++;
 
+      const baseResult = {
+        id: cardId,
+        index,
+        total: totalCards,
+        title,
+        company,
+        location,
+        url: jobUrl,
+        score: result.score || 0,
+        reason: result.reason || "",
+        timestamp: new Date().toISOString(),
+      };
+
       if (result.action === "easy_apply") {
         stats.hidden++;
-        sendProgress(`Easy Apply hidden ${index + 1}: ${title}`);
+        sendProgress(`Easy Apply hidden ${index + 1}: ${title}`, null);
+        sendResult({ ...baseResult, status: "easy_apply", reason: result.reason || "Easy Apply auto-rejected" });
         await clickDismiss(card);
         return "hidden";
       }
@@ -420,38 +463,71 @@
         const dismissOnLinkedIn = result.linkedInDismiss !== false;
         if (dismissOnLinkedIn) {
           stats.hidden++;
-          sendProgress(`Rejected ${index + 1}: ${title} (${result.reason || ""})`);
+          sendProgress(`Rejected ${index + 1}: ${title} (${result.reason || ""})`, null);
+          sendResult({ ...baseResult, status: "rejected" });
           await clickDismiss(card);
           return "hidden";
         }
         stats.skipped++;
-        sendProgress(`Analysis issue (card kept): ${index + 1}: ${title} (${result.reason || ""})`);
+        sendProgress(`Analysis issue (card kept): ${index + 1}: ${title} (${result.reason || ""})`, null);
+        sendResult({ ...baseResult, status: "analysis_issue" });
         return "skipped";
       }
 
       if (result.action === "approved") {
         stats.approved++;
-        sendProgress(`Approved ${index + 1}: ${title} (score: ${result.score})`);
+        const hideApproved = await new Promise((resolve) =>
+          chrome.storage.local.get(["hideApproved"], (d) => resolve(!!d.hideApproved))
+        );
+        if (hideApproved) {
+          stats.hidden++;
+          sendProgress(`Approved & hidden ${index + 1}: ${title} (score: ${result.score})`, null);
+          sendResult({
+            ...baseResult,
+            status: "approved",
+            reason: `${result.reason || ""}${result.reason ? " " : ""}[card hidden by 'Also hide approved jobs' setting]`,
+          });
+          await clickDismiss(card);
+          return "approved";
+        }
+        sendProgress(`Approved ${index + 1}: ${title} (score: ${result.score})`, null);
+        sendResult({ ...baseResult, status: "approved" });
         return "approved";
       }
 
       if (result.action === "skipped" || result.alreadyExists) {
         stats.skipped++;
-        sendProgress(`Already processed ${index + 1}: ${title}`);
+        sendProgress(`Already processed ${index + 1}: ${title}`, null);
+        sendResult({ ...baseResult, status: "already_processed", reason: result.reason || "Already analyzed" });
         return "skipped";
       }
 
       if (result.action === "error") {
         stats.skipped++;
-        sendProgress(`Server error for ${title}: ${result.error || "unknown"}`);
+        sendProgress(`Server error for ${title}: ${result.error || "unknown"}`, null);
+        sendResult({ ...baseResult, status: "error", reason: result.error || "Server error" });
         return "error";
       }
 
       stats.skipped++;
+      sendResult({ ...baseResult, status: "unknown", reason: result.reason || "Unknown server response" });
       return "unknown";
     } catch (err) {
       stats.skipped++;
-      sendProgress(`Error ${index + 1}: ${err.message}`);
+      sendProgress(`Error ${index + 1}: ${err.message}`, null);
+      sendResult({
+        id: cardId,
+        index,
+        total: totalCards,
+        title,
+        company,
+        location,
+        url: jobUrl,
+        status: "error",
+        score: 0,
+        reason: err.message || "Network/server error",
+        timestamp: new Date().toISOString(),
+      });
       return "error";
     }
   }
