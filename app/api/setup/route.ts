@@ -41,7 +41,9 @@ Respond in EXACTLY this JSON format, nothing else:
 async function seedDefaults() {
   const defaults: Record<string, string> = {
     admin_password: "admin",
+    ai_provider: "gemini",
     openai_model: "gpt-4o-mini",
+    gemini_model: "gemini-2.0-flash",
     target_market: "Europe, Eastern Europe, Remote worldwide",
     current_location: "Armenia",
     job_analysis_prompt: DEFAULT_ANALYSIS_PROMPT,

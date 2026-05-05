@@ -1,8 +1,11 @@
 import { prisma } from "./prisma";
 
 export const CONFIG_KEYS = {
+  AI_PROVIDER: "ai_provider",
   OPENAI_API_KEY: "openai_api_key",
   OPENAI_MODEL: "openai_model",
+  GEMINI_API_KEY: "gemini_api_key",
+  GEMINI_MODEL: "gemini_model",
   GOOGLE_SHEETS_CREDENTIALS: "google_sheets_credentials",
   GOOGLE_SHEET_ID: "google_sheet_id",
   ADMIN_PASSWORD: "admin_password",
@@ -42,8 +45,11 @@ export async function getConfig() {
     envAdmin && envAdmin.length > 0 ? envAdmin : dbAdmin || "admin";
 
   return {
+    aiProvider: (all[CONFIG_KEYS.AI_PROVIDER] || "gemini") as "openai" | "gemini",
     openaiApiKey: all[CONFIG_KEYS.OPENAI_API_KEY] || "",
     openaiModel: all[CONFIG_KEYS.OPENAI_MODEL] || "gpt-4o-mini",
+    geminiApiKey: all[CONFIG_KEYS.GEMINI_API_KEY] || "",
+    geminiModel: all[CONFIG_KEYS.GEMINI_MODEL] || "gemini-2.0-flash",
     googleSheetsCredentials: all[CONFIG_KEYS.GOOGLE_SHEETS_CREDENTIALS] || "",
     googleSheetId: all[CONFIG_KEYS.GOOGLE_SHEET_ID] || "",
     adminPassword,

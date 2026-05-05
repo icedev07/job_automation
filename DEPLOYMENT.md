@@ -8,9 +8,10 @@
 | Supabase | PostgreSQL database | yes, free tier | no card required |
 | Google Sheets API | output approved jobs | yes, completely free | no card required |
 | Google Cloud service account | authenticates Sheets API | yes, completely free | no billing required |
-| OpenAI API | AI job analysis | **paid, per-token** | uses your own API key, ~$0.01 per job with gpt-4o-mini |
+| Google Gemini API | AI job analysis (default) | **yes, free** (1500 req/day) | **no card required** |
+| OpenAI API | AI job analysis (alternative) | paid, per-token | uses your own API key |
 
-OpenAI is the only paid service. All infrastructure is 100% free with no credit card required.
+**All services are 100% free with no credit card required** when using Gemini (default). OpenAI is available as an alternative if you prefer.
 
 ---
 
@@ -70,11 +71,23 @@ Supabase free tier pauses databases after 1 week of inactivity. The app has a `/
 
 ---
 
-## Step 3: Get your OpenAI API key
+## Step 3: Get your AI API key
+
+### Option A: Google Gemini (recommended, free)
+
+1. Go to https://aistudio.google.com/apikey
+2. Sign in with your Google account
+3. Click "Create API Key"
+4. Copy and save it
+
+Free tier: 1500 requests/day with `gemini-2.0-flash`. No credit card needed.
+
+### Option B: OpenAI (paid alternative)
 
 1. Go to https://platform.openai.com/api-keys
 2. Create a new API key
-3. Copy and save it
+3. Add API credits at https://platform.openai.com/account/billing (minimum $5)
+4. Copy and save the key
 
 ---
 
@@ -126,11 +139,16 @@ Go to `/admin/settings` and fill in:
 | Target Market | `Europe, Eastern Europe, Remote worldwide` |
 | Current Location | `Armenia` |
 
-### OpenAI API
-| Setting | Value |
-|---------|-------|
-| API Key | `sk-...` (your key from step 3) |
-| Model | `gpt-4o-mini` (cheapest, recommended) |
+### AI Provider
+
+Select your AI provider and enter the API key:
+
+| Provider | Setting | Value |
+|----------|---------|-------|
+| Gemini (default, free) | API Key | `AIzaSy...` (from aistudio.google.com/apikey) |
+| Gemini | Model | `gemini-2.0-flash` (1500 req/day free) |
+| OpenAI (alternative) | API Key | `sk-...` (from platform.openai.com) |
+| OpenAI | Model | `gpt-4o-mini` (cheapest paid option) |
 
 ### Google Sheets
 | Setting | Value |
@@ -280,8 +298,8 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 
 **Vercel function timeout**
 - Free tier has a 10-second limit on serverless functions.
-- AI analysis with `gpt-4o-mini` usually takes 3-8 seconds, so it should work fine.
-- If timeouts occur, make sure you're using `gpt-4o-mini` (faster than gpt-4o).
+- AI analysis with Gemini or `gpt-4o-mini` usually takes 2-6 seconds, so it should work fine.
+- If timeouts occur with OpenAI, switch to Gemini (faster response times).
 
 **Supabase database is paused**
 - Supabase pauses free databases after 1 week of inactivity.
@@ -291,8 +309,10 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 - Run the init script first: `npm run <platform>:init`
 - Log in manually in the browser that opens
 
-**"OpenAI API key not configured"**
-- Go to `/admin/settings` and enter your API key
+**"API key not configured" or 429 quota error**
+- Go to `/admin/settings` and check that you have the correct AI provider selected and an API key entered.
+- If using Gemini: get a free key at https://aistudio.google.com/apikey (no card needed).
+- If using OpenAI: make sure you have API credits at https://platform.openai.com/account/billing (separate from ChatGPT Plus).
 
 **Google Sheets not updating**
 - Make sure the sheet tabs are named `Jobs` and `LinkedIn`

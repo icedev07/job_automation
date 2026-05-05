@@ -11,25 +11,20 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-
     "jobright:login": "tsx scripts/loginToJobright.ts",
     "jobright:scan": "tsx scripts/jobrightScan.ts",
-
     "ziprecruiter:init": "tsx scripts/ziprecruiterInit.ts",
     "ziprecruiter:scan": "tsx scripts/ziprecruiterScan.ts",
-
     "glassdoor:init": "tsx scripts/glassdoorInit.ts",
     "glassdoor:scan": "tsx scripts/glassdoorScan.ts",
-
     "dice:init": "tsx scripts/diceInit.ts",
     "dice:scan": "tsx scripts/diceScan.ts",
-
     "simplify:init": "tsx scripts/simplifyInit.ts",
     "simplify:scan": "node --max-old-space-size=4096 node_modules/tsx/dist/cli.mjs scripts/simplifyScan.ts",
-
     "cache:clean": "tsx scripts/cleanJobbotCache.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "5.22.0",
     "googleapis": "^171.4.0",
     "next": "14.2.11",
@@ -45,8 +40,8 @@
     "eslint-config-next": "14.2.11",
     "playwright": "1.49.0",
     "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "prisma": "5.22.0",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "ts-node": "10.9.2",
     "tsx": "4.19.2",
     "typescript": "5.6.3"

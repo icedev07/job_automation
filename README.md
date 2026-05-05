@@ -7,7 +7,7 @@ Scrapes jobs from multiple platforms, uses AI to filter for suitability, and pus
 ## How it works
 
 1. **Scrape** - Playwright-based scanners collect jobs from 5 platforms (Jobright, ZipRecruiter, Glassdoor, Dice, Simplify) or the Chrome extension scans LinkedIn
-2. **Analyze** - Each job is sent to OpenAI for suitability analysis (remote-friendly? accessible from Armenia? etc.)
+2. **Analyze** - Each job is sent to AI (Gemini free or OpenAI) for suitability analysis (remote-friendly? accessible from Armenia? etc.)
 3. **Approve/Reject** - Jobs that pass the AI filter get status `APPROVED`, others get `REJECTED`
 4. **Sync** - Approved jobs are pushed to Google Sheets
 5. **Hide** - On LinkedIn, rejected and Easy Apply jobs are automatically hidden
@@ -19,8 +19,8 @@ Admin Panel (/admin)
     |
     v
 +-------------------+       +-----------+
-| Next.js App       |------>| OpenAI    |
-| (Vercel free)     |       | API       |
+| Next.js App       |------>| Gemini or |
+| (Vercel free)     |       | OpenAI API|
 |                   |       +-----------+
 | - Scanner scripts |
 | - AI analyzer     |------>+---------------+
@@ -37,12 +37,13 @@ Admin Panel (/admin)
 
 ## Services (all free, no card required)
 
-| Service | Purpose |
-|---------|---------|
-| Vercel | Host the Next.js web app |
-| Supabase | PostgreSQL database |
-| Google Sheets API | Output approved jobs |
-| OpenAI API | AI job analysis (user-provided key, only paid service) |
+| Service | Purpose | Cost |
+|---------|---------|------|
+| Vercel | Host the Next.js web app | Free |
+| Supabase | PostgreSQL database | Free |
+| Google Sheets API | Output approved jobs | Free |
+| Google Gemini API | AI job analysis (default) | Free (1500 req/day) |
+| OpenAI API | AI job analysis (alternative) | Paid (user key) |
 
 ## Quick start
 
@@ -63,7 +64,7 @@ npm run dev
 
 # 5. Open http://localhost:3000/admin
 # Default password: admin
-# Configure: OpenAI key, Google Sheets, target market, etc.
+# Configure: Gemini/OpenAI key, Google Sheets, target market, etc.
 ```
 
 ## Deploy to Vercel
@@ -92,10 +93,10 @@ Important: use port `5432` (session pooler), not `6543` (transaction pooler).
 | Page | Purpose |
 |------|---------|
 | Dashboard | Stats overview, sync to Google Sheets |
-| Settings | OpenAI key, Google Sheets, target market, location, AI prompt, columns, extension key |
+| Settings | AI provider (Gemini/OpenAI), API keys, Google Sheets, target market, location, AI prompt, columns |
 | Scanners | Enable/disable platforms, set search URLs, run scans, analyze pending jobs |
 | Skip Rules | Block jobs by company, title keyword, or URL pattern |
-| Logs | View scan history and AI analysis logs |
+| Logs | View scan history, AI analysis logs, extension logs, bulk delete, date filtering |
 
 ## Chrome extension (LinkedIn)
 
@@ -171,6 +172,8 @@ Default column config JSON:
 | Setting | Default value |
 |---------|--------------|
 | Admin Password | `admin` |
+| AI Provider | `gemini` |
+| Gemini Model | `gemini-2.0-flash` |
 | OpenAI Model | `gpt-4o-mini` |
 | Target Market | `Europe, Eastern Europe, Remote worldwide` |
 | Current Location | `Armenia` |

@@ -6,8 +6,11 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const all = await getAllConfig();
   return NextResponse.json({
+    ai_provider: all.ai_provider || "gemini",
     openai_api_key_masked: all.openai_api_key ? maskApiKey(all.openai_api_key) : "",
     openai_model: all.openai_model || "gpt-4o-mini",
+    gemini_api_key_masked: all.gemini_api_key ? maskApiKey(all.gemini_api_key) : "",
+    gemini_model: all.gemini_model || "gemini-2.0-flash",
     google_sheet_id: all.google_sheet_id || "",
     google_sheets_credentials: !!all.google_sheets_credentials,
     target_market: all.target_market || "",

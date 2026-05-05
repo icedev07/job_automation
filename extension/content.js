@@ -1,4 +1,7 @@
 (() => {
+  if (window.__jobScannerLoaded) return;
+  window.__jobScannerLoaded = true;
+
   let scanning = false;
   let stopRequested = false;
   let stats = { checked: 0, approved: 0, hidden: 0, skipped: 0 };
