@@ -623,7 +623,28 @@
       const m = aria.match(/Page (\d+)/i);
       if (m) return parseInt(m[1], 10);
     }
+    // Newer jobs left-rail pagination exposes "Page X of Y".
+    const pageState = document.querySelector(".jobs-search-pagination__page-state");
+    if (pageState?.textContent) {
+      const m = pageState.textContent.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
+      if (m) {
+        const current = parseInt(m[1], 10);
+        const total = parseInt(m[2], 10);
+        if (!isNaN(current) && !isNaN(total) && current <= total) return current;
+      }
+    }
     return null;
+  }
+
+  function findPageState() {
+    const pageState = document.querySelector(".jobs-search-pagination__page-state");
+    if (!pageState?.textContent) return null;
+    const m = pageState.textContent.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
+    if (!m) return null;
+    const current = parseInt(m[1], 10);
+    const total = parseInt(m[2], 10);
+    if (isNaN(current) || isNaN(total)) return null;
+    return { current, total };
   }
 
   function findPageButton(pageNum) {
@@ -649,6 +670,12 @@
   async function goToNextPage() {
     await scrollJobsListToBottom();
 
+    const pageState = findPageState();
+    if (pageState && pageState.current >= pageState.total) {
+      log(`Reached last page (${pageState.current}/${pageState.total}), stopping pagination`);
+      return false;
+    }
+
     // Strategy 1: find the active page number and click N+1.
     const active = findActivePageNumber();
     if (active != null) {
@@ -671,6 +698,8 @@
       "button[aria-label='Next']",
       "button.artdeco-pagination__button--next",
       ".artdeco-pagination__button--next",
+      "button.jobs-search-pagination__button--next",
+      ".jobs-search-pagination__button--next",
     ];
     for (const sel of nextSelectors) {
       const btn = document.querySelector(sel);
