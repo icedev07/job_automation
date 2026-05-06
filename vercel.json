@@ -13,6 +13,15 @@
     },
     "app/api/admin/sheets-sync/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/admin/scanners/run/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/admin/scanners/run",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }

@@ -47,7 +47,7 @@ export async function upsertScrapedJob(params: {
   description?: string | null;
   salary?: string | null;
   manualApplyUrl?: string | null;
-}): Promise<{ id: number; title: string; company: string } | null> {
+}): Promise<{ id: number; title: string; company: string; created: boolean } | null> {
   const { platform, title, company, url, location, description, salary, manualApplyUrl } = params;
 
   if (await shouldSkipJob({ title, company, externalUrl: url })) {
@@ -76,7 +76,7 @@ export async function upsertScrapedJob(params: {
   });
   if (byUrl) {
     await persistManual(byUrl.id);
-    return { id: byUrl.id, title: byUrl.title, company: byUrl.company };
+    return { id: byUrl.id, title: byUrl.title, company: byUrl.company, created: false };
   }
 
   // same-platform title+company dedup
@@ -85,7 +85,7 @@ export async function upsertScrapedJob(params: {
   });
   if (byTitle) {
     await persistManual(byTitle.id);
-    return { id: byTitle.id, title: byTitle.title, company: byTitle.company };
+    return { id: byTitle.id, title: byTitle.title, company: byTitle.company, created: false };
   }
 
   // cross-platform dedup: same normalized title+company on any platform
@@ -99,7 +99,7 @@ export async function upsertScrapedJob(params: {
   `;
   if (crossPlatform.length > 0) {
     await persistManual(crossPlatform[0].id);
-    return { id: crossPlatform[0].id, title: crossPlatform[0].title, company: crossPlatform[0].company };
+    return { id: crossPlatform[0].id, title: crossPlatform[0].title, company: crossPlatform[0].company, created: false };
   }
 
   const job = await prisma.scrapedJob.create({
@@ -115,7 +115,7 @@ export async function upsertScrapedJob(params: {
     },
   });
 
-  return { id: job.id, title: job.title, company: job.company };
+  return { id: job.id, title: job.title, company: job.company, created: true };
 }
 
 export async function saveJobDescription(jobId: number, description: string) {

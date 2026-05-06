@@ -20,6 +20,7 @@ export async function GET() {
     rejectedJobs,
     syncedJobs,
     recentScans,
+    latestPerBoardRaw,
     dbSizeRows,
     activeConnRows,
     tableSizeRows,
@@ -32,6 +33,19 @@ export async function GET() {
     safe(
       prisma.scanLog.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
       [] as Awaited<ReturnType<typeof prisma.scanLog.findMany>>,
+    ),
+    safe(
+      prisma.$queryRaw<{ board: string; jobs_found: number; jobs_saved: number; errors: string | null; created_at: Date }[]>`
+        SELECT DISTINCT ON (board)
+          board,
+          "jobsFound" AS jobs_found,
+          "jobsSaved" AS jobs_saved,
+          errors,
+          "createdAt" AS created_at
+        FROM "ScanLog"
+        ORDER BY board, "createdAt" DESC
+      `,
+      [] as { board: string; jobs_found: number; jobs_saved: number; errors: string | null; created_at: Date }[],
     ),
     safe(
       prisma.$queryRaw<{ db_size_bytes: bigint }[]>`
@@ -71,6 +85,14 @@ export async function GET() {
     sizeMb: Number((Number(t.table_size_bytes || 0) / (1024 * 1024)).toFixed(2)),
   }));
 
+  const latestPerBoard = latestPerBoardRaw.map((r) => ({
+    board: r.board,
+    jobsFound: Number(r.jobs_found || 0),
+    jobsSaved: Number(r.jobs_saved || 0),
+    errors: r.errors,
+    createdAt: r.created_at,
+  }));
+
   return NextResponse.json({
     totalJobs,
     pendingJobs,
@@ -78,6 +100,7 @@ export async function GET() {
     rejectedJobs,
     syncedJobs,
     recentScans,
+    latestPerBoard,
     dbMetrics: {
       dbSizeMb,
       activeConnections,

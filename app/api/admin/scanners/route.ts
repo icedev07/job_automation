@@ -3,8 +3,22 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const SCANNER_KEY_PREFIXES = ["jobright", "ziprecruiter", "glassdoor", "dice", "simplify"];
-const SCANNER_KEY_SUFFIXES = ["_search_url", "_max_jobs", "_enabled", "_context_dir"];
+const SCANNER_KEY_PREFIXES = [
+  "remoteok",
+  "remotive",
+  "jobicy",
+  "landingjobs",
+  "weworkremotely",
+  "remotees",
+  "jobspresso",
+  "authenticjobs",
+  "nodesk",
+  "greenhouse",
+  "lever",
+  "workable",
+  "ashby",
+];
+const SCANNER_KEY_SUFFIXES = ["_search_url", "_max_jobs", "_enabled"];
 
 function isScannerKey(key: string): boolean {
   return SCANNER_KEY_PREFIXES.some((p) => SCANNER_KEY_SUFFIXES.some((s) => key === `${p}${s}`));

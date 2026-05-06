@@ -137,11 +137,12 @@ export default function LogsPage() {
             <select style={inputStyle} value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value)}>
               <option value="">All Platforms</option>
               <option value="linkedin">LinkedIn</option>
-              <option value="jobright">Jobright</option>
-              <option value="ziprecruiter">ZipRecruiter</option>
-              <option value="glassdoor">Glassdoor</option>
-              <option value="dice">Dice</option>
-              <option value="simplify">Simplify</option>
+              <option value="remoteok">RemoteOK</option>
+              <option value="remotive">Remotive</option>
+              <option value="weworkremotely">We Work Remotely</option>
+              <option value="jobicy">Jobicy</option>
+              <option value="greenhouse">Greenhouse</option>
+              <option value="lever">Lever</option>
             </select>
             <select style={inputStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">All Status</option>
