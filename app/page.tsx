@@ -70,6 +70,17 @@ export default function HomePage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [previewJob, setPreviewJob] = useState<Job | null>(null);
+
+  // Close preview on Escape
+  useEffect(() => {
+    if (!previewJob) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setPreviewJob(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewJob]);
 
   // hydrate from URL on first load
   useEffect(() => {
@@ -356,10 +367,10 @@ export default function HomePage() {
 
       {/* Table */}
       <div style={{ background: "white", borderRadius: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1220 }}>
             <thead>
             <tr style={{ borderBottom: "1px solid #e5e7eb", background: "#f9fafb" }}>
-              {["", "Title", "Company", "Location", "Source", "Manual apply", "Score", "Tech Stack", "Status", "Date"].map((h) => (
+              {["", "Title", "Company", "Location", "Source", "Manual apply", "Score", "Tech Stack", "Status", "Date", "Preview"].map((h) => (
                 <th key={h} style={{ padding: "0.55rem 0.75rem", textAlign: "left", fontSize: "0.7rem", fontWeight: 600, color: "#6b7280", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
@@ -368,12 +379,18 @@ export default function HomePage() {
             {jobs.map((job) => {
               const isOpen = expanded === job.id;
               return (
-                <RowGroup key={job.id} job={job} isOpen={isOpen} toggle={() => setExpanded(isOpen ? null : job.id)} />
+                <RowGroup
+                  key={job.id}
+                  job={job}
+                  isOpen={isOpen}
+                  toggle={() => setExpanded(isOpen ? null : job.id)}
+                  onPreview={() => setPreviewJob(job)}
+                />
               );
             })}
             {!loading && jobs.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ padding: "2.5rem", textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={11} style={{ padding: "2.5rem", textAlign: "center", color: "#6b7280" }}>
                   No jobs match these filters. {hasActiveFilters && (
                     <button onClick={resetFilters} style={{ background: "transparent", border: "none", color: "#1d4ed8", cursor: "pointer", textDecoration: "underline" }}>Reset filters</button>
                   )}
@@ -382,12 +399,14 @@ export default function HomePage() {
             )}
             {loading && (
               <tr>
-                <td colSpan={10} style={{ padding: "1.5rem", textAlign: "center", color: "#9ca3af", fontSize: "0.85rem" }}>Loading…</td>
+                <td colSpan={11} style={{ padding: "1.5rem", textAlign: "center", color: "#9ca3af", fontSize: "0.85rem" }}>Loading…</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <PreviewPanel job={previewJob} onClose={() => setPreviewJob(null)} />
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -414,7 +433,7 @@ export default function HomePage() {
   );
 }
 
-function RowGroup({ job, isOpen, toggle }: { job: Job; isOpen: boolean; toggle: () => void }) {
+function RowGroup({ job, isOpen, toggle, onPreview }: { job: Job; isOpen: boolean; toggle: () => void; onPreview: () => void }) {
   const status = job.status || "PENDING";
   const score = job.aiScore ?? null;
   return (
@@ -467,10 +486,19 @@ function RowGroup({ job, isOpen, toggle }: { job: Job; isOpen: boolean; toggle: 
         <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.7rem", color: "#6b7280", whiteSpace: "nowrap" }}>
           {new Date(job.createdAt).toLocaleDateString()}
         </td>
+        <td style={{ padding: "0.5rem 0.75rem" }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onPreview(); }}
+            title="Open preview"
+            style={{ padding: "0.25rem 0.6rem", background: "white", border: "1px solid #d1d5db", borderRadius: "999px", cursor: "pointer", fontSize: "0.7rem", color: "#374151", fontWeight: 500 }}
+          >
+            Preview
+          </button>
+        </td>
       </tr>
       {isOpen && (
         <tr style={{ borderBottom: "1px solid #e5e7eb", background: "#f9fafb" }}>
-          <td colSpan={10} style={{ padding: "0.85rem 1.5rem" }}>
+          <td colSpan={11} style={{ padding: "0.85rem 1.5rem" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.75rem", fontSize: "0.8rem" }}>
               <div>
                 <strong style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 }}>AI Reason</strong>
@@ -519,6 +547,176 @@ function RowGroup({ job, isOpen, toggle }: { job: Job; isOpen: boolean; toggle: 
     </>
   );
 }
+
+function PreviewPanel({ job, onClose }: { job: Job | null; onClose: () => void }) {
+  const open = !!job;
+  return (
+    <>
+      <div
+        onClick={onClose}
+        aria-hidden={!open}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.35)",
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+          transition: "opacity 180ms ease",
+          zIndex: 40,
+        }}
+      />
+      <aside
+        role="dialog"
+        aria-hidden={!open}
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          height: "100vh",
+          width: "min(560px, 100vw)",
+          background: "white",
+          boxShadow: "-12px 0 28px rgba(15, 23, 42, 0.18)",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+          zIndex: 50,
+          display: "flex",
+          flexDirection: "column",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+        }}
+      >
+        {job && (
+          <>
+            <header style={{ padding: "1rem 1.25rem 0.85rem", borderBottom: "1px solid #e5e7eb" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: "0.7rem", color: "#6b7280", letterSpacing: 0.4, textTransform: "uppercase", marginBottom: "0.2rem" }}>
+                    {job.platform} · {new Date(job.createdAt).toLocaleString()}
+                  </div>
+                  <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#111827", lineHeight: 1.3 }}>
+                    {job.title}
+                  </h2>
+                  <div style={{ marginTop: "0.25rem", color: "#374151", fontSize: "0.85rem" }}>
+                    {job.company}
+                    {job.location ? <span style={{ color: "#9ca3af" }}> · {job.location}</span> : null}
+                  </div>
+                </div>
+                <button
+                  onClick={onClose}
+                  aria-label="Close preview"
+                  style={{ background: "transparent", border: "none", fontSize: "1.5rem", color: "#6b7280", cursor: "pointer", lineHeight: 1, padding: "0 0.25rem" }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.6rem", borderRadius: 9999, color: "white", background: STATUS_COLORS[job.status] || "#6b7280", fontWeight: 600, letterSpacing: 0.3 }}>
+                  {job.status}
+                </span>
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: scoreColor(job.aiScore) }}>
+                  Score: {job.aiScore ?? "—"}
+                </span>
+                {job.salary && (
+                  <span style={{ fontSize: "0.75rem", color: "#374151", background: "#f3f4f6", padding: "0.2rem 0.55rem", borderRadius: 9999 }}>
+                    {job.salary}
+                  </span>
+                )}
+              </div>
+            </header>
+
+            <div style={{ padding: "0.85rem 1.25rem", borderBottom: "1px solid #f3f4f6", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem 1rem", fontSize: "0.78rem" }}>
+              <div>
+                <div style={previewLabel}>Tech stack</div>
+                <div style={previewValue}>{job.techStack || "—"}</div>
+              </div>
+              <div>
+                <div style={previewLabel}>Date found</div>
+                <div style={previewValue}>{new Date(job.createdAt).toLocaleString()}</div>
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div style={previewLabel}>AI reason</div>
+                <div style={{ ...previewValue, whiteSpace: "pre-wrap" }}>{job.aiReason || "—"}</div>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflow: "auto", padding: "1rem 1.25rem 1.25rem" }}>
+              <div style={{ ...previewLabel, marginBottom: "0.4rem" }}>Description</div>
+              {job.description ? (
+                <div
+                  style={{
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 8,
+                    padding: "0.85rem 1rem",
+                    fontSize: "0.82rem",
+                    lineHeight: 1.6,
+                    color: "#1f2937",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {job.description}
+                </div>
+              ) : (
+                <p style={{ color: "#9ca3af", fontSize: "0.82rem", margin: 0 }}>No description stored for this job.</p>
+              )}
+            </div>
+
+            <footer style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: "0.5rem", flexWrap: "wrap", background: "#fafafa" }}>
+              <a
+                href={job.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ padding: "0.4rem 0.85rem", background: "#1d4ed8", color: "white", textDecoration: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 500 }}
+              >
+                Open job ↗
+              </a>
+              {job.manualApplyUrl && (
+                <a
+                  href={job.manualApplyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: "0.4rem 0.85rem", background: "#16a34a", color: "white", textDecoration: "none", borderRadius: 6, fontSize: "0.78rem", fontWeight: 500 }}
+                >
+                  Manual apply ↗
+                </a>
+              )}
+              <button
+                onClick={() => navigator.clipboard.writeText(job.url)}
+                style={{ padding: "0.4rem 0.85rem", background: "white", border: "1px solid #d1d5db", borderRadius: 6, fontSize: "0.78rem", color: "#374151", cursor: "pointer" }}
+              >
+                Copy URL
+              </button>
+              {job.description && (
+                <button
+                  onClick={() => navigator.clipboard.writeText(job.description || "")}
+                  style={{ padding: "0.4rem 0.85rem", background: "white", border: "1px solid #d1d5db", borderRadius: 6, fontSize: "0.78rem", color: "#374151", cursor: "pointer" }}
+                >
+                  Copy description
+                </button>
+              )}
+            </footer>
+          </>
+        )}
+      </aside>
+    </>
+  );
+}
+
+const previewLabel: React.CSSProperties = {
+  fontSize: "0.65rem",
+  color: "#6b7280",
+  textTransform: "uppercase",
+  letterSpacing: 0.6,
+  fontWeight: 600,
+};
+
+const previewValue: React.CSSProperties = {
+  fontSize: "0.82rem",
+  color: "#1f2937",
+  marginTop: "0.15rem",
+  lineHeight: 1.5,
+};
 
 function scoreColor(score: number | null) {
   if (score == null) return "#9ca3af";

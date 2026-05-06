@@ -109,8 +109,27 @@ export async function GET() {
           CONSTRAINT "ExtensionLog_pkey" PRIMARY KEY ("id")
         );
       `).catch(() => {});
+
+      // Idempotent column additions for schema evolution on already-initialized DBs.
+      const additiveAlters = [
+        `ALTER TABLE "ScrapedJob" ADD COLUMN IF NOT EXISTS "manualApplyUrl" VARCHAR(2048);`,
+      ];
+      const appliedAlters: string[] = [];
+      for (const sql of additiveAlters) {
+        try {
+          await prisma.$executeRawUnsafe(sql);
+          appliedAlters.push(sql);
+        } catch {
+          // Ignore individual ALTER failures so seedDefaults still runs.
+        }
+      }
+
       await seedDefaults();
-      return NextResponse.json({ status: "already_initialized", message: "Database tables already exist. Default config values seeded." });
+      return NextResponse.json({
+        status: "already_initialized",
+        message: "Database tables already exist. Default config values seeded.",
+        appliedAlters,
+      });
     }
 
     await prisma.$executeRawUnsafe(`
