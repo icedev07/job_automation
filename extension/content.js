@@ -316,7 +316,7 @@
 
         const result = await res.json();
         log(
-          `Server response: action=${result.action}, linkedInDismiss=${result.linkedInDismiss}, score=${result.score}, reason="${result.reason || ""}", error="${result.error || ""}"`,
+          `Server response: action=${result.action}, alreadyExists=${result.alreadyExists}, linkedInDismiss=${result.linkedInDismiss}, score=${result.score}, reason="${result.reason || ""}", error="${result.error || ""}"`,
         );
         return result;
       } catch (err) {
@@ -451,6 +451,13 @@
         timestamp: new Date().toISOString(),
       };
 
+      if (result.alreadyExists || result.action === "skipped") {
+        stats.skipped++;
+        sendProgress(`Already processed ${index + 1}: ${title}`, null);
+        sendResult({ ...baseResult, status: "already_processed", reason: result.reason || "Already analyzed" });
+        return "skipped";
+      }
+
       if (result.action === "easy_apply") {
         stats.hidden++;
         sendProgress(`Easy Apply hidden ${index + 1}: ${title}`, null);
@@ -493,13 +500,6 @@
         sendProgress(`Approved ${index + 1}: ${title} (score: ${result.score})`, null);
         sendResult({ ...baseResult, status: "approved" });
         return "approved";
-      }
-
-      if (result.action === "skipped" || result.alreadyExists) {
-        stats.skipped++;
-        sendProgress(`Already processed ${index + 1}: ${title}`, null);
-        sendResult({ ...baseResult, status: "already_processed", reason: result.reason || "Already analyzed" });
-        return "skipped";
       }
 
       if (result.action === "error") {
