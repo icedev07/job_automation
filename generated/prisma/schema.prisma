@@ -23,20 +23,21 @@ enum JobStatus {
 // ── Core ────────────────────────────────────────────────────────────────────
 
 model ScrapedJob {
-  id          Int       @id @default(autoincrement())
-  platform    String    @db.VarChar(50)
-  title       String
-  company     String
-  location    String?
-  url         String    @db.VarChar(2048)
-  description String?
-  salary      String?
-  techStack   String?
-  status      JobStatus @default(PENDING)
-  aiScore     Int?
-  aiReason    String?
-  sheetSynced Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  id             Int       @id @default(autoincrement())
+  platform       String    @db.VarChar(50)
+  title          String
+  company        String
+  location       String?
+  url            String    @db.VarChar(2048)
+  manualApplyUrl String?   @db.VarChar(2048)
+  description    String?
+  salary         String?
+  techStack      String?
+  status         JobStatus @default(PENDING)
+  aiScore        Int?
+  aiReason       String?
+  sheetSynced    Boolean   @default(false)
+  createdAt      DateTime  @default(now())
 
   analysisLogs AnalysisLog[]
 

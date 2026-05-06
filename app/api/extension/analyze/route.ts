@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
       typeof applyUrl === "string" && applyUrl.trim().length > 0 && !easyApply
         ? applyUrl.trim()
         : url;
+    const manualApplyStored =
+      !easyApply && typeof applyUrl === "string" && applyUrl.trim().length > 0 ? applyUrl.trim() : null;
     console.log(`[Extension] Received: title="${title}", company="${company}", location="${location}", easyApply=${easyApply}, descLen=${description?.length || 0}, url=${url}, applyUrl=${typeof applyUrl === "string" ? applyUrl : ""}`);
 
     const MAX_DESC_CHARS = 120_000;
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest) {
         location,
         description:
           typeof description === "string" ? description.slice(0, MAX_DESC_CHARS) : description,
+        manualApplyUrl: null,
       });
 
       if (!saved) {
@@ -75,6 +78,7 @@ export async function POST(req: NextRequest) {
           status: "REJECTED",
           aiScore: 0,
           aiReason: "Easy Apply - auto rejected (detected by extension)",
+          manualApplyUrl: null,
         },
       });
       if (easyUp.count === 0) {
@@ -110,6 +114,7 @@ export async function POST(req: NextRequest) {
       location,
       description:
         typeof description === "string" ? description.slice(0, MAX_DESC_CHARS) : description,
+      manualApplyUrl: manualApplyStored,
     });
 
     if (!saved) {

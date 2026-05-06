@@ -46,8 +46,9 @@ export async function upsertScrapedJob(params: {
   location?: string | null;
   description?: string | null;
   salary?: string | null;
+  manualApplyUrl?: string | null;
 }): Promise<{ id: number; title: string; company: string } | null> {
-  const { platform, title, company, url, location, description, salary } = params;
+  const { platform, title, company, url, location, description, salary, manualApplyUrl } = params;
 
   if (await shouldSkipJob({ title, company, externalUrl: url })) {
     return null;
@@ -56,18 +57,36 @@ export async function upsertScrapedJob(params: {
   const normUrl = normalizeUrl(url);
   const normTitle = normalizeTitle(title);
   const normCompany = normalizeCompany(company);
+  const normManual =
+    typeof manualApplyUrl === "string" && manualApplyUrl.trim().length > 0
+      ? normalizeUrl(manualApplyUrl.trim())
+      : null;
+
+  async function persistManual(jobId: number) {
+    if (!normManual) return;
+    await prisma.scrapedJob.updateMany({
+      where: { id: jobId },
+      data: { manualApplyUrl: normManual },
+    });
+  }
 
   // same-platform URL dedup
   const byUrl = await prisma.scrapedJob.findFirst({
     where: { platform, url: normUrl },
   });
-  if (byUrl) return { id: byUrl.id, title: byUrl.title, company: byUrl.company };
+  if (byUrl) {
+    await persistManual(byUrl.id);
+    return { id: byUrl.id, title: byUrl.title, company: byUrl.company };
+  }
 
   // same-platform title+company dedup
   const byTitle = await prisma.scrapedJob.findFirst({
     where: { platform, title, company },
   });
-  if (byTitle) return { id: byTitle.id, title: byTitle.title, company: byTitle.company };
+  if (byTitle) {
+    await persistManual(byTitle.id);
+    return { id: byTitle.id, title: byTitle.title, company: byTitle.company };
+  }
 
   // cross-platform dedup: same normalized title+company on any platform
   const crossPlatform = await prisma.$queryRaw<{ id: number; title: string; company: string }[]>`
@@ -79,6 +98,7 @@ export async function upsertScrapedJob(params: {
     LIMIT 1
   `;
   if (crossPlatform.length > 0) {
+    await persistManual(crossPlatform[0].id);
     return { id: crossPlatform[0].id, title: crossPlatform[0].title, company: crossPlatform[0].company };
   }
 
@@ -88,6 +108,7 @@ export async function upsertScrapedJob(params: {
       title,
       company,
       url: normUrl,
+      manualApplyUrl: normManual,
       location: location || null,
       description: description || null,
       salary: salary || null,

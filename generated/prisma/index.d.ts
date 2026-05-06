@@ -1363,6 +1363,7 @@ export namespace Prisma {
     company: string | null
     location: string | null
     url: string | null
+    manualApplyUrl: string | null
     description: string | null
     salary: string | null
     techStack: string | null
@@ -1380,6 +1381,7 @@ export namespace Prisma {
     company: string | null
     location: string | null
     url: string | null
+    manualApplyUrl: string | null
     description: string | null
     salary: string | null
     techStack: string | null
@@ -1397,6 +1399,7 @@ export namespace Prisma {
     company: number
     location: number
     url: number
+    manualApplyUrl: number
     description: number
     salary: number
     techStack: number
@@ -1426,6 +1429,7 @@ export namespace Prisma {
     company?: true
     location?: true
     url?: true
+    manualApplyUrl?: true
     description?: true
     salary?: true
     techStack?: true
@@ -1443,6 +1447,7 @@ export namespace Prisma {
     company?: true
     location?: true
     url?: true
+    manualApplyUrl?: true
     description?: true
     salary?: true
     techStack?: true
@@ -1460,6 +1465,7 @@ export namespace Prisma {
     company?: true
     location?: true
     url?: true
+    manualApplyUrl?: true
     description?: true
     salary?: true
     techStack?: true
@@ -1564,6 +1570,7 @@ export namespace Prisma {
     company: string
     location: string | null
     url: string
+    manualApplyUrl: string | null
     description: string | null
     salary: string | null
     techStack: string | null
@@ -1600,6 +1607,7 @@ export namespace Prisma {
     company?: boolean
     location?: boolean
     url?: boolean
+    manualApplyUrl?: boolean
     description?: boolean
     salary?: boolean
     techStack?: boolean
@@ -1619,6 +1627,7 @@ export namespace Prisma {
     company?: boolean
     location?: boolean
     url?: boolean
+    manualApplyUrl?: boolean
     description?: boolean
     salary?: boolean
     techStack?: boolean
@@ -1636,6 +1645,7 @@ export namespace Prisma {
     company?: boolean
     location?: boolean
     url?: boolean
+    manualApplyUrl?: boolean
     description?: boolean
     salary?: boolean
     techStack?: boolean
@@ -1664,6 +1674,7 @@ export namespace Prisma {
       company: string
       location: string | null
       url: string
+      manualApplyUrl: string | null
       description: string | null
       salary: string | null
       techStack: string | null
@@ -2072,6 +2083,7 @@ export namespace Prisma {
     readonly company: FieldRef<"ScrapedJob", 'String'>
     readonly location: FieldRef<"ScrapedJob", 'String'>
     readonly url: FieldRef<"ScrapedJob", 'String'>
+    readonly manualApplyUrl: FieldRef<"ScrapedJob", 'String'>
     readonly description: FieldRef<"ScrapedJob", 'String'>
     readonly salary: FieldRef<"ScrapedJob", 'String'>
     readonly techStack: FieldRef<"ScrapedJob", 'String'>
@@ -7106,6 +7118,7 @@ export namespace Prisma {
     company: 'company',
     location: 'location',
     url: 'url',
+    manualApplyUrl: 'manualApplyUrl',
     description: 'description',
     salary: 'salary',
     techStack: 'techStack',
@@ -7311,6 +7324,7 @@ export namespace Prisma {
     company?: StringFilter<"ScrapedJob"> | string
     location?: StringNullableFilter<"ScrapedJob"> | string | null
     url?: StringFilter<"ScrapedJob"> | string
+    manualApplyUrl?: StringNullableFilter<"ScrapedJob"> | string | null
     description?: StringNullableFilter<"ScrapedJob"> | string | null
     salary?: StringNullableFilter<"ScrapedJob"> | string | null
     techStack?: StringNullableFilter<"ScrapedJob"> | string | null
@@ -7329,6 +7343,7 @@ export namespace Prisma {
     company?: SortOrder
     location?: SortOrderInput | SortOrder
     url?: SortOrder
+    manualApplyUrl?: SortOrderInput | SortOrder
     description?: SortOrderInput | SortOrder
     salary?: SortOrderInput | SortOrder
     techStack?: SortOrderInput | SortOrder
@@ -7352,6 +7367,7 @@ export namespace Prisma {
     company?: StringFilter<"ScrapedJob"> | string
     location?: StringNullableFilter<"ScrapedJob"> | string | null
     url?: StringFilter<"ScrapedJob"> | string
+    manualApplyUrl?: StringNullableFilter<"ScrapedJob"> | string | null
     description?: StringNullableFilter<"ScrapedJob"> | string | null
     salary?: StringNullableFilter<"ScrapedJob"> | string | null
     techStack?: StringNullableFilter<"ScrapedJob"> | string | null
@@ -7370,6 +7386,7 @@ export namespace Prisma {
     company?: SortOrder
     location?: SortOrderInput | SortOrder
     url?: SortOrder
+    manualApplyUrl?: SortOrderInput | SortOrder
     description?: SortOrderInput | SortOrder
     salary?: SortOrderInput | SortOrder
     techStack?: SortOrderInput | SortOrder
@@ -7395,6 +7412,7 @@ export namespace Prisma {
     company?: StringWithAggregatesFilter<"ScrapedJob"> | string
     location?: StringNullableWithAggregatesFilter<"ScrapedJob"> | string | null
     url?: StringWithAggregatesFilter<"ScrapedJob"> | string
+    manualApplyUrl?: StringNullableWithAggregatesFilter<"ScrapedJob"> | string | null
     description?: StringNullableWithAggregatesFilter<"ScrapedJob"> | string | null
     salary?: StringNullableWithAggregatesFilter<"ScrapedJob"> | string | null
     techStack?: StringNullableWithAggregatesFilter<"ScrapedJob"> | string | null
@@ -7702,6 +7720,7 @@ export namespace Prisma {
     company: string
     location?: string | null
     url: string
+    manualApplyUrl?: string | null
     description?: string | null
     salary?: string | null
     techStack?: string | null
@@ -7720,6 +7739,7 @@ export namespace Prisma {
     company: string
     location?: string | null
     url: string
+    manualApplyUrl?: string | null
     description?: string | null
     salary?: string | null
     techStack?: string | null
@@ -7737,6 +7757,7 @@ export namespace Prisma {
     company?: StringFieldUpdateOperationsInput | string
     location?: NullableStringFieldUpdateOperationsInput | string | null
     url?: StringFieldUpdateOperationsInput | string
+    manualApplyUrl?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     salary?: NullableStringFieldUpdateOperationsInput | string | null
     techStack?: NullableStringFieldUpdateOperationsInput | string | null
@@ -7755,6 +7776,7 @@ export namespace Prisma {
     company?: StringFieldUpdateOperationsInput | string
     location?: NullableStringFieldUpdateOperationsInput | string | null
     url?: StringFieldUpdateOperationsInput | string
+    manualApplyUrl?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     salary?: NullableStringFieldUpdateOperationsInput | string | null
     techStack?: NullableStringFieldUpdateOperationsInput | string | null
@@ -7773,6 +7795,7 @@ export namespace Prisma {
     company: string
     location?: string | null
     url: string
+    manualApplyUrl?: string | null
     description?: string | null
     salary?: string | null
     techStack?: string | null
@@ -7789,6 +7812,7 @@ export namespace Prisma {
     company?: StringFieldUpdateOperationsInput | string
     location?: NullableStringFieldUpdateOperationsInput | string | null
     url?: StringFieldUpdateOperationsInput | string
+    manualApplyUrl?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     salary?: NullableStringFieldUpdateOperationsInput | string | null
     techStack?: NullableStringFieldUpdateOperationsInput | string | null
@@ -7806,6 +7830,7 @@ export namespace Prisma {
     company?: StringFieldUpdateOperationsInput | string
     location?: NullableStringFieldUpdateOperationsInput | string | null
     url?: StringFieldUpdateOperationsInput | string
+    manualApplyUrl?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     salary?: NullableStringFieldUpdateOperationsInput | string | null
     techStack?: NullableStringFieldUpdateOperationsInput | string | null
@@ -8219,6 +8244,7 @@ export namespace Prisma {
     company?: SortOrder
     location?: SortOrder
     url?: SortOrder
+    manualApplyUrl?: SortOrder
     description?: SortOrder
     salary?: SortOrder
     techStack?: SortOrder
@@ -8241,6 +8267,7 @@ export namespace Prisma {
     company?: SortOrder
     location?: SortOrder
     url?: SortOrder
+    manualApplyUrl?: SortOrder
     description?: SortOrder
     salary?: SortOrder
     techStack?: SortOrder
@@ -8258,6 +8285,7 @@ export namespace Prisma {
     company?: SortOrder
     location?: SortOrder
     url?: SortOrder
+    manualApplyUrl?: SortOrder
     description?: SortOrder
     salary?: SortOrder
     techStack?: SortOrder
@@ -8947,6 +8975,7 @@ export namespace Prisma {
     company: string
     location?: string | null
     url: string
+    manualApplyUrl?: string | null
     description?: string | null
     salary?: string | null
     techStack?: string | null
@@ -8964,6 +8993,7 @@ export namespace Prisma {
     company: string
     location?: string | null
     url: string
+    manualApplyUrl?: string | null
     description?: string | null
     salary?: string | null
     techStack?: string | null
@@ -8996,6 +9026,7 @@ export namespace Prisma {
     company?: StringFieldUpdateOperationsInput | string
     location?: NullableStringFieldUpdateOperationsInput | string | null
     url?: StringFieldUpdateOperationsInput | string
+    manualApplyUrl?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     salary?: NullableStringFieldUpdateOperationsInput | string | null
     techStack?: NullableStringFieldUpdateOperationsInput | string | null
@@ -9013,6 +9044,7 @@ export namespace Prisma {
     company?: StringFieldUpdateOperationsInput | string
     location?: NullableStringFieldUpdateOperationsInput | string | null
     url?: StringFieldUpdateOperationsInput | string
+    manualApplyUrl?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     salary?: NullableStringFieldUpdateOperationsInput | string | null
     techStack?: NullableStringFieldUpdateOperationsInput | string | null

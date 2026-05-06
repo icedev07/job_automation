@@ -29,6 +29,7 @@ model ScrapedJob {
   company     String
   location    String?
   url         String    @db.VarChar(2048)
+  manualApplyUrl String? @db.VarChar(2048)
   description String?
   salary      String?
   techStack   String?

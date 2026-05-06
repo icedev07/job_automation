@@ -10,6 +10,7 @@ type Job = {
   company: string;
   location: string | null;
   url: string;
+  manualApplyUrl: string | null;
   status: string;
   aiScore: number | null;
   aiReason: string | null;
@@ -355,10 +356,10 @@ export default function HomePage() {
 
       {/* Table */}
       <div style={{ background: "white", borderRadius: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
-          <thead>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120 }}>
+            <thead>
             <tr style={{ borderBottom: "1px solid #e5e7eb", background: "#f9fafb" }}>
-              {["", "Title", "Company", "Location", "Source", "Score", "Tech Stack", "Status", "Date"].map((h) => (
+              {["", "Title", "Company", "Location", "Source", "Manual apply", "Score", "Tech Stack", "Status", "Date"].map((h) => (
                 <th key={h} style={{ padding: "0.55rem 0.75rem", textAlign: "left", fontSize: "0.7rem", fontWeight: 600, color: "#6b7280", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
@@ -372,7 +373,7 @@ export default function HomePage() {
             })}
             {!loading && jobs.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ padding: "2.5rem", textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={10} style={{ padding: "2.5rem", textAlign: "center", color: "#6b7280" }}>
                   No jobs match these filters. {hasActiveFilters && (
                     <button onClick={resetFilters} style={{ background: "transparent", border: "none", color: "#1d4ed8", cursor: "pointer", textDecoration: "underline" }}>Reset filters</button>
                   )}
@@ -381,7 +382,7 @@ export default function HomePage() {
             )}
             {loading && (
               <tr>
-                <td colSpan={9} style={{ padding: "1.5rem", textAlign: "center", color: "#9ca3af", fontSize: "0.85rem" }}>Loading…</td>
+                <td colSpan={10} style={{ padding: "1.5rem", textAlign: "center", color: "#9ca3af", fontSize: "0.85rem" }}>Loading…</td>
               </tr>
             )}
           </tbody>
@@ -436,6 +437,22 @@ function RowGroup({ job, isOpen, toggle }: { job: Job; isOpen: boolean; toggle: 
         <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.company}</td>
         <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", color: "#6b7280", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.location || "-"}</td>
         <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem" }}>{job.platform}</td>
+        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.72rem", maxWidth: 200 }}>
+          {job.manualApplyUrl ? (
+            <a
+              href={job.manualApplyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={job.manualApplyUrl}
+              style={{ color: "#1d4ed8", wordBreak: "break-all", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            >
+              Open apply
+            </a>
+          ) : (
+            <span style={{ color: "#9ca3af" }}>—</span>
+          )}
+        </td>
         <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", fontWeight: 700, color: scoreColor(score) }}>
           {score ?? "-"}
         </td>
@@ -453,7 +470,7 @@ function RowGroup({ job, isOpen, toggle }: { job: Job; isOpen: boolean; toggle: 
       </tr>
       {isOpen && (
         <tr style={{ borderBottom: "1px solid #e5e7eb", background: "#f9fafb" }}>
-          <td colSpan={9} style={{ padding: "0.85rem 1.5rem" }}>
+          <td colSpan={10} style={{ padding: "0.85rem 1.5rem" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.75rem", fontSize: "0.8rem" }}>
               <div>
                 <strong style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 }}>AI Reason</strong>

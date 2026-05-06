@@ -129,6 +129,7 @@ exports.Prisma.ScrapedJobScalarFieldEnum = {
   company: 'company',
   location: 'location',
   url: 'url',
+  manualApplyUrl: 'manualApplyUrl',
   description: 'description',
   salary: 'salary',
   techStack: 'techStack',

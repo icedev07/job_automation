@@ -129,6 +129,7 @@ export async function GET() {
         "company" TEXT NOT NULL,
         "location" TEXT,
         "url" VARCHAR(2048) NOT NULL,
+        "manualApplyUrl" VARCHAR(2048),
         "description" TEXT,
         "salary" TEXT,
         "techStack" TEXT,
