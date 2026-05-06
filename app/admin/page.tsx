@@ -9,6 +9,11 @@ type Stats = {
   rejectedJobs: number;
   syncedJobs: number;
   recentScans: { board: string; jobsSaved: number; createdAt: string }[];
+  dbMetrics?: {
+    dbSizeMb: number;
+    activeConnections: number;
+    topTables: { tableName: string; sizeMb: number }[];
+  };
 };
 
 export default function AdminDashboard() {
@@ -48,6 +53,38 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "0.75rem" }}>Database Metrics</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem", marginBottom: "1rem" }}>
+        {[
+          { label: "Database Size (MB)", value: stats.dbMetrics?.dbSizeMb ?? 0, color: "#374151" },
+          { label: "Active Connections", value: stats.dbMetrics?.activeConnections ?? 0, color: "#374151" },
+        ].map((s) => (
+          <div key={s.label} style={{ background: "white", padding: "1.25rem", borderRadius: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+            <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>{s.label}</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: s.color }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {stats.dbMetrics?.topTables?.length ? (
+        <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "8px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", marginBottom: "2rem" }}>
+          <thead>
+            <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+              <th style={{ padding: "0.5rem 1rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280" }}>Table</th>
+              <th style={{ padding: "0.5rem 1rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280" }}>Size (MB)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.dbMetrics.topTables.map((t) => (
+              <tr key={t.tableName} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <td style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}>{t.tableName}</td>
+                <td style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}>{t.sizeMb}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
 
       <div style={{ display: "flex", gap: "0.75rem", marginBottom: "2rem" }}>
         <button onClick={handleSync} disabled={syncing} style={{ padding: "0.5rem 1.25rem", background: "#059669", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: 500 }}>

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { title, company, location, url, description, easyApply } = body;
+  const { title, company, location, url, applyUrl, description, easyApply } = body;
 
   if (!title || !company || !url) {
     return NextResponse.json(
@@ -43,7 +43,11 @@ export async function POST(req: NextRequest) {
 
   try {
     // Log what was received from the extension
-    console.log(`[Extension] Received: title="${title}", company="${company}", location="${location}", easyApply=${easyApply}, descLen=${description?.length || 0}, url=${url}`);
+    const preferredUrl =
+      typeof applyUrl === "string" && applyUrl.trim().length > 0 && !easyApply
+        ? applyUrl.trim()
+        : url;
+    console.log(`[Extension] Received: title="${title}", company="${company}", location="${location}", easyApply=${easyApply}, descLen=${description?.length || 0}, url=${url}, applyUrl=${typeof applyUrl === "string" ? applyUrl : ""}`);
 
     const MAX_DESC_CHARS = 120_000;
 
@@ -52,7 +56,7 @@ export async function POST(req: NextRequest) {
         platform: "linkedin",
         title,
         company,
-        url,
+        url: preferredUrl,
         location,
         description:
           typeof description === "string" ? description.slice(0, MAX_DESC_CHARS) : description,
@@ -102,7 +106,7 @@ export async function POST(req: NextRequest) {
       platform: "linkedin",
       title,
       company,
-      url,
+      url: preferredUrl,
       location,
       description:
         typeof description === "string" ? description.slice(0, MAX_DESC_CHARS) : description,

@@ -183,6 +183,43 @@
     return window.location.href;
   }
 
+  function extractApplyUrl() {
+    const detail = getDetailContainer() || document;
+    const selectors = [
+      "a[data-live-test-job-apply-button]",
+      ".jobs-apply-button a",
+      "a.jobs-apply-button",
+      "a[href*='offsite']",
+      "a[href*='externalApply']",
+      "a[href*='linkedin.com/redir/redirect']",
+    ];
+    for (const sel of selectors) {
+      const link = detail.querySelector(sel) || document.querySelector(sel);
+      if (!link) continue;
+      const href = (link.getAttribute("href") || "").trim();
+      if (!href) continue;
+      try {
+        const abs = new URL(href, window.location.origin);
+        const redirectTarget =
+          abs.searchParams.get("url") ||
+          abs.searchParams.get("target") ||
+          abs.searchParams.get("targetUrl") ||
+          abs.searchParams.get("redirectUrl");
+        if (redirectTarget) {
+          try {
+            return new URL(redirectTarget).toString();
+          } catch {
+            return redirectTarget;
+          }
+        }
+        return abs.toString();
+      } catch {
+        continue;
+      }
+    }
+    return "";
+  }
+
   function extractTitle() {
     const detail = getDetailContainer();
     const scope = detail || document;
@@ -336,11 +373,29 @@
   async function clickDismiss(card) {
     try {
       // LinkedIn has a dismiss X button on each card
-      const dismissBtn = card.querySelector("button[aria-label*='Dismiss']") ||
-                          card.querySelector("button.job-card-container__action");
+      const dismissBtn =
+        card.querySelector("button[aria-label*='Dismiss']") ||
+        card.querySelector("button[aria-label*='Not interested']") ||
+        card.querySelector("button[aria-label*='Hide']") ||
+        card.querySelector("button.job-card-container__action") ||
+        card.querySelector("button[data-control-name*='dismiss']") ||
+        card.querySelector("button[data-control-name*='not_interested']");
       if (dismissBtn) {
         log(`Clicking dismiss button: "${dismissBtn.getAttribute("aria-label") || "dismiss"}"`);
         dismissBtn.click();
+        await sleep(500);
+        return true;
+      }
+
+      // Fallback: try action buttons in the details panel when card-level action is unavailable.
+      const detailDismiss =
+        document.querySelector("button[aria-label*='Dismiss']") ||
+        document.querySelector("button[aria-label*='Not interested']") ||
+        document.querySelector("button[data-control-name*='dismiss']") ||
+        document.querySelector("button[data-control-name*='not_interested']");
+      if (detailDismiss) {
+        log(`Clicking fallback dismiss button: "${detailDismiss.getAttribute("aria-label") || "dismiss"}"`);
+        detailDismiss.click();
         await sleep(500);
         return true;
       }
@@ -393,8 +448,9 @@
     const jobUrl = cardJobId
       ? `https://www.linkedin.com/jobs/view/${cardJobId}`
       : extractJobUrl();
+    const applyUrl = easyApply ? "" : extractApplyUrl();
 
-    log(`Extracted: title="${title}", company="${company}", location="${location}", desc=${description.length}chars, url=${jobUrl}`);
+    log(`Extracted: title="${title}", company="${company}", location="${location}", desc=${description.length}chars, url=${jobUrl}, applyUrl=${applyUrl || "n/a"}`);
 
     if (!title || !company) {
       stats.skipped++;
@@ -432,6 +488,7 @@
         company,
         location,
         url: jobUrl,
+        applyUrl,
         description,
         easyApply,
       });

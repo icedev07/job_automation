@@ -3,7 +3,8 @@
  * - Uses the search URL (remote ML roles) and walks all job cards on the results page
  * - Extracts title, company, location, and the short description snippet from the card
  * - Opens each job detail page to get full description (JSON-LD or description div)
- * - Uses the Dice job-detail URL as externalUrl. Skips duplicates via isDuplicate.
+ * - Tries to capture real apply URL from detail page; falls back to Dice detail URL.
+ * - Skips duplicates via isDuplicate.
  * - Uses persistent context (run dice:init first to log in).
  *
  * Run: npm run dice:init  (once, to log in), then: npm run dice:scan
@@ -71,15 +72,38 @@ function stripHtml(html: string): string {
  * Open job detail page, wait for content to load (past skeleton), extract full description.
  * Uses JSON-LD script when available, else the description div.
  */
-async function getFullDescriptionFromDetailPage(
+async function getDetailDataFromDetailPage(
   context: BrowserContext,
   jobDetailUrl: string
-): Promise<string | null> {
+): Promise<{ description: string | null; applyUrl: string | null }> {
   const detailPage = await context.newPage();
   try {
     await detailPage.goto(jobDetailUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
     // Wait for real content: skeleton is replaced when JSON-LD or description div appears with content
     await detailPage.waitForTimeout(4000);
+
+    let applyUrl: string | null = null;
+    const applySelectors = [
+      "a[data-testid*='apply']",
+      "a[href*='/apply/']",
+      "a[aria-label*='Apply']",
+      "a:has-text('Apply')",
+    ];
+    for (const sel of applySelectors) {
+      const el = detailPage.locator(sel).first();
+      if ((await el.count()) === 0) continue;
+      const href = (await el.getAttribute("href").catch(() => null))?.trim();
+      if (!href) continue;
+      try {
+        const abs = new URL(href, detailPage.url()).toString();
+        if (!abs.toLowerCase().includes("dice.com/jobs/detail/")) {
+          applyUrl = abs;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
 
     // Prefer JSON-LD (stable and has full description)
     const jsonLdScript = await detailPage
@@ -91,7 +115,7 @@ async function getFullDescriptionFromDetailPage(
       try {
         const data = JSON.parse(jsonLdScript) as { description?: string };
         if (data.description && data.description.length >= 50) {
-          return stripHtml(data.description);
+          return { description: stripHtml(data.description), applyUrl };
         }
       } catch {
         // ignore parse error
@@ -102,10 +126,10 @@ async function getFullDescriptionFromDetailPage(
     const descDiv = detailPage.locator('[class*="jobDescription"]').first();
     if ((await descDiv.count()) > 0) {
       const text = (await descDiv.innerText().catch(() => ""))?.trim();
-      if (text && text.length >= 50) return text;
+      if (text && text.length >= 50) return { description: text, applyUrl };
     }
 
-    return null;
+    return { description: null, applyUrl };
   } finally {
     await detailPage.close().catch(() => {});
   }
@@ -259,10 +283,15 @@ async function main() {
         }`
       );
 
+      // Fetch full description and apply URL; save apply URL when available
+      const detailData = await getDetailDataFromDetailPage(context, jobUrl);
+      const descriptionToSave = detailData.description;
+      const applyUrl = detailData.applyUrl || jobUrl;
+
       // Duplicate check: shared logic across boards
       const duplicate = await isDuplicate({
         platform: "dice",
-        url: jobUrl,
+        url: applyUrl,
         title,
         company,
       });
@@ -272,8 +301,7 @@ async function main() {
         continue;
       }
 
-      // Fetch full description first; only save job if we have at least snippet or full description
-      const descriptionToSave = await getFullDescriptionFromDetailPage(context, jobUrl);
+      // Only save job if we have at least snippet or full description
       const hasFull = descriptionToSave && descriptionToSave.length >= 50;
       const hasSnippet = snippet && snippet.length >= 30;
       if (!hasFull && !hasSnippet) {
@@ -286,7 +314,7 @@ async function main() {
         platform: "dice",
         title,
         company,
-        url: jobUrl,
+        url: applyUrl,
         location,
       });
       if (!saved) {
