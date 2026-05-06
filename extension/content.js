@@ -452,8 +452,17 @@
 
     log(`Extracted: title="${title}", company="${company}", location="${location}", desc=${description.length}chars, url=${jobUrl}, applyUrl=${applyUrl || "n/a"}`);
 
+    async function maybeHideSkippedCard() {
+      const dismissed = await clickDismiss(card);
+      if (dismissed) {
+        stats.hidden++;
+      }
+      return dismissed;
+    }
+
     if (!title || !company) {
       stats.skipped++;
+      await maybeHideSkippedCard();
       sendProgress(`Skipped ${index + 1}/${totalCards}: no title/company`, null);
       sendResult({
         id: cardId,
@@ -510,6 +519,7 @@
 
       if (result.alreadyExists || result.action === "skipped") {
         stats.skipped++;
+        await maybeHideSkippedCard();
         sendProgress(`Already processed ${index + 1}: ${title}`, null);
         sendResult({ ...baseResult, status: "already_processed", reason: result.reason || "Already analyzed" });
         return "skipped";
@@ -533,6 +543,7 @@
           return "hidden";
         }
         stats.skipped++;
+        await maybeHideSkippedCard();
         sendProgress(`Analysis issue (card kept): ${index + 1}: ${title} (${result.reason || ""})`, null);
         sendResult({ ...baseResult, status: "analysis_issue" });
         return "skipped";
@@ -561,16 +572,19 @@
 
       if (result.action === "error") {
         stats.skipped++;
+        await maybeHideSkippedCard();
         sendProgress(`Server error for ${title}: ${result.error || "unknown"}`, null);
         sendResult({ ...baseResult, status: "error", reason: result.error || "Server error" });
         return "error";
       }
 
       stats.skipped++;
+      await maybeHideSkippedCard();
       sendResult({ ...baseResult, status: "unknown", reason: result.reason || "Unknown server response" });
       return "unknown";
     } catch (err) {
       stats.skipped++;
+      await maybeHideSkippedCard();
       sendProgress(`Error ${index + 1}: ${err.message}`, null);
       sendResult({
         id: cardId,
