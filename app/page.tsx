@@ -69,7 +69,6 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState("date_desc");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
-  const [expanded, setExpanded] = useState<number | null>(null);
   const [previewJob, setPreviewJob] = useState<Job | null>(null);
 
   // Close preview on Escape
@@ -365,32 +364,27 @@ export default function HomePage() {
         })}
       </div>
 
+      <div style={{ fontSize: "0.72rem", color: "#9ca3af", marginBottom: "0.4rem" }}>
+        Tip: click a row to preview the description.
+      </div>
+
       {/* Table */}
       <div style={{ background: "white", borderRadius: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1220 }}>
-            <thead>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1080 }}>
+          <thead>
             <tr style={{ borderBottom: "1px solid #e5e7eb", background: "#f9fafb" }}>
-              {["", "Title", "Company", "Location", "Source", "Manual apply", "Score", "Tech Stack", "Status", "Date", "Preview"].map((h) => (
+              {["Title", "Company", "Location", "Source", "Manual apply", "Score", "Tech Stack", "Status", "Date"].map((h) => (
                 <th key={h} style={{ padding: "0.55rem 0.75rem", textAlign: "left", fontSize: "0.7rem", fontWeight: 600, color: "#6b7280", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {jobs.map((job) => {
-              const isOpen = expanded === job.id;
-              return (
-                <RowGroup
-                  key={job.id}
-                  job={job}
-                  isOpen={isOpen}
-                  toggle={() => setExpanded(isOpen ? null : job.id)}
-                  onPreview={() => setPreviewJob(job)}
-                />
-              );
-            })}
+            {jobs.map((job) => (
+              <Row key={job.id} job={job} onPreview={() => setPreviewJob(job)} />
+            ))}
             {!loading && jobs.length === 0 && (
               <tr>
-                <td colSpan={11} style={{ padding: "2.5rem", textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={9} style={{ padding: "2.5rem", textAlign: "center", color: "#6b7280" }}>
                   No jobs match these filters. {hasActiveFilters && (
                     <button onClick={resetFilters} style={{ background: "transparent", border: "none", color: "#1d4ed8", cursor: "pointer", textDecoration: "underline" }}>Reset filters</button>
                   )}
@@ -399,7 +393,7 @@ export default function HomePage() {
             )}
             {loading && (
               <tr>
-                <td colSpan={11} style={{ padding: "1.5rem", textAlign: "center", color: "#9ca3af", fontSize: "0.85rem" }}>Loading…</td>
+                <td colSpan={9} style={{ padding: "1.5rem", textAlign: "center", color: "#9ca3af", fontSize: "0.85rem" }}>Loading…</td>
               </tr>
             )}
           </tbody>
@@ -433,118 +427,59 @@ export default function HomePage() {
   );
 }
 
-function RowGroup({ job, isOpen, toggle, onPreview }: { job: Job; isOpen: boolean; toggle: () => void; onPreview: () => void }) {
+function Row({ job, onPreview }: { job: Job; onPreview: () => void }) {
   const status = job.status || "PENDING";
   const score = job.aiScore ?? null;
   return (
-    <>
-      <tr style={{ borderBottom: "1px solid #f3f4f6", background: isOpen ? "#f9fafb" : "white", cursor: "pointer" }} onClick={toggle}>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.85rem", color: "#6b7280", width: "1.5rem" }}>
-          {isOpen ? "▾" : "▸"}
-        </td>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", maxWidth: 320 }}>
+    <tr
+      onClick={onPreview}
+      style={{ borderBottom: "1px solid #f3f4f6", background: "white", cursor: "pointer" }}
+    >
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", maxWidth: 320 }}>
+        <a
+          href={job.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          style={{ color: "#1d4ed8", textDecoration: "none", fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
+          {job.title}
+        </a>
+      </td>
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.company}</td>
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", color: "#6b7280", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.location || "-"}</td>
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem" }}>{job.platform}</td>
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.72rem", maxWidth: 160 }}>
+        {job.manualApplyUrl ? (
           <a
-            href={job.url}
+            href={job.manualApplyUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            style={{ color: "#1d4ed8", textDecoration: "none", fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            title={job.manualApplyUrl}
+            style={{ color: "#1d4ed8", wordBreak: "break-all", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
           >
-            {job.title}
+            Open apply
           </a>
-        </td>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.company}</td>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", color: "#6b7280", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.location || "-"}</td>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem" }}>{job.platform}</td>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.72rem", maxWidth: 200 }}>
-          {job.manualApplyUrl ? (
-            <a
-              href={job.manualApplyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              title={job.manualApplyUrl}
-              style={{ color: "#1d4ed8", wordBreak: "break-all", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-            >
-              Open apply
-            </a>
-          ) : (
-            <span style={{ color: "#9ca3af" }}>—</span>
-          )}
-        </td>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", fontWeight: 700, color: scoreColor(score) }}>
-          {score ?? "-"}
-        </td>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.7rem", color: "#6b7280", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {job.techStack || "-"}
-        </td>
-        <td style={{ padding: "0.5rem 0.75rem" }}>
-          <span style={{ fontSize: "0.65rem", padding: "0.15rem 0.5rem", borderRadius: "9999px", color: "white", background: STATUS_COLORS[status] || "#6b7280", fontWeight: 600, letterSpacing: 0.3 }}>
-            {status}
-          </span>
-        </td>
-        <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.7rem", color: "#6b7280", whiteSpace: "nowrap" }}>
-          {new Date(job.createdAt).toLocaleDateString()}
-        </td>
-        <td style={{ padding: "0.5rem 0.75rem" }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); onPreview(); }}
-            title="Open preview"
-            style={{ padding: "0.25rem 0.6rem", background: "white", border: "1px solid #d1d5db", borderRadius: "999px", cursor: "pointer", fontSize: "0.7rem", color: "#374151", fontWeight: 500 }}
-          >
-            Preview
-          </button>
-        </td>
-      </tr>
-      {isOpen && (
-        <tr style={{ borderBottom: "1px solid #e5e7eb", background: "#f9fafb" }}>
-          <td colSpan={11} style={{ padding: "0.85rem 1.5rem" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "0.75rem", fontSize: "0.8rem" }}>
-              <div>
-                <strong style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 }}>AI Reason</strong>
-                <p style={{ margin: "0.25rem 0 0", color: "#1f2937", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
-                  {job.aiReason || "(no reason recorded)"}
-                </p>
-              </div>
-              {job.salary && (
-                <div>
-                  <strong style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Salary</strong>
-                  <p style={{ margin: "0.25rem 0 0", color: "#1f2937" }}>{job.salary}</p>
-                </div>
-              )}
-              {job.techStack && (
-                <div>
-                  <strong style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Tech Stack</strong>
-                  <p style={{ margin: "0.25rem 0 0", color: "#1f2937" }}>{job.techStack}</p>
-                </div>
-              )}
-              <div>
-                <strong style={{ fontSize: "0.7rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5 }}>Created</strong>
-                <p style={{ margin: "0.25rem 0 0", color: "#1f2937" }}>{new Date(job.createdAt).toLocaleString()}</p>
-              </div>
-            </div>
-            <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <a
-                href={job.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ padding: "0.35rem 0.8rem", background: "#1d4ed8", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 500 }}
-              >
-                Open job ↗
-              </a>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(job.url);
-                }}
-                style={{ padding: "0.35rem 0.8rem", background: "white", border: "1px solid #d1d5db", borderRadius: "4px", fontSize: "0.75rem", color: "#374151", cursor: "pointer" }}
-              >
-                Copy URL
-              </button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
+        ) : (
+          <span style={{ color: "#9ca3af" }}>—</span>
+        )}
+      </td>
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", fontWeight: 700, color: scoreColor(score) }}>
+        {score ?? "-"}
+      </td>
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.7rem", color: "#6b7280", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {job.techStack || "-"}
+      </td>
+      <td style={{ padding: "0.5rem 0.75rem" }}>
+        <span style={{ fontSize: "0.65rem", padding: "0.15rem 0.5rem", borderRadius: "9999px", color: "white", background: STATUS_COLORS[status] || "#6b7280", fontWeight: 600, letterSpacing: 0.3 }}>
+          {status}
+        </span>
+      </td>
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.7rem", color: "#6b7280", whiteSpace: "nowrap" }}>
+        {new Date(job.createdAt).toLocaleDateString()}
+      </td>
+    </tr>
   );
 }
 

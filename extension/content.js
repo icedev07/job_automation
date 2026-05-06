@@ -183,6 +183,74 @@
     return window.location.href;
   }
 
+  function decodeJsonString(s) {
+    try {
+      return JSON.parse(`"${s.replace(/"/g, '\\"')}"`);
+    } catch {
+      return s.replace(/\\u002F/gi, "/").replace(/\\\//g, "/");
+    }
+  }
+
+  function tidyApplyUrl(raw) {
+    if (!raw) return "";
+    try {
+      const abs = new URL(raw, window.location.origin);
+      const redirectTarget =
+        abs.searchParams.get("url") ||
+        abs.searchParams.get("target") ||
+        abs.searchParams.get("targetUrl") ||
+        abs.searchParams.get("redirectUrl");
+      if (redirectTarget) {
+        try {
+          return new URL(redirectTarget).toString();
+        } catch {
+          return redirectTarget;
+        }
+      }
+      return abs.toString();
+    } catch {
+      return raw;
+    }
+  }
+
+  function findApplyUrlInEmbeddedJson() {
+    const currentId =
+      new URLSearchParams(window.location.search).get("currentJobId") ||
+      (window.location.href.match(/\/jobs\/view\/(\d+)/) || [])[1] ||
+      "";
+    const codes = document.querySelectorAll("code");
+    const candidates = [];
+    for (const code of codes) {
+      const text = code.textContent || "";
+      if (!text || text.length < 100) continue;
+      if (
+        !text.includes("companyApplyUrl") &&
+        !text.includes("applyUrl") &&
+        !text.includes("OffsiteApply")
+      ) {
+        continue;
+      }
+      const matches = text.match(/"(?:companyApplyUrl|applyUrl)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g) || [];
+      for (const m of matches) {
+        const url = (m.match(/"(?:companyApplyUrl|applyUrl)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/) || [])[1];
+        if (!url) continue;
+        const decoded = decodeJsonString(url);
+        if (!/^https?:\/\//i.test(decoded)) continue;
+        const isLinkedInRedirect = /linkedin\.com\/(redir|jobs\/view)/i.test(decoded);
+        const mentionsCurrentJob = currentId && text.includes(currentId);
+        candidates.push({ url: decoded, mentionsCurrentJob, isLinkedInRedirect });
+      }
+    }
+    if (candidates.length === 0) return "";
+    candidates.sort((a, b) => {
+      // prefer entries belonging to the currently open job, then non-linkedin redirect URLs
+      if (a.mentionsCurrentJob !== b.mentionsCurrentJob) return a.mentionsCurrentJob ? -1 : 1;
+      if (a.isLinkedInRedirect !== b.isLinkedInRedirect) return a.isLinkedInRedirect ? 1 : -1;
+      return 0;
+    });
+    return candidates[0].url;
+  }
+
   function extractApplyUrl() {
     const detail = getDetailContainer() || document;
     const selectors = [
@@ -198,25 +266,27 @@
       if (!link) continue;
       const href = (link.getAttribute("href") || "").trim();
       if (!href) continue;
-      try {
-        const abs = new URL(href, window.location.origin);
-        const redirectTarget =
-          abs.searchParams.get("url") ||
-          abs.searchParams.get("target") ||
-          abs.searchParams.get("targetUrl") ||
-          abs.searchParams.get("redirectUrl");
-        if (redirectTarget) {
-          try {
-            return new URL(redirectTarget).toString();
-          } catch {
-            return redirectTarget;
-          }
-        }
-        return abs.toString();
-      } catch {
-        continue;
+      const tidied = tidyApplyUrl(href);
+      if (tidied) return tidied;
+    }
+
+    // Fallback 1: read href off the apply button if LinkedIn ever stamps one on the <button>
+    const btn =
+      detail.querySelector("button[data-live-test-job-apply-button]") ||
+      document.querySelector("button[data-live-test-job-apply-button]") ||
+      document.querySelector("#jobs-apply-button-id");
+    if (btn) {
+      const dataAttrs = ["data-apply-url", "data-href", "data-job-apply-url"];
+      for (const attr of dataAttrs) {
+        const v = btn.getAttribute(attr);
+        if (v && /^https?:\/\//i.test(v)) return tidyApplyUrl(v);
       }
     }
+
+    // Fallback 2: scan embedded Voyager JSON blobs for companyApplyUrl / applyUrl
+    const fromJson = findApplyUrlInEmbeddedJson();
+    if (fromJson) return tidyApplyUrl(fromJson);
+
     return "";
   }
 
