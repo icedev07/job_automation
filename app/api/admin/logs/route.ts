@@ -72,6 +72,21 @@ export async function DELETE(req: NextRequest) {
   const body = await req.json();
   const { type, ids } = body;
 
+  if (type === "cleanup") {
+    const [deletedAnalysis, deletedJobs, deletedScans] = await prisma.$transaction([
+      prisma.analysisLog.deleteMany(),
+      prisma.scrapedJob.deleteMany(),
+      prisma.scanLog.deleteMany(),
+    ]);
+    return NextResponse.json({
+      deleted: {
+        analysisLogs: deletedAnalysis.count,
+        jobs: deletedJobs.count,
+        scanLogs: deletedScans.count,
+      },
+    });
+  }
+
   if (!type || !Array.isArray(ids) || ids.length === 0) {
     return NextResponse.json({ error: "type and ids[] required" }, { status: 400 });
   }

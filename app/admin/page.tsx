@@ -20,6 +20,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupMsg, setCleanupMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/stats").then((r) => r.json()).then(setStats);
@@ -32,6 +34,41 @@ export default function AdminDashboard() {
     const data = await res.json();
     setSyncing(false);
     setSyncMsg(data.success ? `Synced ${data.synced} jobs to Google Sheets` : `Error: ${data.error}`);
+  }
+
+  async function handleCleanup() {
+    const confirmed = window.confirm(
+      "This will permanently delete all jobs, analysis logs, and scan logs. Configuration data will be kept. Continue?"
+    );
+    if (!confirmed) return;
+
+    setCleaning(true);
+    setCleanupMsg("");
+    try {
+      const res = await fetch("/api/admin/logs", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "cleanup" }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCleanupMsg(`Error: ${data.error || "Failed to clear database tables"}`);
+        return;
+      }
+
+      const deleted = data?.deleted || {};
+      const jobs = Number(deleted.jobs || 0);
+      const analysisLogs = Number(deleted.analysisLogs || 0);
+      const scanLogs = Number(deleted.scanLogs || 0);
+      setCleanupMsg(`Cleared ${jobs} jobs, ${analysisLogs} analysis logs, ${scanLogs} scan logs.`);
+      const fresh = await fetch("/api/admin/stats").then((r) => r.json());
+      setStats(fresh);
+    } catch {
+      setCleanupMsg("Error: Failed to clear database tables");
+    } finally {
+      setCleaning(false);
+    }
   }
 
   if (!stats) return <p>Loading...</p>;
@@ -91,6 +128,21 @@ export default function AdminDashboard() {
           {syncing ? "Syncing..." : "Sync Approved to Google Sheets"}
         </button>
         {syncMsg && <span style={{ alignSelf: "center", fontSize: "0.85rem", color: syncMsg.includes("Error") ? "#dc2626" : "#16a34a" }}>{syncMsg}</span>}
+      </div>
+
+      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "2rem" }}>
+        <button
+          onClick={handleCleanup}
+          disabled={cleaning}
+          style={{ padding: "0.5rem 1.25rem", background: "#b91c1c", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: 500 }}
+        >
+          {cleaning ? "Clearing..." : "Clear Job Search + Analysis Data"}
+        </button>
+        {cleanupMsg && (
+          <span style={{ alignSelf: "center", fontSize: "0.85rem", color: cleanupMsg.includes("Error") ? "#dc2626" : "#16a34a" }}>
+            {cleanupMsg}
+          </span>
+        )}
       </div>
 
       <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "0.75rem" }}>Recent Scans</h2>
