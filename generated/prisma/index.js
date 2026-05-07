@@ -198,7 +198,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/home/sword/Documents/01_workplace/01-ice/job_automation/generated/prisma",
+      "value": "/home/sword/Documents/temp/job_automation/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -212,12 +212,11 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/home/sword/Documents/01_workplace/01-ice/job_automation/prisma/schema.prisma",
+    "sourceFilePath": "/home/sword/Documents/temp/job_automation/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null,
-    "schemaEnvPath": "../../.env"
+    "rootEnvPath": null
   },
   "relativePath": "../../prisma",
   "clientVersion": "5.22.0",

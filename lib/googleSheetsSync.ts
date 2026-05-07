@@ -13,6 +13,12 @@ function getAuth(credentialsJson: string) {
 function getJobValue(job: Record<string, any>, key: string): string {
   if (key === "createdAt") return job.createdAt?.toISOString?.()?.split("T")[0] || String(job.createdAt || "");
   if (key === "aiScore") return job.aiScore != null ? String(job.aiScore) : "";
+  // For LinkedIn, `url` is the linkedin.com viewer link; the real company
+  // apply page is in `manualApplyUrl`. For other sources, manualApplyUrl is
+  // usually empty and `url` already points to the apply page. Preferring the
+  // manual apply when present makes the sheet usable without the user having
+  // to click through linkedin first.
+  if (key === "url") return String(job.manualApplyUrl || job.url || "");
   return String(job[key] ?? "");
 }
 
@@ -80,6 +86,7 @@ export async function syncJobToLinkedInTab(job: {
   company: string;
   location: string | null;
   url: string;
+  manualApplyUrl?: string | null;
   createdAt: Date;
 }): Promise<void> {
   const config = await getConfig();
@@ -111,6 +118,10 @@ export async function syncJobToLinkedInTab(job: {
   }).catch(() => null);
   const rowCount = (countRes?.data?.values?.length || 1);
 
+  // Job Url stays as the LinkedIn viewer link (so we can re-open the original
+  // posting), and the trailing Url column gets the company apply link when the
+  // extension captured it, falling back to the LinkedIn link otherwise.
+  const applyHref = (job.manualApplyUrl && job.manualApplyUrl.trim()) || job.url;
   const row = [
     String(rowCount),
     job.createdAt.toISOString().split("T")[0],
@@ -119,7 +130,7 @@ export async function syncJobToLinkedInTab(job: {
     job.company,
     job.location || "",
     job.title,
-    job.url,
+    applyHref,
   ];
 
   await sheets.spreadsheets.values.append({

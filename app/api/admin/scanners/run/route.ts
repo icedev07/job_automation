@@ -120,6 +120,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
   }
+  // Anchor the budget to wall-clock since the function actually started, not
+  // to the sum of scrape durations (which omits config load + JSON parsing
+  // + response time). This keeps us safely under the 60s function cap.
+  const functionStartedAt = Date.now();
   const sharedConfig = await getAllConfig();
   const outcomes: RunOutcome[] = [];
   for (const key of FEED_KEYS) {
@@ -129,12 +133,12 @@ export async function GET(req: NextRequest) {
   const totalFound = outcomes.reduce((s, o) => s + o.jobsFound, 0);
 
   // Chain analysis on the cron path so freshly-scraped jobs are filtered in
-  // the same run. The cron has the same 60s budget as the manual route, and
-  // scraping already used some of it — pass whatever's left so analyze bails
-  // cleanly instead of being killed mid-call. The next cron tick will pick up
-  // the remaining pending rows.
-  const budgetUsedSoFar = outcomes.reduce((sum, o) => sum + (o.durationMs || 0), 0);
-  const remainingBudget = Math.max(5_000, 55_000 - budgetUsedSoFar);
+  // the same run. The cron has the same 60s budget as the manual route — give
+  // analyze whatever wall-clock remains, with a 5s floor so it can finish a
+  // partial batch and write its scan log. The next cron tick picks up the
+  // remaining pending rows.
+  const elapsedMs = Date.now() - functionStartedAt;
+  const remainingBudget = Math.max(5_000, 55_000 - elapsedMs);
   let analyzed:
     | { analyzed: number; approved: number; rejected: number; skipped: number; remaining: number; timedOut: boolean }
     | { error: string } = { analyzed: 0, approved: 0, rejected: 0, skipped: 0, remaining: 0, timedOut: false };

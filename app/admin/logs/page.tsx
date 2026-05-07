@@ -10,9 +10,60 @@ type AnalysisLogEntry = {
 };
 type JobEntry = {
   id: number; platform: string; title: string; company: string; location: string | null;
-  url: string; status: string; aiScore: number | null; aiReason: string | null;
+  url: string; manualApplyUrl: string | null;
+  status: string; aiScore: number | null; aiReason: string | null;
   sheetSynced: boolean; createdAt: string;
 };
+
+function ManualApplyCell({ job }: { job: { manualApplyUrl: string | null; url: string } }) {
+  const apply = job.manualApplyUrl || job.url;
+  const isFallback = !job.manualApplyUrl;
+  if (!apply) return <span style={{ color: "#9ca3af" }}>—</span>;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", minWidth: 0 }}>
+      <a
+        href={apply}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={apply}
+        style={{ color: isFallback ? "#6b7280" : "#1d4ed8", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}
+      >
+        {isFallback ? "via LinkedIn" : "Open apply"}
+      </a>
+      <CopyUrlBtn value={apply} title={isFallback ? "Copy LinkedIn URL" : "Copy apply URL"} />
+    </div>
+  );
+}
+
+function CopyUrlBtn({ value, title }: { value: string; title?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={(e: any) => {
+        e.stopPropagation();
+        e.preventDefault();
+        navigator.clipboard.writeText(value).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1200);
+        });
+      }}
+      title={title || "Copy URL"}
+      style={{
+        padding: "0.1rem 0.35rem",
+        border: "1px solid #e5e7eb",
+        borderRadius: 4,
+        background: copied ? "#d1fae5" : "white",
+        color: copied ? "#065f46" : "#6b7280",
+        fontSize: "0.62rem",
+        cursor: "pointer",
+        flexShrink: 0,
+      }}
+    >
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
 type ExtLogEntry = { id: number; level: string; message: string; sessionId: string | null; createdAt: string };
 
 export default function LogsPage() {
@@ -165,7 +216,7 @@ export default function LogsPage() {
                     <input type="checkbox" checked={selectedJobs.size === jobs.length && jobs.length > 0}
                       onChange={() => setSelectedJobs(toggleAll(selectedJobs, jobs.map(j => j.id)))} />
                   </th>
-                  {["Platform", "Title", "Company", "Location", "Status", "Score", "Reason", "Date"].map(h => <th key={h} style={thStyle}>{h}</th>)}
+                  {["Platform", "Title", "Company", "Location", "Manual apply", "Status", "Score", "Reason", "Date"].map(h => <th key={h} style={thStyle}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -176,17 +227,23 @@ export default function LogsPage() {
                       <span style={{ padding: "0.1rem 0.3rem", background: job.platform === "linkedin" ? "#0a66c2" : "#6b7280", color: "white", borderRadius: "3px", fontSize: "0.65rem" }}>{job.platform}</span>
                     </td>
                     <td style={{ ...tdStyle, fontWeight: 500, maxWidth: "200px" }}>
-                      <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8", textDecoration: "none" }}>{job.title}</a>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", minWidth: 0 }}>
+                        <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ color: "#1d4ed8", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{job.title}</a>
+                        <CopyUrlBtn value={job.url} title="Copy job URL" />
+                      </div>
                     </td>
                     <td style={tdStyle}>{job.company}</td>
                     <td style={smText}>{job.location || "-"}</td>
+                    <td style={{ ...smText, maxWidth: "200px" }}>
+                      <ManualApplyCell job={job} />
+                    </td>
                     <td style={tdStyle}><span style={statusBadge(job.status)}>{job.status}</span></td>
                     <td style={{ ...tdStyle, fontWeight: 600, color: job.aiScore && job.aiScore >= 60 ? "#16a34a" : "#dc2626" }}>{job.aiScore ?? "-"}</td>
                     <td style={{ ...smText, maxWidth: "250px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={job.aiReason || ""}>{job.aiReason || "-"}</td>
                     <td style={smText}>{new Date(job.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
-                {jobs.length === 0 && <tr><td colSpan={9} style={{ padding: "1rem", color: "#6b7280", textAlign: "center" }}>No jobs found.</td></tr>}
+                {jobs.length === 0 && <tr><td colSpan={10} style={{ padding: "1rem", color: "#6b7280", textAlign: "center" }}>No jobs found.</td></tr>}
               </tbody>
             </table>
           </div>

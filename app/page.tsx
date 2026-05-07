@@ -464,34 +464,24 @@ function Row({ job, onPreview }: { job: Job; onPreview: () => void }) {
       style={{ borderBottom: "1px solid #f3f4f6", background: "white", cursor: "pointer" }}
     >
       <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", maxWidth: 320 }}>
-        <a
-          href={job.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          style={{ color: "#1d4ed8", textDecoration: "none", fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-        >
-          {job.title}
-        </a>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
+          <a
+            href={job.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: "#1d4ed8", textDecoration: "none", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}
+          >
+            {job.title}
+          </a>
+          <CopyUrlBtn value={job.url} title="Copy LinkedIn URL" />
+        </div>
       </td>
       <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.company}</td>
       <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", color: "#6b7280", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.location || "-"}</td>
       <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem" }}>{job.platform}</td>
-      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.72rem", maxWidth: 160 }}>
-        {job.manualApplyUrl ? (
-          <a
-            href={job.manualApplyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            title={job.manualApplyUrl}
-            style={{ color: "#1d4ed8", wordBreak: "break-all", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-          >
-            Open apply
-          </a>
-        ) : (
-          <span style={{ color: "#9ca3af" }}>—</span>
-        )}
+      <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.72rem", maxWidth: 200 }}>
+        <ManualApplyCell job={job} />
       </td>
       <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", fontWeight: 700, color: scoreColor(score) }}>
         {score ?? "-"}
@@ -680,6 +670,77 @@ const previewValue: React.CSSProperties = {
   marginTop: "0.15rem",
   lineHeight: 1.5,
 };
+
+function CopyUrlBtn({ value, title, label }: { value: string; title?: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const click = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    });
+  };
+  return (
+    <button
+      type="button"
+      onClick={click}
+      title={title || "Copy URL"}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.25rem",
+        padding: label ? "0.15rem 0.45rem" : "0.15rem 0.3rem",
+        border: "1px solid #e5e7eb",
+        borderRadius: 4,
+        background: copied ? "#d1fae5" : "white",
+        color: copied ? "#065f46" : "#6b7280",
+        fontSize: "0.62rem",
+        cursor: "pointer",
+        flexShrink: 0,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ fontFamily: "system-ui, sans-serif", letterSpacing: 0 }}>
+        {copied ? "Copied" : label ? "Copy" : "Copy"}
+      </span>
+    </button>
+  );
+}
+
+function ManualApplyCell({ job, stopPropagation = true }: { job: Job; stopPropagation?: boolean }) {
+  // Prefer the captured manualApplyUrl when present. For LinkedIn rows that
+  // were saved before the extension's apply-url extractor existed, fall back
+  // to the LinkedIn viewer link so the cell stays useful instead of going to
+  // a dead "—". Either way the copy button is wired so the visible URL can
+  // be grabbed without opening the link.
+  const url = job.manualApplyUrl || job.url;
+  const isFallback = !job.manualApplyUrl;
+  if (!url) return <span style={{ color: "#9ca3af" }}>—</span>;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", minWidth: 0 }}>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
+        title={url}
+        style={{
+          color: isFallback ? "#6b7280" : "#1d4ed8",
+          textDecoration: "none",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
+        {isFallback ? "via LinkedIn" : "Open apply"}
+      </a>
+      <CopyUrlBtn value={url} title={isFallback ? "Copy LinkedIn URL" : "Copy apply URL"} />
+    </div>
+  );
+}
 
 function scoreColor(score: number | null) {
   if (score == null) return "#9ca3af";

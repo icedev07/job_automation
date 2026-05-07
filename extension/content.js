@@ -489,6 +489,44 @@
 
     sendProgress(`Checking job ${index + 1}/${totalCards}...`);
 
+    // Cards previously dismissed by an earlier scan come back wearing
+    // `.job-card-list--is-dismissed` ("We won't show you this job again").
+    // We want to re-process them so the current extractor can backfill
+    // missing data (manual apply URL most importantly) on the existing DB
+    // row. Click the per-card "undo" button to restore the card to its
+    // active state, then fall through to the normal scan flow. The dedup
+    // path in upsertScrapedJob will refresh the row's fields without
+    // creating a duplicate, and analyzeJob short-circuits if the row was
+    // already classified — so re-processing is cheap and safe.
+    const innerCard = card.matches?.("[data-job-id]") ? card : card.querySelector("[data-job-id]");
+    const dismissedTarget = innerCard || card;
+    if (dismissedTarget.classList?.contains("job-card-list--is-dismissed")) {
+      const undoBtn =
+        card.querySelector("button[aria-label*='dismissed, undo']") ||
+        card.querySelector("button[aria-label*='undo']");
+      if (undoBtn) {
+        log(`Job ${index + 1}: undismissing previously dismissed card to re-process.`);
+        undoBtn.click();
+        // Poll for the dismissed class to actually disappear instead of
+        // sleeping a fixed amount. LinkedIn's React render after the click
+        // is usually <300ms but can spike under load — give it up to 3s,
+        // then proceed regardless.
+        const undismissDeadline = Date.now() + 3000;
+        while (
+          dismissedTarget.classList?.contains("job-card-list--is-dismissed") &&
+          Date.now() < undismissDeadline &&
+          !stopRequested
+        ) {
+          await sleep(150);
+        }
+        if (dismissedTarget.classList?.contains("job-card-list--is-dismissed")) {
+          log(`Job ${index + 1}: undo click did not flip card state in time; processing anyway.`);
+        }
+      } else {
+        log(`Job ${index + 1}: dismissed but no undo button found; processing anyway.`);
+      }
+    }
+
     // First: check Easy Apply from the card BEFORE clicking it
     const easyApply = isEasyApplyFromCard(card);
     if (easyApply) {
