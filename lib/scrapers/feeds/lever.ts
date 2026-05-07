@@ -14,8 +14,18 @@ type LeverPosting = {
   lists?: Array<{ text?: string; content?: string }>;
 };
 
+// Lever's public api is sparse — many companies migrated away. These slugs
+// returned >0 postings on direct probe at the time of writing.
+export const LEVER_DEFAULT_SLUGS = [
+  "palantir",
+  "spotify",
+  "rover",
+  "highspot",
+  "cherre",
+];
+
 function parseSlugs(searchUrl: string | undefined): string[] {
-  if (!searchUrl) return [];
+  if (!searchUrl || !searchUrl.trim()) return LEVER_DEFAULT_SLUGS;
   return searchUrl
     .split(/[,\n]/)
     .map((s) => s.trim())
@@ -47,22 +57,17 @@ export const leverFeed: Feed = {
   label: "Lever (multi-company)",
   fetch: async ({ maxJobs, searchUrl, signal }) => {
     const slugs = parseSlugs(searchUrl);
-    if (slugs.length === 0) {
-      return {
-        jobs: [],
-        warning:
-          "no lever company slugs configured — paste a comma-separated list (e.g. netflix,palantir,figma) in the search url field.",
-      };
-    }
     const jobs: NormalizedJob[] = [];
     const warnings: string[] = [];
+    const perCompany = Math.max(5, Math.ceil(maxJobs / Math.max(1, slugs.length)));
     for (const slug of slugs) {
       if (jobs.length >= maxJobs) break;
       const url = `https://api.lever.co/v0/postings/${encodeURIComponent(slug)}?mode=json`;
       try {
         const res = await fetch(url, {
           headers: {
-            "User-Agent": "JobFinderBot/1.0",
+            "User-Agent":
+              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
             "Accept": "application/json",
           },
           signal,
@@ -74,7 +79,9 @@ export const leverFeed: Feed = {
         }
         const list = (await res.json()) as LeverPosting[];
         if (!Array.isArray(list)) continue;
+        let takenFromThisCompany = 0;
         for (const posting of list) {
+          if (takenFromThisCompany >= perCompany) break;
           const title = (posting.text || "").trim();
           const u = (posting.hostedUrl || posting.applyUrl || "").trim();
           if (!title || !u) continue;
@@ -88,6 +95,7 @@ export const leverFeed: Feed = {
             description: buildDescription(posting) || null,
             salary: null,
           });
+          takenFromThisCompany++;
           if (jobs.length >= maxJobs) break;
         }
       } catch (err) {

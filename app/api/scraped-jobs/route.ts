@@ -36,8 +36,10 @@ export async function GET(req: NextRequest) {
     if (to) {
       const d = new Date(to);
       if (!isNaN(d.getTime())) {
-        // include the entire "to" day
-        d.setHours(23, 59, 59, 999);
+        // If the caller sent only "YYYY-MM-DD" (no time component), treat it
+        // as the end of that UTC day for the legacy contract. Anything with a
+        // time component is trusted as an exact instant.
+        if (/^\d{4}-\d{2}-\d{2}$/.test(to)) d.setUTCHours(23, 59, 59, 999);
         where.createdAt.lte = d;
       }
     }

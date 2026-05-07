@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { FEED_KEYS, getFeed, runFeedScan } from "@/lib/scrapers";
 import { analyzeAllPending } from "@/lib/jobAnalyzer";
+import { getAllConfig } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +10,16 @@ type RunOutcome = {
   board: string;
   jobsFound: number;
   jobsSaved: number;
+  jobsRefreshed: number;
+  jobsRescanned: number;
   durationMs: number;
   error?: string;
   warning?: string;
 };
 
-async function runOne(board: string): Promise<RunOutcome> {
+async function runOne(board: string, preloadedConfig?: Record<string, string>): Promise<RunOutcome> {
   const startedAt = Date.now();
-  let outcome: RunOutcome = { board, jobsFound: 0, jobsSaved: 0, durationMs: 0 };
+  let outcome: RunOutcome = { board, jobsFound: 0, jobsSaved: 0, jobsRefreshed: 0, jobsRescanned: 0, durationMs: 0 };
   try {
     if (!getFeed(board)) {
       throw new Error(
@@ -24,11 +27,13 @@ async function runOne(board: string): Promise<RunOutcome> {
           `Available: ${FEED_KEYS.join(", ")}.`,
       );
     }
-    const result = await runFeedScan(board);
+    const result = await runFeedScan(board, preloadedConfig);
     outcome = {
       board,
       jobsFound: result.found,
       jobsSaved: result.saved,
+      jobsRefreshed: result.refreshed,
+      jobsRescanned: result.rescanned,
       durationMs: Date.now() - startedAt,
       warning: result.warning,
     };
@@ -37,6 +42,8 @@ async function runOne(board: string): Promise<RunOutcome> {
       board,
       jobsFound: 0,
       jobsSaved: 0,
+      jobsRefreshed: 0,
+      jobsRescanned: 0,
       durationMs: Date.now() - startedAt,
       error: (err as Error).message || String(err),
     };
@@ -46,7 +53,9 @@ async function runOne(board: string): Promise<RunOutcome> {
     data: {
       board: outcome.board,
       jobsFound: outcome.jobsFound,
-      jobsSaved: outcome.jobsSaved,
+      // Persist saved + rescanned in jobsSaved column so dashboards keep their meaning
+      // (rescanned rows go back into PENDING and need fresh analysis, just like new ones).
+      jobsSaved: outcome.jobsSaved + outcome.jobsRescanned,
       errors: outcome.error || outcome.warning || null,
       durationMs: outcome.durationMs,
     },
@@ -69,9 +78,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (board === "all") {
+    const sharedConfig = await getAllConfig();
     const outcomes: RunOutcome[] = [];
     for (const key of FEED_KEYS) {
-      outcomes.push(await runOne(key));
+      outcomes.push(await runOne(key, sharedConfig));
     }
     const totalSaved = outcomes.reduce((s, o) => s + o.jobsSaved, 0);
     const totalFound = outcomes.reduce((s, o) => s + o.jobsFound, 0);
@@ -110,9 +120,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
   }
+  const sharedConfig = await getAllConfig();
   const outcomes: RunOutcome[] = [];
   for (const key of FEED_KEYS) {
-    outcomes.push(await runOne(key));
+    outcomes.push(await runOne(key, sharedConfig));
   }
   const totalSaved = outcomes.reduce((s, o) => s + o.jobsSaved, 0);
   const totalFound = outcomes.reduce((s, o) => s + o.jobsFound, 0);

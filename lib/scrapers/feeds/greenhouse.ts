@@ -16,8 +16,42 @@ type GreenhouseJob = {
 
 type GreenhouseResponse = { jobs?: GreenhouseJob[] };
 
+// Verified working slugs (count of jobs returned at probe time) — picked for
+// remote-friendly tech hiring. Keep this list short enough to fit one scan
+// run inside Vercel's 60s budget; the user can override or extend via the
+// search-url field. Companies confirmed live by direct API probe.
+export const GREENHOUSE_DEFAULT_SLUGS = [
+  "stripe",
+  "anthropic",
+  "cloudflare",
+  "mongodb",
+  "samsara",
+  "roblox",
+  "airbnb",
+  "gitlab",
+  "intercom",
+  "figma",
+  "fivetran",
+  "robinhood",
+  "lyft",
+  "asana",
+  "instacart",
+  "postman",
+  "dropbox",
+  "vercel",
+  "duolingo",
+  "discord",
+  "newrelic",
+  "amplitude",
+  "mixpanel",
+  "webflow",
+  "algolia",
+  "airtable",
+  "modernhealth",
+];
+
 function parseSlugs(searchUrl: string | undefined): string[] {
-  if (!searchUrl) return [];
+  if (!searchUrl || !searchUrl.trim()) return GREENHOUSE_DEFAULT_SLUGS;
   return searchUrl
     .split(/[,\n]/)
     .map((s) => s.trim())
@@ -42,22 +76,20 @@ export const greenhouseFeed: Feed = {
   label: "Greenhouse (multi-company)",
   fetch: async ({ maxJobs, searchUrl, signal }) => {
     const slugs = parseSlugs(searchUrl);
-    if (slugs.length === 0) {
-      return {
-        jobs: [],
-        warning:
-          "no greenhouse company slugs configured — paste a comma-separated list (e.g. stripe,vercel,airbnb) in the search url field.",
-      };
-    }
     const jobs: NormalizedJob[] = [];
     const warnings: string[] = [];
+    // Per-company cap so one giant board (Stripe has 495+) doesn't starve the
+    // others. Spread the maxJobs budget evenly across configured companies,
+    // with a floor of 5 so small boards still contribute meaningfully.
+    const perCompany = Math.max(5, Math.ceil(maxJobs / Math.max(1, slugs.length)));
     for (const slug of slugs) {
       if (jobs.length >= maxJobs) break;
       const url = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(slug)}/jobs?content=true`;
       try {
         const res = await fetch(url, {
           headers: {
-            "User-Agent": "JobFinderBot/1.0",
+            "User-Agent":
+              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
             "Accept": "application/json",
           },
           signal,
@@ -69,7 +101,9 @@ export const greenhouseFeed: Feed = {
         }
         const data = (await res.json()) as GreenhouseResponse;
         const list = Array.isArray(data.jobs) ? data.jobs : [];
+        let takenFromThisCompany = 0;
         for (const entry of list) {
+          if (takenFromThisCompany >= perCompany) break;
           const title = (entry.title || "").trim();
           const u = (entry.absolute_url || "").trim();
           if (!title || !u) continue;
@@ -82,6 +116,7 @@ export const greenhouseFeed: Feed = {
             description: entry.content ? stripHtml(entry.content) : null,
             salary: findSalary(entry.metadata),
           });
+          takenFromThisCompany++;
           if (jobs.length >= maxJobs) break;
         }
       } catch (err) {

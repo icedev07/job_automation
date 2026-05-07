@@ -5,7 +5,8 @@ import { rssFeed } from "./rssFactory";
 export const authenticJobsFeed = rssFeed({
   key: "authenticjobs",
   label: "Authentic Jobs",
-  defaultUrl: "https://authenticjobs.com/rss/all.xml",
+  // Verified: /rss/all.xml is 404, /feed returns ~117KB.
+  defaultUrl: "https://authenticjobs.com/feed",
   splitCompanyFromTitle: true,
   fallbackCompanyFromHost: true,
 });

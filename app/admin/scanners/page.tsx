@@ -7,6 +7,8 @@ type Scanner = {
   label: string;
   hint: string;
   defaultMax: number;
+  /** Pre-filled search-url value. Empty for sources that need user input (ATS slugs). */
+  defaultSearchUrl: string;
   searchPlaceholder: string;
 };
 
@@ -17,6 +19,7 @@ const SCANNERS: Scanner[] = [
     label: "RemoteOK",
     hint: "public json feed of newest remote jobs. search url is ignored.",
     defaultMax: 50,
+    defaultSearchUrl: "",
     searchPlaceholder: "(no config — fetches latest jobs)",
   },
   {
@@ -24,6 +27,7 @@ const SCANNERS: Scanner[] = [
     label: "Remotive",
     hint: "public json api. accepts category=software-dev, search=react, etc.",
     defaultMax: 50,
+    defaultSearchUrl: "category=software-dev",
     searchPlaceholder: "category=software-dev,search=typescript",
   },
   {
@@ -31,6 +35,7 @@ const SCANNERS: Scanner[] = [
     label: "Jobicy",
     hint: "jobicy v2 api. accepts tag=react, jobGeo=anywhere, or a full Jobicy api url.",
     defaultMax: 50,
+    defaultSearchUrl: "",
     searchPlaceholder: "tag=javascript,jobGeo=anywhere",
   },
   {
@@ -38,6 +43,7 @@ const SCANNERS: Scanner[] = [
     label: "Landing.Jobs",
     hint: "EU-leaning developer api. accepts query params or a full landing.jobs api url.",
     defaultMax: 50,
+    defaultSearchUrl: "",
     searchPlaceholder: "remote=true,limit=50",
   },
   // RSS feeds
@@ -46,64 +52,58 @@ const SCANNERS: Scanner[] = [
     label: "We Work Remotely",
     hint: "comma-separated category slugs from weworkremotely.com/categories",
     defaultMax: 50,
+    defaultSearchUrl: "remote-programming-jobs,remote-full-stack-programming-jobs",
     searchPlaceholder: "remote-programming-jobs,remote-full-stack-programming-jobs",
-  },
-  {
-    key: "remotees",
-    label: "Remotees",
-    hint: "RSS aggregator. defaults to the global feed; paste a category-specific feed url to narrow.",
-    defaultMax: 50,
-    searchPlaceholder: "(blank uses default rss)",
   },
   {
     key: "jobspresso",
     label: "Jobspresso",
-    hint: "RSS feed. paste a custom feed url to override.",
+    hint: "RSS feed at /jobs/feed/ (the bare /feed/ is the empty WordPress blog feed).",
     defaultMax: 50,
-    searchPlaceholder: "(blank uses default rss)",
+    defaultSearchUrl: "https://jobspresso.co/jobs/feed/",
+    searchPlaceholder: "https://jobspresso.co/jobs/feed/",
   },
   {
     key: "authenticjobs",
     label: "Authentic Jobs",
-    hint: "dev-leaning RSS feed. paste a custom feed url to override.",
+    hint: "dev-leaning RSS feed.",
     defaultMax: 50,
-    searchPlaceholder: "(blank uses default rss)",
+    defaultSearchUrl: "https://authenticjobs.com/feed",
+    searchPlaceholder: "https://authenticjobs.com/feed",
   },
   {
     key: "nodesk",
     label: "Nodesk",
-    hint: "remote-only RSS feed. paste a custom feed url to override.",
+    hint: "remote-only RSS feed (Hugo-generated atom feed).",
     defaultMax: 50,
-    searchPlaceholder: "(blank uses default rss)",
+    defaultSearchUrl: "https://nodesk.co/remote-jobs/index.xml",
+    searchPlaceholder: "https://nodesk.co/remote-jobs/index.xml",
   },
-  // ATS multi-company
+  // ATS multi-company — defaults are curated lists of companies that publish
+  // public job boards on each ATS. Override or extend per your watchlist.
   {
     key: "greenhouse",
     label: "Greenhouse (multi-company)",
-    hint: "comma-separated company slugs from boards-api.greenhouse.io. each slug = one company's full job board.",
-    defaultMax: 100,
+    hint: "comma-separated company slugs from boards-api.greenhouse.io. defaults to a curated remote-friendly list.",
+    defaultMax: 200,
+    defaultSearchUrl: "stripe,anthropic,cloudflare,mongodb,samsara,roblox,airbnb,gitlab,intercom,figma,fivetran,robinhood,lyft,asana,instacart,postman,dropbox,vercel,duolingo,discord,newrelic,amplitude,mixpanel,webflow,algolia,airtable,modernhealth",
     searchPlaceholder: "stripe,vercel,airbnb,figma",
   },
   {
     key: "lever",
     label: "Lever (multi-company)",
-    hint: "comma-separated company slugs from api.lever.co. each slug = one company's full posting board.",
+    hint: "comma-separated company slugs from api.lever.co. lever's public api is sparse — defaults are the few companies confirmed to expose it.",
     defaultMax: 100,
-    searchPlaceholder: "netflix,palantir,plaid,scale",
-  },
-  {
-    key: "workable",
-    label: "Workable (multi-company)",
-    hint: "comma-separated company slugs from apply.workable.com.",
-    defaultMax: 100,
-    searchPlaceholder: "canva,gitlab,n26",
+    defaultSearchUrl: "palantir,spotify,rover,highspot,cherre",
+    searchPlaceholder: "palantir,spotify,rover",
   },
   {
     key: "ashby",
     label: "Ashby (multi-company)",
     hint: "comma-separated company slugs from api.ashbyhq.com/posting-api.",
     defaultMax: 100,
-    searchPlaceholder: "ramp,ashbyhq,linear",
+    defaultSearchUrl: "ramp,ashby,linear,posthog,watershed,replit,supabase,vapi,mintlify",
+    searchPlaceholder: "ramp,linear,posthog",
   },
 ];
 
@@ -164,10 +164,13 @@ export default function ScannersPage() {
           : `Partial: ${data.jobsSaved} saved, ${data.error || "see errors"}`;
         setResults((prev) => ({ ...prev, all: summary }));
       } else {
+        const r = Number(data.jobsRefreshed || 0);
+        const s = Number(data.jobsRescanned || 0);
+        const extras = [r ? `${r} refreshed` : null, s ? `${s} rescanned` : null].filter(Boolean).join(", ");
         setResults((prev) => ({
           ...prev,
           [board]: data.success
-            ? `Done: ${data.jobsSaved} saved (${data.jobsFound} found, ${data.durationMs}ms)${data.warning ? ` · ${data.warning}` : ""}`
+            ? `Done: ${data.jobsSaved} new (${data.jobsFound} found${extras ? `, ${extras}` : ""}, ${data.durationMs}ms)${data.warning ? ` · ${data.warning}` : ""}`
             : `Error: ${data.error}`,
         }));
       }
@@ -266,6 +269,19 @@ export default function ScannersPage() {
             </button>
           </div>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", paddingTop: "0.4rem", borderTop: "1px solid #bfdbfe" }}>
+          <label style={{ fontSize: "0.72rem", color: "#1e3a8a", fontWeight: 500 }}>Re-scan duplicates after</label>
+          <input
+            type="number"
+            min={0}
+            max={365}
+            value={config.scanner_rescan_after_days ?? "0"}
+            onChange={(e) => setConfig({ ...config, scanner_rescan_after_days: e.target.value })}
+            onBlur={saveConfig}
+            style={{ ...inputStyle, width: 80 }}
+          />
+          <span style={{ fontSize: "0.72rem", color: "#1e3a8a" }}>days (0 = never re-analyze; existing rows still get description / location refreshed on every run)</span>
+        </div>
         {results.all && (
           <div style={{ fontSize: "0.78rem", color: results.all.startsWith("Error") ? "#dc2626" : "#1e3a8a" }}>{results.all}</div>
         )}
@@ -304,9 +320,19 @@ export default function ScannersPage() {
               <div style={{ fontSize: "0.7rem", color: "#6b7280", marginBottom: "0.5rem" }}>{s.hint}</div>
               <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "0.75rem" }}>
                 <div>
-                  <label style={{ fontSize: "0.7rem", color: "#6b7280" }}>Search params / slugs</label>
+                  <label style={{ fontSize: "0.7rem", color: "#6b7280", display: "flex", justifyContent: "space-between" }}>
+                    <span>Search params / slugs</span>
+                    {s.defaultSearchUrl && (config[urlKey] ?? s.defaultSearchUrl) !== s.defaultSearchUrl && (
+                      <button
+                        onClick={() => { const next = { ...config, [urlKey]: s.defaultSearchUrl }; setConfig(next); fetch("/api/admin/scanners", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }); }}
+                        style={{ background: "transparent", border: "none", color: "#1d4ed8", cursor: "pointer", fontSize: "0.65rem", padding: 0 }}
+                      >
+                        Reset to default
+                      </button>
+                    )}
+                  </label>
                   <input
-                    value={config[urlKey] || ""}
+                    value={config[urlKey] ?? s.defaultSearchUrl}
                     onChange={(e) => setConfig({ ...config, [urlKey]: e.target.value })}
                     onBlur={saveConfig}
                     placeholder={s.searchPlaceholder}

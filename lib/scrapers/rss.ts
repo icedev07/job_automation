@@ -88,11 +88,14 @@ export function parseRss(xml: string): RssItem[] {
 
 export function stripHtml(html: string): string {
   if (!html) return "";
-  return decodeEntities(
-    html
-      .replace(/<\s*br\s*\/?>/gi, "\n")
-      .replace(/<\/p\s*>/gi, "\n\n")
-      .replace(/<\/li\s*>/gi, "\n")
-      .replace(/<[^>]+>/g, ""),
-  ).replace(/\n{3,}/g, "\n\n").trim();
+  // Some sources (Greenhouse) double-encode their HTML, so decode entities
+  // first then strip tags. Run decode twice in case the source decoded once.
+  const decoded = decodeEntities(decodeEntities(html));
+  return decoded
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/p\s*>/gi, "\n\n")
+    .replace(/<\/li\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

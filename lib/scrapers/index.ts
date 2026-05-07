@@ -5,15 +5,13 @@ import { jobicyFeed } from "./feeds/jobicy";
 import { remotiveFeed } from "./feeds/remotive";
 import { greenhouseFeed } from "./feeds/greenhouse";
 import { leverFeed } from "./feeds/lever";
-import { workableFeed } from "./feeds/workable";
 import { ashbyFeed } from "./feeds/ashby";
 import { landingJobsFeed } from "./feeds/landingjobs";
-import { remoteesFeed } from "./feeds/remotees";
 import { jobspressoFeed } from "./feeds/jobspresso";
 import { authenticJobsFeed } from "./feeds/authenticjobs";
 import { nodeskFeed } from "./feeds/nodesk";
 import { upsertScrapedJob } from "../scrapedJobs";
-import { getConfigValue } from "../config";
+import { getAllConfig } from "../config";
 
 const FEEDS: Feed[] = [
   // single-endpoint json feeds
@@ -23,14 +21,12 @@ const FEEDS: Feed[] = [
   landingJobsFeed,
   // RSS-driven boards (default URL, user can override)
   weWorkRemotelyFeed,
-  remoteesFeed,
   jobspressoFeed,
   authenticJobsFeed,
   nodeskFeed,
   // multi-company ATS
   greenhouseFeed,
   leverFeed,
-  workableFeed,
   ashbyFeed,
 ];
 
@@ -43,48 +39,59 @@ export function getFeed(key: string): Feed | undefined {
 export type ScanOutcome = {
   found: number;
   saved: number;
+  refreshed: number;
+  rescanned: number;
   skipped: number;
   warning?: string;
 };
 
-export async function runFeedScan(key: string): Promise<ScanOutcome> {
+export async function runFeedScan(key: string, preloadedConfig?: Record<string, string>): Promise<ScanOutcome> {
   const feed = getFeed(key);
   if (!feed) throw new Error(`Unknown scanner: ${key}`);
 
-  const [maxRaw, urlRaw, enabledRaw] = await Promise.all([
-    getConfigValue(`${key}_max_jobs`),
-    getConfigValue(`${key}_search_url`),
-    getConfigValue(`${key}_enabled`),
-  ]);
+  // One config read per scan (or zero, if the caller already loaded it). The
+  // earlier per-key getConfigValue() pattern hit Supabase's 15-client pool
+  // limit when scanning all 11 sources back-to-back.
+  const config = preloadedConfig ?? (await getAllConfig());
 
-  if (enabledRaw === "false") {
-    return { found: 0, saved: 0, skipped: 0, warning: "scanner disabled" };
+  if (config[`${key}_enabled`] === "false") {
+    return { found: 0, saved: 0, refreshed: 0, rescanned: 0, skipped: 0, warning: "scanner disabled" };
   }
 
-  const maxJobs = Math.min(200, Math.max(1, Number(maxRaw) || 25));
+  const maxJobs = Math.min(200, Math.max(1, Number(config[`${key}_max_jobs`]) || 25));
+  const rescanAfterDays = Math.max(0, Number(config["scanner_rescan_after_days"]) || 0);
 
   const result: FeedFetchResult = await feed.fetch({
     maxJobs,
-    searchUrl: urlRaw || undefined,
+    searchUrl: config[`${key}_search_url`] || undefined,
   });
 
   let saved = 0;
+  let refreshed = 0;
+  let rescanned = 0;
   let skipped = 0;
   for (const job of result.jobs) {
-    const persisted = await persistJob(job);
-    if (persisted === "saved") saved++;
+    const outcome = await persistJob(job, rescanAfterDays);
+    if (outcome === "saved") saved++;
+    else if (outcome === "rescanned") rescanned++;
+    else if (outcome === "refreshed") refreshed++;
     else skipped++;
   }
 
   return {
     found: result.jobs.length,
     saved,
+    refreshed,
+    rescanned,
     skipped,
     warning: result.warning,
   };
 }
 
-async function persistJob(job: NormalizedJob): Promise<"saved" | "duplicate" | "skipped"> {
+async function persistJob(
+  job: NormalizedJob,
+  rescanAfterDays: number,
+): Promise<"saved" | "rescanned" | "refreshed" | "skipped"> {
   const result = await upsertScrapedJob({
     platform: job.platform,
     title: job.title,
@@ -94,7 +101,11 @@ async function persistJob(job: NormalizedJob): Promise<"saved" | "duplicate" | "
     description: job.description ?? null,
     salary: job.salary ?? null,
     manualApplyUrl: job.applyUrl ?? null,
+    rescanAfterDays,
   });
   if (!result) return "skipped";
-  return result.created ? "saved" : "duplicate";
+  if (result.created) return "saved";
+  if (result.rescanned) return "rescanned";
+  if (result.refreshed) return "refreshed";
+  return "skipped";
 }

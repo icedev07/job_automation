@@ -9,23 +9,28 @@ const SCANNER_KEY_PREFIXES = [
   "jobicy",
   "landingjobs",
   "weworkremotely",
-  "remotees",
   "jobspresso",
   "authenticjobs",
   "nodesk",
   "greenhouse",
   "lever",
-  "workable",
   "ashby",
 ];
 const SCANNER_KEY_SUFFIXES = ["_search_url", "_max_jobs", "_enabled"];
 
-function isScannerKey(key: string): boolean {
+// Standalone config keys that aren't per-scanner.
+const GLOBAL_SCANNER_KEYS = ["scanner_rescan_after_days"];
+
+function isAllowedKey(key: string): boolean {
+  if (GLOBAL_SCANNER_KEYS.includes(key)) return true;
   return SCANNER_KEY_PREFIXES.some((p) => SCANNER_KEY_SUFFIXES.some((s) => key === `${p}${s}`));
 }
 
 export async function GET() {
-  const expectedKeys = SCANNER_KEY_PREFIXES.flatMap((p) => SCANNER_KEY_SUFFIXES.map((s) => `${p}${s}`));
+  const expectedKeys = [
+    ...GLOBAL_SCANNER_KEYS,
+    ...SCANNER_KEY_PREFIXES.flatMap((p) => SCANNER_KEY_SUFFIXES.map((s) => `${p}${s}`)),
+  ];
   const rows = await prisma.appConfig.findMany({
     where: { key: { in: expectedKeys } },
   });
@@ -37,7 +42,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const body = await req.json();
   for (const [key, value] of Object.entries(body)) {
-    if (isScannerKey(key) && typeof value === "string") {
+    if (isAllowedKey(key) && typeof value === "string") {
       await prisma.appConfig.upsert({
         where: { key },
         update: { value },

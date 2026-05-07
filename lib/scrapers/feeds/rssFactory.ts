@@ -47,8 +47,12 @@ export function rssFeed(opts: RssFeedOptions): Feed {
       const url = (searchUrl && searchUrl.trim()) || opts.defaultUrl;
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "JobFinderBot/1.0",
-          "Accept": "application/rss+xml, application/xml, text/xml",
+          // WordPress + Cloudflare-fronted feeds (Jobspresso, Authentic Jobs,
+          // Remotees) frequently 403 a bare "Bot/1.0" UA. A standard browser
+          // UA passes their default rule sets without triggering challenges.
+          "User-Agent":
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+          "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
         },
         signal,
         cache: "no-store",

@@ -42,14 +42,36 @@ const SORT_OPTIONS = [
   { value: "company_asc", label: "Company A→Z" },
 ];
 
+// Calendar dates are local — `toISOString()` is UTC, so it can return
+// "yesterday" for users east of UTC. Build the date string from the local
+// year/month/day instead.
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return localIso(new Date());
 }
 
 function offsetIso(days: number) {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localIso(d);
+}
+
+function localIso(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function localDayStartIso(yyyymmdd: string): string | null {
+  const m = yyyymmdd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0).toISOString();
+}
+
+function localDayEndIso(yyyymmdd: string): string | null {
+  const m = yyyymmdd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999).toISOString();
 }
 
 export default function HomePage() {
@@ -129,8 +151,14 @@ export default function HomePage() {
     if (status !== "ALL") params.set("status", status);
     if (platform !== "ALL") params.set("platform", platform);
     if (qDebounced) params.set("q", qDebounced);
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
+    if (from) {
+      const iso = localDayStartIso(from);
+      if (iso) params.set("from", iso);
+    }
+    if (to) {
+      const iso = localDayEndIso(to);
+      if (iso) params.set("to", iso);
+    }
     if (minScore) params.set("minScore", minScore);
     params.set("sortBy", sortBy);
     params.set("page", String(page));

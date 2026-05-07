@@ -38,6 +38,17 @@ function normalizeCompany(company: string): string {
     .trim();
 }
 
+type UpsertOptions = {
+  /**
+   * Time-based refresh window in days. When a duplicate is found and its
+   * createdAt is older than this many days, the row is refreshed AND its
+   * status is reset to PENDING so it gets re-analyzed against current rules.
+   * Set to 0 to disable status reset entirely (refresh fields only).
+   * Default 0 — preserve AI history unless caller opts in.
+   */
+  rescanAfterDays?: number;
+};
+
 export async function upsertScrapedJob(params: {
   platform: string;
   title: string;
@@ -47,8 +58,18 @@ export async function upsertScrapedJob(params: {
   description?: string | null;
   salary?: string | null;
   manualApplyUrl?: string | null;
-}): Promise<{ id: number; title: string; company: string; created: boolean } | null> {
-  const { platform, title, company, url, location, description, salary, manualApplyUrl } = params;
+} & UpsertOptions): Promise<{
+  id: number;
+  title: string;
+  company: string;
+  created: boolean;
+  refreshed: boolean;
+  rescanned: boolean;
+} | null> {
+  const {
+    platform, title, company, url, location, description, salary, manualApplyUrl,
+    rescanAfterDays = 0,
+  } = params;
 
   if (await shouldSkipJob({ title, company, externalUrl: url })) {
     return null;
@@ -62,35 +83,62 @@ export async function upsertScrapedJob(params: {
       ? normalizeUrl(manualApplyUrl.trim())
       : null;
 
-  async function persistManual(jobId: number) {
-    if (!normManual) return;
-    await prisma.scrapedJob.updateMany({
-      where: { id: jobId },
-      data: { manualApplyUrl: normManual },
-    });
+  async function refreshRow(row: { id: number; createdAt: Date; description: string | null }): Promise<{ refreshed: boolean; rescanned: boolean }> {
+    const data: Record<string, unknown> = {};
+
+    // Refresh data fields when the new payload has values. Description is
+    // only overwritten if the new one is longer (so we don't replace a rich
+    // detail-page description with a short list snippet).
+    if (location && location.trim()) data.location = location;
+    if (salary && salary.trim()) data.salary = salary;
+    if (normManual) data.manualApplyUrl = normManual;
+    if (description && (!row.description || description.length > row.description.length)) {
+      data.description = description;
+    }
+
+    let rescanned = false;
+    if (rescanAfterDays > 0) {
+      const ageMs = Date.now() - new Date(row.createdAt).getTime();
+      const ageDays = ageMs / (1000 * 60 * 60 * 24);
+      if (ageDays >= rescanAfterDays) {
+        data.status = "PENDING";
+        data.aiScore = null;
+        data.aiReason = null;
+        data.sheetSynced = false;
+        rescanned = true;
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return { refreshed: false, rescanned: false };
+    }
+    await prisma.scrapedJob.update({ where: { id: row.id }, data });
+    return { refreshed: true, rescanned };
   }
 
   // same-platform URL dedup
   const byUrl = await prisma.scrapedJob.findFirst({
     where: { platform, url: normUrl },
+    select: { id: true, title: true, company: true, createdAt: true, description: true },
   });
   if (byUrl) {
-    await persistManual(byUrl.id);
-    return { id: byUrl.id, title: byUrl.title, company: byUrl.company, created: false };
+    const { refreshed, rescanned } = await refreshRow(byUrl);
+    return { id: byUrl.id, title: byUrl.title, company: byUrl.company, created: false, refreshed, rescanned };
   }
 
   // same-platform title+company dedup
   const byTitle = await prisma.scrapedJob.findFirst({
     where: { platform, title, company },
+    select: { id: true, title: true, company: true, createdAt: true, description: true },
   });
   if (byTitle) {
-    await persistManual(byTitle.id);
-    return { id: byTitle.id, title: byTitle.title, company: byTitle.company, created: false };
+    const { refreshed, rescanned } = await refreshRow(byTitle);
+    return { id: byTitle.id, title: byTitle.title, company: byTitle.company, created: false, refreshed, rescanned };
   }
 
   // cross-platform dedup: same normalized title+company on any platform
-  const crossPlatform = await prisma.$queryRaw<{ id: number; title: string; company: string }[]>`
-    SELECT id, title, company FROM "ScrapedJob"
+  const crossPlatform = await prisma.$queryRaw<{ id: number; title: string; company: string; createdAt: Date; description: string | null }[]>`
+    SELECT id, title, company, "createdAt", description FROM "ScrapedJob"
     WHERE LOWER(TRIM(title)) = ${normTitle}
       AND LOWER(TRIM(
         REGEXP_REPLACE(company, ',?\s*(inc\.?|llc|ltd\.?|corp\.?|co\.?|gmbh|s\.?a\.?)$', '', 'i')
@@ -98,8 +146,9 @@ export async function upsertScrapedJob(params: {
     LIMIT 1
   `;
   if (crossPlatform.length > 0) {
-    await persistManual(crossPlatform[0].id);
-    return { id: crossPlatform[0].id, title: crossPlatform[0].title, company: crossPlatform[0].company, created: false };
+    const row = crossPlatform[0];
+    const { refreshed, rescanned } = await refreshRow(row);
+    return { id: row.id, title: row.title, company: row.company, created: false, refreshed, rescanned };
   }
 
   const job = await prisma.scrapedJob.create({
@@ -115,7 +164,7 @@ export async function upsertScrapedJob(params: {
     },
   });
 
-  return { id: job.id, title: job.title, company: job.company, created: true };
+  return { id: job.id, title: job.title, company: job.company, created: true, refreshed: false, rescanned: false };
 }
 
 export async function saveJobDescription(jobId: number, description: string) {

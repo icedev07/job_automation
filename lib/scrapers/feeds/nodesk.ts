@@ -5,7 +5,8 @@ import { rssFeed } from "./rssFactory";
 export const nodeskFeed = rssFeed({
   key: "nodesk",
   label: "Nodesk",
-  defaultUrl: "https://nodesk.co/remote-jobs/feed.xml",
+  // Verified: only /remote-jobs/index.xml works (Hugo-generated atom feed).
+  defaultUrl: "https://nodesk.co/remote-jobs/index.xml",
   splitCompanyFromTitle: true,
   fallbackCompanyFromHost: true,
 });

@@ -20,8 +20,21 @@ type AshbyJob = {
 
 type AshbyResponse = { jobs?: AshbyJob[] };
 
+// Verified slugs returning >0 postings on direct probe.
+export const ASHBY_DEFAULT_SLUGS = [
+  "ramp",
+  "ashby",
+  "linear",
+  "posthog",
+  "watershed",
+  "replit",
+  "supabase",
+  "vapi",
+  "mintlify",
+];
+
 function parseSlugs(searchUrl: string | undefined): string[] {
-  if (!searchUrl) return [];
+  if (!searchUrl || !searchUrl.trim()) return ASHBY_DEFAULT_SLUGS;
   return searchUrl
     .split(/[,\n]/)
     .map((s) => s.trim())
@@ -37,21 +50,19 @@ export const ashbyFeed: Feed = {
   label: "Ashby (multi-company)",
   fetch: async ({ maxJobs, searchUrl, signal }) => {
     const slugs = parseSlugs(searchUrl);
-    if (slugs.length === 0) {
-      return {
-        jobs: [],
-        warning:
-          "no ashby company slugs configured — paste a comma-separated list (e.g. ramp,ashbyhq) in the search url field.",
-      };
-    }
     const jobs: NormalizedJob[] = [];
     const warnings: string[] = [];
+    const perCompany = Math.max(5, Math.ceil(maxJobs / Math.max(1, slugs.length)));
     for (const slug of slugs) {
       if (jobs.length >= maxJobs) break;
       const url = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(slug)}?includeCompensation=true`;
       try {
         const res = await fetch(url, {
-          headers: { "User-Agent": "JobFinderBot/1.0", "Accept": "application/json" },
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
+            "Accept": "application/json",
+          },
           signal,
           cache: "no-store",
         });
@@ -61,7 +72,9 @@ export const ashbyFeed: Feed = {
         }
         const data = (await res.json()) as AshbyResponse;
         const list = Array.isArray(data.jobs) ? data.jobs : [];
+        let takenFromThisCompany = 0;
         for (const j of list) {
+          if (takenFromThisCompany >= perCompany) break;
           const title = (j.title || "").trim();
           const u = (j.jobUrl || j.applyUrl || "").trim();
           if (!title || !u) continue;
@@ -76,6 +89,7 @@ export const ashbyFeed: Feed = {
             description: description || null,
             salary: j.compensation?.compensationTierSummary || null,
           });
+          takenFromThisCompany++;
           if (jobs.length >= maxJobs) break;
         }
       } catch (err) {

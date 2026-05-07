@@ -10,17 +10,28 @@ type LandingJobsRaw = {
   title?: string;
   short_description?: string;
   description?: string;
+  // Landing.Jobs uses these field names in their public api: role_description,
+  // main_requirements, perks. There is no company_name field — company is in
+  // the url path (https://landing.jobs/at/{company-slug}/...).
+  role_description?: string;
+  main_requirements?: string;
+  perks?: string;
   url?: string;
   company_name?: string;
   city_name?: string;
   country_name?: string;
   location?: string;
+  locations?: Array<{ city?: string; country_code?: string }>;
   remote?: boolean;
   is_remote?: boolean;
   salary?: string;
   salary_min?: number;
   salary_max?: number;
   salary_currency?: string;
+  gross_salary_low?: number;
+  gross_salary_high?: number;
+  currency_code?: string;
+  tags?: string[];
 };
 
 type LandingJobsResponse = { jobs?: LandingJobsRaw[] } | LandingJobsRaw[];
@@ -44,11 +55,13 @@ function buildUrl(searchUrl: string | undefined, count: number): string {
 
 function formatSalary(j: LandingJobsRaw): string | null {
   if (j.salary && typeof j.salary === "string") return j.salary;
-  const cur = j.salary_currency || "";
-  if (j.salary_min && j.salary_max && j.salary_min !== j.salary_max) {
-    return `${cur ? cur + " " : ""}${j.salary_min.toLocaleString()} – ${j.salary_max.toLocaleString()}`;
+  const cur = j.salary_currency || j.currency_code || "";
+  const lo = j.salary_min ?? j.gross_salary_low;
+  const hi = j.salary_max ?? j.gross_salary_high;
+  if (lo && hi && lo !== hi) {
+    return `${cur ? cur + " " : ""}${lo.toLocaleString()} – ${hi.toLocaleString()}`;
   }
-  const single = j.salary_min || j.salary_max;
+  const single = lo || hi;
   if (single) return `${cur ? cur + " " : ""}${single.toLocaleString()}`;
   return null;
 }
@@ -56,8 +69,35 @@ function formatSalary(j: LandingJobsRaw): string | null {
 function locationOf(j: LandingJobsRaw): string | null {
   if (j.is_remote || j.remote) return "Remote";
   if (j.location) return j.location;
+  if (Array.isArray(j.locations) && j.locations.length > 0) {
+    const parts = j.locations
+      .map((l) => [l.city, l.country_code].filter(Boolean).join(", "))
+      .filter(Boolean);
+    if (parts.length) return parts.join(" / ");
+  }
   const parts = [j.city_name, j.country_name].filter(Boolean);
   return parts.length ? parts.join(", ") : null;
+}
+
+function companyFromUrl(url: string): string {
+  // Landing.Jobs URLs look like https://landing.jobs/at/{company-slug}/{role-title}
+  // Convert "cliftonlarsonallen" → "Cliftonlarsonallen", or "smart-mind" → "Smart Mind".
+  const m = url.match(/\/at\/([^/?#]+)/i);
+  if (!m) return "";
+  return m[1]
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+function buildDescription(j: LandingJobsRaw): string {
+  const parts: string[] = [];
+  if (j.role_description) parts.push(stripHtml(j.role_description));
+  if (j.main_requirements) parts.push("Requirements:\n" + stripHtml(j.main_requirements));
+  if (j.perks) parts.push("Perks:\n" + stripHtml(j.perks));
+  if (j.description) parts.push(stripHtml(j.description));
+  if (j.short_description) parts.push(stripHtml(j.short_description));
+  return parts.filter(Boolean).join("\n\n").trim();
 }
 
 export const landingJobsFeed: Feed = {
@@ -77,13 +117,13 @@ export const landingJobsFeed: Feed = {
     const jobs: NormalizedJob[] = [];
     for (const entry of list) {
       const title = (entry.title || "").trim();
-      const company = (entry.company_name || "").trim();
       const u = (entry.url || "").trim();
-      if (!title || !company || !u) continue;
-      const description = entry.description
-        ? stripHtml(entry.description)
-        : entry.short_description
-        ? stripHtml(entry.short_description)
+      if (!title || !u) continue;
+      const company = (entry.company_name || "").trim() || companyFromUrl(u);
+      if (!company) continue;
+      const description = buildDescription(entry);
+      const tagSuffix = Array.isArray(entry.tags) && entry.tags.length
+        ? `\n\nTags: ${entry.tags.join(", ")}`
         : "";
       jobs.push({
         platform: "landingjobs",
@@ -91,7 +131,7 @@ export const landingJobsFeed: Feed = {
         company,
         url: u,
         location: locationOf(entry),
-        description: description || null,
+        description: (description + tagSuffix).trim() || null,
         salary: formatSalary(entry),
       });
       if (jobs.length >= maxJobs) break;
