@@ -181,20 +181,64 @@ export default function ScannersPage() {
     refreshStats();
   }
 
+  // Drives the analyze loop. Vercel functions cap at 60s, so /api/admin/analyze
+  // processes a small batch (default 8 jobs ≈ 50s of LLM time) and returns
+  // immediately. The admin UI keeps calling it until `remaining = 0` so a long
+  // backlog can be worked through without ever hitting a 504.
+  async function analyzeBatchOnce(): Promise<{ ok: boolean; approved: number; rejected: number; analyzed: number; remaining: number; error?: string }>
+  {
+    try {
+      const res = await fetch("/api/admin/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { ok: false, approved: 0, rejected: 0, analyzed: 0, remaining: 0, error: data.error || `HTTP ${res.status}` };
+      }
+      return {
+        ok: true,
+        approved: Number(data.approved || 0),
+        rejected: Number(data.rejected || 0),
+        analyzed: Number(data.analyzed || 0),
+        remaining: Number(data.remaining || 0),
+      };
+    } catch (err: any) {
+      return { ok: false, approved: 0, rejected: 0, analyzed: 0, remaining: 0, error: err.message };
+    }
+  }
+
   async function runAnalysis() {
     setAnalyzing(true);
-    setAnalyzeResult("Analyzing...");
-    try {
-      const res = await fetch("/api/admin/analyze", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        setAnalyzeResult(`Done: ${data.approved} approved, ${data.rejected} rejected out of ${data.analyzed}`);
-      } else {
-        setAnalyzeResult(`Error: ${data.error}`);
+    let totalApproved = 0;
+    let totalRejected = 0;
+    let totalAnalyzed = 0;
+    let lastRemaining = pendingCount;
+    setAnalyzeResult(`Analyzing 0/${lastRemaining}...`);
+    // hard cap on iterations — protect against an analyzer that never reduces
+    // the remaining count (e.g. every job throws and the row stays PENDING).
+    for (let i = 0; i < 50; i++) {
+      const r = await analyzeBatchOnce();
+      if (!r.ok) {
+        setAnalyzeResult(`Error: ${r.error}`);
+        setAnalyzing(false);
+        refreshStats();
+        return;
       }
-    } catch (err: any) {
-      setAnalyzeResult(`Error: ${err.message}`);
+      totalApproved += r.approved;
+      totalRejected += r.rejected;
+      totalAnalyzed += r.analyzed;
+      lastRemaining = r.remaining;
+      setAnalyzeResult(
+        `Analyzing... ${totalAnalyzed} done, ${totalApproved} approved, ${totalRejected} rejected, ${lastRemaining} remaining`,
+      );
+      if (r.remaining === 0 || r.analyzed === 0) break;
     }
+    setAnalyzeResult(
+      `Done: ${totalApproved} approved, ${totalRejected} rejected out of ${totalAnalyzed}` +
+        (lastRemaining > 0 ? ` (${lastRemaining} still pending — click again to continue)` : ""),
+    );
     setAnalyzing(false);
     refreshStats();
   }
@@ -210,16 +254,14 @@ export default function ScannersPage() {
       });
       const scanData = await scanRes.json();
       setResults((prev) => ({ ...prev, all: `Scrape: ${scanData.jobsSaved} new. Analyzing...` }));
-      const analyzeRes = await fetch("/api/admin/analyze", { method: "POST" });
-      const analyzeData = await analyzeRes.json();
-      const summary = analyzeData.success
-        ? `Done: ${scanData.jobsSaved} new · ${analyzeData.approved} approved, ${analyzeData.rejected} rejected`
-        : `Scraped ${scanData.jobsSaved}; analyze error: ${analyzeData.error}`;
-      setResults((prev) => ({ ...prev, all: summary }));
+      // Re-use the chunked, looping analyze pipeline.
+      setRunning(null);
+      await runAnalysis();
+      setResults((prev) => ({ ...prev, all: `Done: ${scanData.jobsSaved} scraped, see analyze line above for results.` }));
     } catch (err: any) {
       setResults((prev) => ({ ...prev, all: `Error: ${err.message}` }));
+      setRunning(null);
     }
-    setRunning(null);
     refreshStats();
   }
 

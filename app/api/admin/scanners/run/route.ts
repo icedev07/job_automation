@@ -129,13 +129,17 @@ export async function GET(req: NextRequest) {
   const totalFound = outcomes.reduce((s, o) => s + o.jobsFound, 0);
 
   // Chain analysis on the cron path so freshly-scraped jobs are filtered in
-  // the same run. We tolerate analyzer failure here so a missing AI key does
-  // not blow up the whole cron.
+  // the same run. The cron has the same 60s budget as the manual route, and
+  // scraping already used some of it — pass whatever's left so analyze bails
+  // cleanly instead of being killed mid-call. The next cron tick will pick up
+  // the remaining pending rows.
+  const budgetUsedSoFar = outcomes.reduce((sum, o) => sum + (o.durationMs || 0), 0);
+  const remainingBudget = Math.max(5_000, 55_000 - budgetUsedSoFar);
   let analyzed:
-    | { analyzed: number; approved: number; rejected: number; skipped: number }
-    | { error: string } = { analyzed: 0, approved: 0, rejected: 0, skipped: 0 };
+    | { analyzed: number; approved: number; rejected: number; skipped: number; remaining: number; timedOut: boolean }
+    | { error: string } = { analyzed: 0, approved: 0, rejected: 0, skipped: 0, remaining: 0, timedOut: false };
   try {
-    analyzed = await analyzeAllPending();
+    analyzed = await analyzeAllPending({ timeBudgetMs: remainingBudget });
   } catch (err) {
     analyzed = { error: (err as Error).message };
   }

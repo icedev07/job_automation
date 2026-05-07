@@ -206,31 +206,53 @@ export async function analyzeJob(jobId: number): Promise<AnalysisResult> {
   return result;
 }
 
-export async function analyzeAllPending(): Promise<{
+export type AnalyzeBatchOptions = {
+  /** Hard cap on jobs queued in this invocation. */
+  limit?: number;
+  /** Bail out once we're this close to the function deadline (ms). */
+  timeBudgetMs?: number;
+};
+
+export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Promise<{
   analyzed: number;
   approved: number;
   rejected: number;
   skipped: number;
+  remaining: number;
+  timedOut: boolean;
 }> {
-  // only fetch PENDING jobs, exclude already analyzed
+  const limit = Math.min(50, Math.max(1, options.limit ?? 8));
+  // Vercel hobby/pro caps this route at 60s (vercel.json). Default to 50s of
+  // working budget so we always have headroom to return a response and write
+  // the final scan log. Each LLM call is 3–10s, so ~5–10 jobs/iteration is
+  // realistic; the admin UI loops until pending=0.
+  const budgetMs = Math.max(5_000, options.timeBudgetMs ?? 50_000);
+  const startedAt = Date.now();
+
   const pending = await prisma.scrapedJob.findMany({
     where: { status: "PENDING" },
     orderBy: { createdAt: "asc" },
-    take: 50,
+    take: limit,
   });
 
   let approved = 0;
   let rejected = 0;
   let skipped = 0;
+  let processed = 0;
+  let timedOut = false;
 
   for (const job of pending) {
-    // double-check status hasn't changed since the query
+    if (Date.now() - startedAt > budgetMs) {
+      timedOut = true;
+      break;
+    }
     const current = await prisma.scrapedJob.findUnique({
       where: { id: job.id },
       select: { status: true },
     });
     if (!current || current.status !== "PENDING") {
       skipped++;
+      processed++;
       continue;
     }
 
@@ -242,7 +264,17 @@ export async function analyzeAllPending(): Promise<{
       console.error(`Failed to analyze job ${job.id}: ${err.message}`);
       rejected++;
     }
+    processed++;
   }
 
-  return { analyzed: pending.length - skipped, approved, rejected, skipped };
+  const remaining = await prisma.scrapedJob.count({ where: { status: "PENDING" } });
+
+  return {
+    analyzed: processed - skipped,
+    approved,
+    rejected,
+    skipped,
+    remaining,
+    timedOut,
+  };
 }
