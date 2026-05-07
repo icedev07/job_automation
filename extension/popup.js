@@ -296,8 +296,9 @@ startBtn.addEventListener("click", () => {
       chrome.runtime.sendMessage({ type: "GET_BG_STATE" }, (state) => {
         const targetTabId = (state && state.scanTabId) || tab.id;
         chrome.tabs.sendMessage(targetTabId, { type: "STOP_SCAN" }, () => {
-          // ignore errors (tab may have closed)
-          void chrome.runtime.lastError;
+          if (chrome.runtime.lastError) {
+            markScanCancelled("Scan stopped by user.");
+          }
         });
         isRunning = false;
         startBtn.textContent = "Start Scan";
@@ -349,7 +350,7 @@ function sendStartScan(tabId, serverUrl, apiKey, isRetry) {
     type: "START_SCAN",
     serverUrl,
     apiKey,
-  }, () => {
+  }, (response) => {
     if (chrome.runtime.lastError) {
       if (!isRetry) {
         addLog("Content script not found, injecting...", "warn");
@@ -360,6 +361,7 @@ function sendStartScan(tabId, serverUrl, apiKey, isRetry) {
           if (chrome.runtime.lastError) {
             addLog(`Injection failed: ${chrome.runtime.lastError.message}`, "error");
             statusMsg.textContent = "Error: cannot inject script. Refresh the LinkedIn page and try again.";
+            markScanCancelled(statusMsg.textContent);
             isRunning = false;
             startBtn.textContent = "Start Scan";
             startBtn.classList.remove("running");
@@ -371,10 +373,21 @@ function sendStartScan(tabId, serverUrl, apiKey, isRetry) {
       } else {
         addLog(`ERROR sending START_SCAN: ${chrome.runtime.lastError.message}`, "error");
         statusMsg.textContent = "Error: content script not responding. Refresh the LinkedIn page and try again.";
+        markScanCancelled(statusMsg.textContent);
         isRunning = false;
         startBtn.textContent = "Start Scan";
         startBtn.classList.remove("running");
       }
+      return;
+    }
+    if (response && response.ok === false) {
+      const reason = response.reason || "unable to start scan";
+      addLog(`ERROR starting scan: ${reason}`, "error");
+      statusMsg.textContent = `Error: ${reason}`;
+      markScanCancelled(statusMsg.textContent);
+      isRunning = false;
+      startBtn.textContent = "Start Scan";
+      startBtn.classList.remove("running");
     }
   });
 }
@@ -419,4 +432,10 @@ function resetStats() {
   approvedCount.textContent = "0";
   hiddenCount.textContent = "0";
   skippedCount.textContent = "0";
+}
+
+function markScanCancelled(statusText) {
+  chrome.runtime.sendMessage({ type: "SCAN_CANCELLED", statusMsg: statusText }, () => {
+    void chrome.runtime.lastError;
+  });
 }

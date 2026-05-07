@@ -62,6 +62,12 @@
     chrome.runtime.sendMessage({ type: "SCAN_DONE", stats: { ...stats }, statusMsg }).catch(() => {});
   }
 
+  function sendNavigating(statusMsg) {
+    currentStatus = statusMsg;
+    log(statusMsg);
+    return chrome.runtime.sendMessage({ type: "SCAN_NAVIGATING", stats: { ...stats }, statusMsg }).catch(() => {});
+  }
+
   function sleep(ms) {
     return new Promise((r) => setTimeout(r, ms));
   }
@@ -803,12 +809,9 @@
       const start = parseInt(url.searchParams.get("start") || "0", 10);
       const newStart = start + 25; // LinkedIn jobs uses 25-per-page
       url.searchParams.set("start", String(newStart));
-      log(`Trying URL-based pagination: start=${newStart}`);
+      await sendNavigating(`Trying URL-based pagination: start=${newStart}`);
       window.location.href = url.toString();
-      await sleep(4000);
-      await waitForSelector("div.job-card-container", document, 10000);
-      await sleep(1500);
-      return true;
+      return "navigating";
     } catch (e) {
       log(`URL pagination failed: ${e.message}`);
     }
@@ -823,7 +826,8 @@
     log("=== SCAN STARTED ===");
     sendProgress("Starting scan...");
 
-    let pageNum = 1;
+    const initialPageState = findPageState();
+    let pageNum = initialPageState?.current || findActivePageNumber() || 1;
 
     while (!stopRequested) {
       sendProgress(`Scanning page ${pageNum}...`);
@@ -848,6 +852,9 @@
 
       sendProgress(`Page ${pageNum} complete. Moving to next...`);
       const hasNext = await goToNextPage();
+      if (hasNext === "navigating") {
+        return;
+      }
       if (!hasNext) {
         sendDone(`All pages scanned. ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
         return;
@@ -859,5 +866,21 @@
     sendDone(`Stopped. ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
   }
 
+  function maybeResumeAfterNavigation() {
+    chrome.runtime.sendMessage({ type: "GET_BG_STATE" }, (state) => {
+      if (chrome.runtime.lastError || !state?.scanning || !state.resumeAfterNavigation || !state.isScanTab) return;
+      chrome.storage.local.get(["extensionApiKey"], (data) => {
+        if (!state.scanning || scanning) return;
+        scanning = true;
+        stopRequested = false;
+        serverUrl = state.serverUrl || "";
+        apiKey = data.extensionApiKey || "";
+        stats = state.stats || { checked: 0, approved: 0, hidden: 0, skipped: 0 };
+        startScan();
+      });
+    });
+  }
+
   log("Content script loaded: " + window.location.href);
+  maybeResumeAfterNavigation();
 })();

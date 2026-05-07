@@ -8,27 +8,30 @@ const STATE_KEY = "scanState";
 const MAX_LOGS = 500;
 const MAX_RESULTS = 200;
 
-const EMPTY_STATE = {
-  scanning: false,
-  serverUrl: "",
-  sessionId: null,
-  startedAt: null,
-  stats: { checked: 0, approved: 0, hidden: 0, skipped: 0 },
-  statusMsg: "Idle",
-  logs: [],
-  results: [],
-  currentJob: null,
-  scanTabId: null,
-};
+function createEmptyState() {
+  return {
+    scanning: false,
+    serverUrl: "",
+    sessionId: null,
+    startedAt: null,
+    stats: { checked: 0, approved: 0, hidden: 0, skipped: 0 },
+    statusMsg: "Idle",
+    logs: [],
+    results: [],
+    currentJob: null,
+    scanTabId: null,
+    resumeAfterNavigation: false,
+  };
+}
 
-let state = { ...EMPTY_STATE };
+let state = createEmptyState();
 let stateLoaded = false;
 
 function loadStateOnce() {
   return new Promise((resolve) => {
     if (stateLoaded) return resolve();
     chrome.storage.local.get([STATE_KEY], (data) => {
-      if (data && data[STATE_KEY]) state = { ...EMPTY_STATE, ...data[STATE_KEY] };
+      if (data && data[STATE_KEY]) state = { ...createEmptyState(), ...data[STATE_KEY] };
       stateLoaded = true;
       resolve();
     });
@@ -42,6 +45,14 @@ function saveStateSoon() {
     saveTimer = null;
     chrome.storage.local.set({ [STATE_KEY]: state });
   }, 250);
+}
+
+function saveStateNow(callback) {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  chrome.storage.local.set({ [STATE_KEY]: state }, callback);
 }
 
 function pushLog(level, message) {
@@ -64,12 +75,13 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   loadStateOnce().then(() => {
     if (msg.type === "GET_BG_STATE") {
-      sendResponse(state);
+      const senderTabId = sender && sender.tab ? sender.tab.id : null;
+      sendResponse({ ...state, isScanTab: senderTabId != null && senderTabId === state.scanTabId });
       return;
     }
     if (msg.type === "RESET_BG_STATE") {
       state = {
-        ...EMPTY_STATE,
+        ...createEmptyState(),
         scanning: true,
         serverUrl: msg.serverUrl || "",
         sessionId: msg.sessionId || null,
@@ -92,8 +104,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg.statusMsg) state.statusMsg = msg.statusMsg;
       if (msg.currentJob !== undefined) state.currentJob = msg.currentJob;
       state.scanning = true;
+      state.resumeAfterNavigation = false;
       saveStateSoon();
       sendResponse?.({ ok: true });
+      return;
+    }
+    if (msg.type === "SCAN_NAVIGATING") {
+      if (msg.stats) state.stats = msg.stats;
+      if (msg.statusMsg) state.statusMsg = msg.statusMsg;
+      state.currentJob = null;
+      state.scanning = true;
+      state.resumeAfterNavigation = true;
+      saveStateNow(() => sendResponse?.({ ok: true }));
       return;
     }
     if (msg.type === "SCAN_RESULT") {
@@ -110,7 +132,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "SCAN_DONE") {
       state.scanning = false;
       state.currentJob = null;
+      state.resumeAfterNavigation = false;
       if (msg.stats) state.stats = msg.stats;
+      if (msg.statusMsg) state.statusMsg = msg.statusMsg;
+      saveStateSoon();
+      sendResponse?.({ ok: true });
+      return;
+    }
+    if (msg.type === "SCAN_CANCELLED") {
+      state.scanning = false;
+      state.currentJob = null;
+      state.resumeAfterNavigation = false;
       if (msg.statusMsg) state.statusMsg = msg.statusMsg;
       saveStateSoon();
       sendResponse?.({ ok: true });
