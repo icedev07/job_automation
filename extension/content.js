@@ -384,6 +384,23 @@
         const v = btn.getAttribute(attr);
         if (v && /^https?:\/\//i.test(v)) return tidyApplyUrl(v);
       }
+
+      // Some LinkedIn layouts wrap the apply button in an anchor while the
+      // button itself has no href/data attrs.
+      const wrappedLink = btn.closest("a[href]");
+      if (wrappedLink) {
+        const href = (wrappedLink.getAttribute("href") || "").trim();
+        if (href) return tidyApplyUrl(href);
+      }
+
+      // Another common structure is an anchor sibling in the same button
+      // container; prefer any offsite link we can find there.
+      const btnContainer = btn.parentElement;
+      const siblingLink = btnContainer?.querySelector("a[href]");
+      if (siblingLink) {
+        const href = (siblingLink.getAttribute("href") || "").trim();
+        if (href) return tidyApplyUrl(href);
+      }
     }
 
     // Fallback 2: scan embedded Voyager JSON blobs for companyApplyUrl / applyUrl
