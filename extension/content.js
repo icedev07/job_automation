@@ -859,11 +859,22 @@
   }
 
   function getResultsListContainer() {
-    return (
-      document.querySelector(".jobs-search-results-list") ||
-      document.querySelector(".scaffold-layout__list-container") ||
-      document.querySelector("div[data-results-list-top-scroll-sentinel]")?.parentElement
-    );
+    const candidates = [
+      document.querySelector(".scaffold-layout__list"),
+      document.querySelector(".jobs-search-results-list"),
+      document.querySelector(".scaffold-layout__list-container"),
+      document.querySelector("div[data-results-list-top-scroll-sentinel]")?.parentElement || null,
+    ].filter(Boolean);
+
+    // Prefer the actual scrollable rail. Some LinkedIn layouts keep list items
+    // virtualized under `.scaffold-layout__list`, and scrolling a non-scrollable
+    // wrapper can miss cards.
+    for (const node of candidates) {
+      const el = node;
+      if (el.scrollHeight > el.clientHeight + 20) return el;
+    }
+
+    return candidates[0] || null;
   }
 
   function findActivePageNumber() {
