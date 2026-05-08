@@ -818,10 +818,7 @@
 
   async function scrollJobsListToBottom() {
     // LinkedIn renders pagination only after you scroll the list container to the bottom.
-    const container =
-      document.querySelector(".jobs-search-results-list") ||
-      document.querySelector(".scaffold-layout__list-container") ||
-      document.querySelector("div[data-results-list-top-scroll-sentinel]")?.parentElement;
+    const container = getResultsListContainer();
     if (!container) {
       log("No jobs list container found for scroll");
       return;
@@ -835,6 +832,14 @@
       prev = container.scrollTop;
     }
     await sleep(500);
+  }
+
+  function getResultsListContainer() {
+    return (
+      document.querySelector(".jobs-search-results-list") ||
+      document.querySelector(".scaffold-layout__list-container") ||
+      document.querySelector("div[data-results-list-top-scroll-sentinel]")?.parentElement
+    );
   }
 
   function findActivePageNumber() {
@@ -976,6 +981,71 @@
     return false;
   }
 
+  function getCardStableId(card) {
+    const jobId = getCardJobId(card);
+    if (jobId) return `job:${jobId}`;
+    const href = card.querySelector("a[href*='/jobs/view/']")?.getAttribute("href") || "";
+    if (href) return `href:${href}`;
+    return "";
+  }
+
+  async function processAllCardsOnCurrentPage(pageNum) {
+    const seenIds = new Set();
+    let processedCount = 0;
+    let stagnantPasses = 0;
+    const maxPasses = 80;
+
+    for (let pass = 0; pass < maxPasses && !stopRequested; pass++) {
+      const cards = getJobCards();
+      let foundNew = 0;
+
+      for (const card of cards) {
+        if (stopRequested) break;
+        const stableId = getCardStableId(card);
+        if (!stableId || seenIds.has(stableId)) continue;
+        seenIds.add(stableId);
+        foundNew++;
+        processedCount++;
+        await processCard(card, processedCount - 1, processedCount);
+        await sleep(1200);
+      }
+
+      const container = getResultsListContainer();
+      if (!container) {
+        log("No list container while scanning page; finishing current page pass");
+        break;
+      }
+
+      const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 6;
+      if (foundNew === 0) {
+        stagnantPasses++;
+      } else {
+        stagnantPasses = 0;
+      }
+
+      if (atBottom && stagnantPasses >= 2) {
+        log(`Page ${pageNum}: reached bottom and no new cards found`);
+        break;
+      }
+      if (stagnantPasses >= 5) {
+        log(`Page ${pageNum}: stopping after repeated passes without new cards`);
+        break;
+      }
+
+      const step = Math.max(300, Math.floor(container.clientHeight * 0.85));
+      const nextScrollTop = Math.min(container.scrollTop + step, container.scrollHeight);
+      if (nextScrollTop === container.scrollTop) {
+        stagnantPasses++;
+      } else {
+        container.scrollTop = nextScrollTop;
+      }
+      await sleep(450);
+    }
+
+    log(`Page ${pageNum}: processed ${processedCount} unique jobs`);
+    return processedCount;
+  }
+
   // --- MAIN SCAN LOOP ---
 
   async function startScan() {
@@ -1012,15 +1082,16 @@
         return;
       }
 
-      sendProgress(`Page ${pageNum}: ${cards.length} jobs found`);
+      sendProgress(`Page ${pageNum}: scanning all jobs in list...`);
 
-      for (let i = 0; i < cards.length; i++) {
-        if (stopRequested) {
-          sendDone(`Stopped. ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
-          return;
-        }
-        await processCard(cards[i], i, cards.length);
-        await sleep(1200);
+      const processedOnPage = await processAllCardsOnCurrentPage(pageNum);
+      if (stopRequested) {
+        sendDone(`Stopped. ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
+        return;
+      }
+      if (processedOnPage === 0) {
+        sendDone(`Safety stop: No processable jobs found on page ${pageNum}. ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
+        return;
       }
 
       sendProgress(`Page ${pageNum} complete. Moving to next...`);
