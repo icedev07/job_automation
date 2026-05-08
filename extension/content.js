@@ -321,21 +321,28 @@
       new URLSearchParams(window.location.search).get("currentJobId") ||
       (window.location.href.match(/\/jobs\/view\/(\d+)/) || [])[1] ||
       "";
-    const codes = document.querySelectorAll("code");
+    const blobs = [
+      ...Array.from(document.querySelectorAll("code")),
+      ...Array.from(document.querySelectorAll("script[type='application/json']")),
+      ...Array.from(document.querySelectorAll("script[type='application/ld+json']")),
+    ];
     const candidates = [];
-    for (const code of codes) {
-      const text = code.textContent || "";
+    for (const node of blobs) {
+      const text = node.textContent || "";
       if (!text || text.length < 100) continue;
       if (
         !text.includes("companyApplyUrl") &&
         !text.includes("applyUrl") &&
+        !text.includes("externalApplyUrl") &&
+        !text.includes("offsiteApplyUrl") &&
         !text.includes("OffsiteApply")
       ) {
         continue;
       }
-      const matches = text.match(/"(?:companyApplyUrl|applyUrl)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g) || [];
+      const re = /"(?:companyApplyUrl|applyUrl|externalApplyUrl|offsiteApplyUrl)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g;
+      const matches = text.matchAll(re);
       for (const m of matches) {
-        const url = (m.match(/"(?:companyApplyUrl|applyUrl)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/) || [])[1];
+        const url = m[1];
         if (!url) continue;
         const decoded = decodeJsonString(url);
         if (!/^https?:\/\//i.test(decoded)) continue;
