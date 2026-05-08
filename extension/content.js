@@ -8,6 +8,8 @@
   let currentStatus = "Idle";
   let serverUrl = "";
   let apiKey = "";
+  const MIN_VALID_CARDS_THRESHOLD = 3;
+  const MIN_BROAD_CARDS_FOR_MISMATCH = 10;
 
   function log(msg, level) {
     console.log(`[JobScanner] ${msg}`);
@@ -87,34 +89,129 @@
 
   // --- JOB CARD DETECTION ---
 
+  function getCardJobId(card) {
+    if (!card) return "";
+    if (card.matches?.("[data-job-id]")) {
+      return (card.getAttribute("data-job-id") || "").trim();
+    }
+    return (card.querySelector("[data-job-id]")?.getAttribute("data-job-id") || "").trim();
+  }
+
+  function isInsideNonResultsSection(el) {
+    return !!(el?.closest("#jobs-search-results-footer") || el?.closest(".continuous-discovery-modules"));
+  }
+
+  function isValidJobCardElement(el) {
+    if (!el || isInsideNonResultsSection(el)) return false;
+    const jobId = getCardJobId(el);
+    if (!jobId || jobId === "search") return false;
+    return !!el.querySelector("a[href*='/jobs/view/']");
+  }
+
+  function getPageSignature() {
+    const pageState = findPageState();
+    if (pageState) return `p:${pageState.current}/${pageState.total}`;
+    const cards = getJobCards();
+    const firstId = cards[0] ? getCardJobId(cards[0]) : "";
+    return `f:${firstId || "none"}:${cards.length}`;
+  }
+
+  function getBroadJobLikeCardCount() {
+    return Array.from(document.querySelectorAll("li[data-occludable-job-id], div.job-card-container, [data-job-id]"))
+      .filter((el) => !isInsideNonResultsSection(el))
+      .filter((el) => {
+        const jobId = getCardJobId(el);
+        if (jobId && jobId !== "search") return true;
+        return !!el.querySelector("a[href*='/jobs/view/']");
+      })
+      .length;
+  }
+
+  function assessResultsHealth(validCards) {
+    const pageState = findPageState();
+    const isLastPage = !!(pageState && pageState.current >= pageState.total);
+    const broadCount = getBroadJobLikeCardCount();
+    const validCount = validCards.length;
+
+    if (validCount === 0 && broadCount > 0 && !isLastPage) {
+      return {
+        suspicious: true,
+        reason: `No valid cards extracted but ${broadCount} job-like elements are present.`,
+        validCount,
+        broadCount,
+      };
+    }
+
+    const severeMismatch =
+      validCount > 0 &&
+      validCount < MIN_VALID_CARDS_THRESHOLD &&
+      broadCount >= MIN_BROAD_CARDS_FOR_MISMATCH &&
+      validCount * 3 < broadCount &&
+      !isLastPage;
+
+    if (severeMismatch) {
+      return {
+        suspicious: true,
+        reason: `Only ${validCount} valid cards extracted while ${broadCount} job-like elements are present.`,
+        validCount,
+        broadCount,
+      };
+    }
+
+    return { suspicious: false, reason: "", validCount, broadCount };
+  }
+
   function getJobCards() {
-    // LinkedIn job cards have data-job-id or class job-card-container
+    const primaryList =
+      document.querySelector(".scaffold-layout__list ul") ||
+      document.querySelector(".jobs-search-results-list ul") ||
+      document.querySelector("ul.scaffold-layout__list-container") ||
+      document.querySelector("ul[role='list']");
+
+    if (primaryList) {
+      // Restrict to the real left-rail search results only.
+      const primaryCards = Array.from(
+        primaryList.querySelectorAll("li[data-occludable-job-id], li.scaffold-layout__list-item"),
+      ).filter(isValidJobCardElement);
+
+      if (primaryCards.length > 0) {
+        log(`Found ${primaryCards.length} cards in primary results list`);
+        return primaryCards;
+      }
+    }
+
+    // LinkedIn job cards have data-job-id or class job-card-container.
+    // Keep this fallback for older layouts where the list root selector differs.
     const selectors = [
-      "div.job-card-container",
-      "li div.job-card-container",
-      ".scaffold-layout__list-container .scaffold-layout__list-item",
       ".scaffold-layout__list-container li.ember-view",
       "li[data-occludable-job-id]",
+      ".scaffold-layout__list-container .scaffold-layout__list-item",
+      "li div.job-card-container",
+      "div.job-card-container",
     ];
     for (const sel of selectors) {
-      const cards = document.querySelectorAll(sel);
+      const cards = Array.from(document.querySelectorAll(sel))
+        .filter(isValidJobCardElement);
       if (cards.length > 0) {
         log(`Found ${cards.length} cards with selector: ${sel}`);
-        return Array.from(cards);
+        return cards;
       }
     }
 
     // Fallback: find any elements with data-job-id
-    const dataJobIds = document.querySelectorAll("[data-job-id]");
+    const dataJobIds = Array.from(document.querySelectorAll("[data-job-id]")).filter(isValidJobCardElement);
     if (dataJobIds.length > 0) {
       log(`Fallback: found ${dataJobIds.length} elements with data-job-id`);
-      return Array.from(dataJobIds);
+      return dataJobIds;
     }
 
     // Last fallback: li items containing job links
     const allLis = document.querySelectorAll("li");
-    const jobLis = Array.from(allLis).filter(li => {
-      return li.querySelector("a[href*='/jobs/view/']") && li.offsetHeight > 50;
+    const jobLis = Array.from(allLis).filter((li) => {
+      if (isInsideNonResultsSection(li)) return false;
+      const href = li.querySelector("a[href*='/jobs/view/']");
+      const hasDataId = li.querySelector("[data-job-id]");
+      return !!href && !!hasDataId && li.offsetHeight > 50;
     });
     if (jobLis.length > 0) {
       log(`Last fallback: found ${jobLis.length} li elements with job links`);
@@ -797,6 +894,7 @@
 
   async function goToNextPage() {
     await scrollJobsListToBottom();
+    const beforeSignature = getPageSignature();
 
     const pageState = findPageState();
     if (pageState && pageState.current >= pageState.total) {
@@ -812,9 +910,12 @@
       if (nextBtn) {
         log(`Clicking page ${active + 1}`);
         nextBtn.click();
-        await sleep(3000);
-        await waitForSelector("div.job-card-container, li.ember-view a[href*='/jobs/view/']", document, 8000);
-        await sleep(1500);
+        await sleep(1200);
+        const changed = await waitForPageChange(beforeSignature, 10000);
+        if (!changed) {
+          log("Page button clicked but page signature did not change", "warn");
+          return false;
+        }
         return true;
       }
       log(`Page ${active + 1} button not found (likely last page)`);
@@ -834,9 +935,12 @@
       if (btn && !btn.disabled && btn.offsetParent !== null) {
         log(`Next page via fallback selector: ${sel}`);
         btn.click();
-        await sleep(3000);
-        await waitForSelector("div.job-card-container, li.ember-view a[href*='/jobs/view/']", document, 8000);
-        await sleep(1500);
+        await sleep(1200);
+        const changed = await waitForPageChange(beforeSignature, 10000);
+        if (!changed) {
+          log("Next button clicked but page signature did not change", "warn");
+          return false;
+        }
         return true;
       }
     }
@@ -858,6 +962,20 @@
     return false;
   }
 
+  async function waitForPageChange(previousSignature, timeoutMs = 10000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline && !stopRequested) {
+      const cards = getJobCards();
+      const signature = getPageSignature();
+      if (cards.length > 0 && signature !== previousSignature) {
+        await sleep(600);
+        return true;
+      }
+      await sleep(250);
+    }
+    return false;
+  }
+
   // --- MAIN SCAN LOOP ---
 
   async function startScan() {
@@ -871,7 +989,24 @@
       sendProgress(`Scanning page ${pageNum}...`);
       await sleep(1500);
 
-      const cards = getJobCards();
+      let cards = getJobCards();
+      const health = assessResultsHealth(cards);
+      if (health.suspicious) {
+        log(`Results health warning on page ${pageNum}: ${health.reason}`, "warn");
+        await sleep(1500);
+        const retryCards = getJobCards();
+        const retryHealth = assessResultsHealth(retryCards);
+        if (retryHealth.suspicious) {
+          sendDone(
+            `Safety stop: LinkedIn layout mismatch detected on page ${pageNum}. ` +
+              `${retryHealth.reason} Please refresh and retry after verifying the UI. ` +
+              `${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`,
+          );
+          return;
+        }
+        cards = retryCards;
+      }
+
       if (cards.length === 0) {
         sendDone(`Done. No job cards found on page ${pageNum}. ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
         return;
