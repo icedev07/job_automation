@@ -326,6 +326,12 @@
       ...Array.from(document.querySelectorAll("script[type='application/json']")),
       ...Array.from(document.querySelectorAll("script[type='application/ld+json']")),
     ];
+    // Require LinkedIn's URN form (e.g. urn:li:fsd_jobPosting:NNN). A bare substring
+    // match against the job ID is too loose: a leftover Voyager blob from a previously
+    // viewed job often mentions the new job's ID in a tracking/recommendation field and
+    // would then leak its own (wrong) applyUrl into every subsequent extraction.
+    const escapedId = currentId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const urnRegex = currentId ? new RegExp(`jobPosting:${escapedId}\\b`) : null;
     const candidates = [];
     for (const node of blobs) {
       const text = node.textContent || "";
@@ -339,6 +345,7 @@
       ) {
         continue;
       }
+      if (urnRegex && !urnRegex.test(text)) continue;
       const re = /"(?:companyApplyUrl|applyUrl|externalApplyUrl|offsiteApplyUrl)"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g;
       const matches = text.matchAll(re);
       for (const m of matches) {
@@ -347,14 +354,11 @@
         const decoded = decodeJsonString(url);
         if (!/^https?:\/\//i.test(decoded)) continue;
         const isLinkedInRedirect = /linkedin\.com\/(redir|jobs\/view)/i.test(decoded);
-        const mentionsCurrentJob = currentId && text.includes(currentId);
-        candidates.push({ url: decoded, mentionsCurrentJob, isLinkedInRedirect });
+        candidates.push({ url: decoded, isLinkedInRedirect });
       }
     }
     if (candidates.length === 0) return "";
     candidates.sort((a, b) => {
-      // prefer entries belonging to the currently open job, then non-linkedin redirect URLs
-      if (a.mentionsCurrentJob !== b.mentionsCurrentJob) return a.mentionsCurrentJob ? -1 : 1;
       if (a.isLinkedInRedirect !== b.isLinkedInRedirect) return a.isLinkedInRedirect ? 1 : -1;
       return 0;
     });
@@ -362,7 +366,11 @@
   }
 
   function extractApplyUrl() {
-    const detail = getDetailContainer() || document;
+    const detail = getDetailContainer();
+    if (!detail) {
+      const fromJson = findApplyUrlInEmbeddedJson();
+      return fromJson ? tidyApplyUrl(fromJson) : "";
+    }
     const selectors = [
       "a[data-live-test-job-apply-button]",
       ".jobs-apply-button a",
@@ -372,7 +380,7 @@
       "a[href*='linkedin.com/redir/redirect']",
     ];
     for (const sel of selectors) {
-      const link = detail.querySelector(sel) || document.querySelector(sel);
+      const link = detail.querySelector(sel);
       if (!link) continue;
       const href = (link.getAttribute("href") || "").trim();
       if (!href) continue;
@@ -383,8 +391,7 @@
     // Fallback 1: read href off the apply button if LinkedIn ever stamps one on the <button>
     const btn =
       detail.querySelector("button[data-live-test-job-apply-button]") ||
-      document.querySelector("button[data-live-test-job-apply-button]") ||
-      document.querySelector("#jobs-apply-button-id");
+      detail.querySelector("#jobs-apply-button-id");
     if (btn) {
       const dataAttrs = ["data-apply-url", "data-href", "data-job-apply-url"];
       for (const attr of dataAttrs) {
