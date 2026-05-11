@@ -18,6 +18,10 @@ export type FeedFetchOptions = {
   maxJobs: number;
   searchUrl?: string;
   signal?: AbortSignal;
+  // Optional pass-through of the full scanner config. Most feeds only need
+  // searchUrl, but a few (e.g. mygreenhouse) need extra secrets like a
+  // session cookie that we don't want overloaded onto the search-url field.
+  config?: Record<string, string>;
 };
 
 export type Feed = {

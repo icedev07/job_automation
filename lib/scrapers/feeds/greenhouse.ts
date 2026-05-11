@@ -1,5 +1,6 @@
 import type { Feed, NormalizedJob } from "../types";
 import { stripHtml } from "../rss";
+import curatedSlugs from "./greenhouse-curated-slugs.json";
 
 // Greenhouse exposes a fully public, no-auth jobs api per company board:
 //   https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true
@@ -52,15 +53,24 @@ export const GREENHOUSE_DEFAULT_SLUGS = [
 
 function parseSlugs(searchUrl: string | undefined): string[] {
   if (!searchUrl || !searchUrl.trim()) return GREENHOUSE_DEFAULT_SLUGS;
-  return searchUrl
+  const tokens = searchUrl
     .split(/[,\n]/)
     .map((s) => s.trim())
-    .filter(Boolean)
-    .map((s) => {
-      // accept full board url or bare slug
-      const m = s.match(/boards(?:-api)?\.greenhouse\.io\/(?:v\d+\/boards\/)?([^/?#]+)/i);
-      return m ? m[1] : s;
-    });
+    .filter(Boolean);
+  const out: string[] = [];
+  for (const t of tokens) {
+    // `@curated` expands to the bundled 540-slug list scraped from the
+    // awesome-easy-apply community index. Mixed use is allowed:
+    // `@curated, mycompany` appends a custom slug to the curated set.
+    if (/^@curated$/i.test(t)) {
+      out.push(...(curatedSlugs as string[]));
+      continue;
+    }
+    const m = t.match(/boards(?:-api)?\.greenhouse\.io\/(?:v\d+\/boards\/)?([^/?#]+)/i);
+    out.push(m ? m[1] : t);
+  }
+  // de-dup while preserving order
+  return Array.from(new Set(out));
 }
 
 function findSalary(meta?: GreenhouseJob["metadata"]): string | null {

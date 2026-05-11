@@ -15,20 +15,30 @@ const SCANNER_KEY_PREFIXES = [
   "greenhouse",
   "lever",
   "ashby",
+  "mygreenhouse",
 ];
 const SCANNER_KEY_SUFFIXES = ["_search_url", "_max_jobs", "_enabled"];
+
+// Per-scanner secret keys (cookies, tokens) that don't follow the
+// "{prefix}{suffix}" pattern but still need to be writable from the UI.
+const SCANNER_SECRET_KEYS = [
+  "mygreenhouse_session_cookie",
+  "mygreenhouse_xsrf_token",
+];
 
 // Standalone config keys that aren't per-scanner.
 const GLOBAL_SCANNER_KEYS = ["scanner_rescan_after_days"];
 
 function isAllowedKey(key: string): boolean {
   if (GLOBAL_SCANNER_KEYS.includes(key)) return true;
+  if (SCANNER_SECRET_KEYS.includes(key)) return true;
   return SCANNER_KEY_PREFIXES.some((p) => SCANNER_KEY_SUFFIXES.some((s) => key === `${p}${s}`));
 }
 
 export async function GET() {
   const expectedKeys = [
     ...GLOBAL_SCANNER_KEYS,
+    ...SCANNER_SECRET_KEYS,
     ...SCANNER_KEY_PREFIXES.flatMap((p) => SCANNER_KEY_SUFFIXES.map((s) => `${p}${s}`)),
   ];
   const rows = await prisma.appConfig.findMany({

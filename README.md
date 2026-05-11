@@ -6,11 +6,50 @@ Scrapes jobs from multiple platforms, uses AI to filter for suitability, and pus
 
 ## How it works
 
-1. **Scrape** - Playwright-based scanners collect jobs from 5 platforms (Jobright, ZipRecruiter, Glassdoor, Dice, Simplify) or the Chrome extension scans LinkedIn
+1. **Scrape** - Server-side feeds collect jobs from public job-board APIs / RSS / SSR payloads, plus an authenticated aggregator (MyGreenhouse). The Chrome extension separately scans LinkedIn search results.
 2. **Analyze** - Each job is sent to AI (Gemini free or OpenAI) for suitability analysis (remote-friendly? accessible from Armenia? etc.)
 3. **Approve/Reject** - Jobs that pass the AI filter get status `APPROVED`, others get `REJECTED`
 4. **Sync** - Approved jobs are pushed to Google Sheets
 5. **Hide** - On LinkedIn, rejected and Easy Apply jobs are automatically hidden
+
+## Job sources
+
+All sources below are free for applicants. Each is configurable from `/admin/scanners` (search params, max jobs, enabled/disabled).
+
+| Key | Source | Auth | Notes |
+|---|---|---|---|
+| `remoteok` | [RemoteOK](https://remoteok.com) | none | public JSON feed |
+| `jobicy` | [Jobicy](https://jobicy.com) | none | v2 JSON API; supports tag/jobGeo filters |
+| `landingjobs` | [Landing.Jobs](https://landing.jobs) | none | EU-leaning developer API |
+| `weworkremotely` | [We Work Remotely](https://weworkremotely.com) | none | RSS per category slug |
+| `jobspresso` | [Jobspresso](https://jobspresso.co) | none | RSS at `/jobs/feed/` |
+| `authenticjobs` | [Authentic Jobs](https://authenticjobs.com) | none | dev-leaning RSS |
+| `nodesk` | [Nodesk](https://nodesk.co) | none | Atom feed |
+| `justremote` | [JustRemote](https://justremote.co) | none | scraped from SSR payload (~10 jobs/page) |
+| `greenhouse` | [Greenhouse boards](https://boards-api.greenhouse.io) | none | per-company public ATS API. Supports `@curated` to expand the bundled 540-slug list, or a comma-separated custom slug list. |
+| `lever` | [Lever](https://api.lever.co) | none | per-company public API |
+| `ashby` | [Ashby](https://api.ashbyhq.com/posting-api) | none | per-company public API |
+| `mygreenhouse` | [MyGreenhouse candidate portal](https://my.greenhouse.io) | session cookie | aggregator across every employer opted into MyGreenhouse. See below. |
+
+### MyGreenhouse session cookie
+
+MyGreenhouse is a passwordless candidate portal aggregating every employer who opted in. There is no public API, so the scanner replays your browser session.
+
+1. Sign in once at https://my.greenhouse.io (enter email, paste the one-time code from your inbox).
+2. In your browser, open DevTools → **Application → Cookies → `https://my.greenhouse.io`**.
+3. Copy the entire Cookie header value as the browser sends it (right-click any cookie → "Copy as cURL" and lift the `-H 'Cookie: …'` value, or build the string `_session_id=…; MYGREENHOUSE-XSRF-TOKEN=…`).
+4. Paste it into the **MyGreenhouse session cookie** input at the top of `/admin/scanners`.
+5. (Optional) Paste just the `MYGREENHOUSE-XSRF-TOKEN` value into the X-CSRF-Token field — only needed if scans start failing with 403.
+
+The cookie lives ~14 days (Greenhouse sets `_session_id` with a 14-day Expires). When the scanner reports `session expired`, repeat steps 1–4.
+
+### Bulk Greenhouse coverage without auth
+
+For the public `greenhouse` scanner, type `@curated` in its search-params field. That expands to a bundled list of 540 Greenhouse company slugs scraped from the community [awesome-easy-apply](https://github.com/sample-resume/awesome-easy-apply) index. You can mix it with custom slugs:
+
+```
+@curated, mycompany, another-slug
+```
 
 ## Architecture
 
@@ -115,27 +154,9 @@ The `extension/` folder contains a Manifest V3 Chrome extension that scans Linke
 2. Click "Load unpacked" and select the `extension/` folder
 3. Update `SERVER_URL` in `extension/popup.js` to your Vercel URL
 
-## Running scanners locally (optional)
+## Running scanners
 
-Scanners require a browser (Playwright) so they run on your machine, not on Vercel.
-
-```bash
-# First-time login (opens browser for manual login)
-npm run jobright:login
-npm run ziprecruiter:init
-npm run glassdoor:init
-npm run dice:init
-npm run simplify:init
-
-# Run scans
-npm run jobright:scan
-npm run ziprecruiter:scan
-npm run glassdoor:scan
-npm run dice:scan
-npm run simplify:scan
-```
-
-After scanning, go to `/admin/scanners` and click **Analyze Pending Jobs**.
+All feeds run server-side from `/admin/scanners` (or `POST /api/admin/scanners/run`). Use the **Scrape all sources** button for a full pass, or **Run Now** on a single tile. After scanning, click **Analyze Pending Jobs** to filter rows through the AI and push approved ones to Google Sheets.
 
 ## Google Sheet output
 

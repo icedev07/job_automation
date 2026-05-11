@@ -192,6 +192,7 @@ export default function LogsPage() {
               <option value="weworkremotely">We Work Remotely</option>
               <option value="jobicy">Jobicy</option>
               <option value="greenhouse">Greenhouse</option>
+              <option value="mygreenhouse">MyGreenhouse</option>
               <option value="lever">Lever</option>
             </select>
             <select style={inputStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>

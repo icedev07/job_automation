@@ -84,10 +84,10 @@ const SCANNERS: Scanner[] = [
   {
     key: "greenhouse",
     label: "Greenhouse (multi-company)",
-    hint: "comma-separated company slugs from boards-api.greenhouse.io. defaults to a curated remote-friendly list.",
+    hint: "comma-separated company slugs from boards-api.greenhouse.io. type `@curated` to expand the bundled 540-company list, or mix `@curated,extra-slug`.",
     defaultMax: 200,
     defaultSearchUrl: "stripe,anthropic,cloudflare,mongodb,samsara,roblox,airbnb,gitlab,intercom,figma,fivetran,robinhood,lyft,asana,instacart,postman,dropbox,vercel,duolingo,discord,newrelic,amplitude,mixpanel,webflow,algolia,airtable,modernhealth",
-    searchPlaceholder: "stripe,vercel,airbnb,figma",
+    searchPlaceholder: "@curated  (or: stripe,vercel,airbnb,figma)",
   },
   {
     key: "lever",
@@ -104,6 +104,14 @@ const SCANNERS: Scanner[] = [
     defaultMax: 100,
     defaultSearchUrl: "ramp,ashby,linear,posthog,watershed,replit,supabase,vapi,mintlify",
     searchPlaceholder: "ramp,linear,posthog",
+  },
+  {
+    key: "mygreenhouse",
+    label: "MyGreenhouse (authenticated)",
+    hint: "candidate-portal aggregator across every opted-in employer. requires a session cookie pasted below; see the MyGreenhouse session section above.",
+    defaultMax: 200,
+    defaultSearchUrl: "",
+    searchPlaceholder: "(leave blank — defaults to https://my.greenhouse.io/jobs.json)",
   },
 ];
 
@@ -327,6 +335,39 @@ export default function ScannersPage() {
         {results.all && (
           <div style={{ fontSize: "0.78rem", color: results.all.startsWith("Error") ? "#dc2626" : "#1e3a8a" }}>{results.all}</div>
         )}
+      </div>
+
+      <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: "8px", padding: "0.85rem 1rem", marginBottom: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#78350f" }}>MyGreenhouse session cookie</div>
+          <div style={{ fontSize: "0.72rem", color: "#92400e" }}>
+            Required for the MyGreenhouse scanner. Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, copy the whole Cookie header value (include <code>_session_id</code> and <code>MYGREENHOUSE-XSRF-TOKEN</code>), and paste below. The cookie lives ~14 days; re-paste when scans warn it expired.
+          </div>
+        </div>
+        <div>
+          <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>Cookie header value</label>
+          <input
+            type="password"
+            autoComplete="off"
+            value={config.mygreenhouse_session_cookie ?? ""}
+            onChange={(e) => setConfig({ ...config, mygreenhouse_session_cookie: e.target.value })}
+            onBlur={saveConfig}
+            placeholder="_session_id=...; MYGREENHOUSE-XSRF-TOKEN=...; ..."
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>X-CSRF-Token (optional)</label>
+          <input
+            type="password"
+            autoComplete="off"
+            value={config.mygreenhouse_xsrf_token ?? ""}
+            onChange={(e) => setConfig({ ...config, mygreenhouse_xsrf_token: e.target.value })}
+            onBlur={saveConfig}
+            placeholder="value of the MYGREENHOUSE-XSRF-TOKEN cookie (leave blank to skip)"
+            style={inputStyle}
+          />
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

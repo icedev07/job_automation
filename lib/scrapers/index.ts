@@ -10,6 +10,7 @@ import { jobspressoFeed } from "./feeds/jobspresso";
 import { authenticJobsFeed } from "./feeds/authenticjobs";
 import { nodeskFeed } from "./feeds/nodesk";
 import { justRemoteFeed } from "./feeds/justremote";
+import { myGreenhouseFeed } from "./feeds/mygreenhouse";
 import { upsertScrapedJob } from "../scrapedJobs";
 import { getAllConfig } from "../config";
 
@@ -29,6 +30,8 @@ const FEEDS: Feed[] = [
   greenhouseFeed,
   leverFeed,
   ashbyFeed,
+  // authenticated candidate-portal aggregator (requires pasted session cookie)
+  myGreenhouseFeed,
 ];
 
 export const FEED_KEYS = FEEDS.map((f) => f.key);
@@ -65,6 +68,7 @@ export async function runFeedScan(key: string, preloadedConfig?: Record<string, 
   const result: FeedFetchResult = await feed.fetch({
     maxJobs,
     searchUrl: config[`${key}_search_url`] || undefined,
+    config,
   });
 
   let saved = 0;
