@@ -189,7 +189,6 @@ export default function LogsPage() {
               <option value="">All Platforms</option>
               <option value="linkedin">LinkedIn</option>
               <option value="remoteok">RemoteOK</option>
-              <option value="remotive">Remotive</option>
               <option value="weworkremotely">We Work Remotely</option>
               <option value="jobicy">Jobicy</option>
               <option value="greenhouse">Greenhouse</option>

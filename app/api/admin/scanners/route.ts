@@ -5,13 +5,13 @@ export const dynamic = "force-dynamic";
 
 const SCANNER_KEY_PREFIXES = [
   "remoteok",
-  "remotive",
   "jobicy",
   "landingjobs",
   "weworkremotely",
   "jobspresso",
   "authenticjobs",
   "nodesk",
+  "justremote",
   "greenhouse",
   "lever",
   "ashby",

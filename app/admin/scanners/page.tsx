@@ -23,14 +23,6 @@ const SCANNERS: Scanner[] = [
     searchPlaceholder: "(no config — fetches latest jobs)",
   },
   {
-    key: "remotive",
-    label: "Remotive",
-    hint: "public json api. accepts category=software-dev, search=react, etc.",
-    defaultMax: 50,
-    defaultSearchUrl: "category=software-dev",
-    searchPlaceholder: "category=software-dev,search=typescript",
-  },
-  {
     key: "jobicy",
     label: "Jobicy",
     hint: "jobicy v2 api. accepts tag=react, jobGeo=anywhere, or a full Jobicy api url.",
@@ -45,6 +37,14 @@ const SCANNERS: Scanner[] = [
     defaultMax: 50,
     defaultSearchUrl: "",
     searchPlaceholder: "remote=true,limit=50",
+  },
+  {
+    key: "justremote",
+    label: "JustRemote",
+    hint: "scraped from SSR payload (~10 jobs per page). path picks the board, e.g. remote-developer-jobs, remote-design-jobs.",
+    defaultMax: 25,
+    defaultSearchUrl: "remote-developer-jobs",
+    searchPlaceholder: "remote-developer-jobs",
   },
   // RSS feeds
   {

@@ -2,7 +2,6 @@ import type { Feed, FeedFetchResult, NormalizedJob } from "./types";
 import { remoteOkFeed } from "./feeds/remoteok";
 import { weWorkRemotelyFeed } from "./feeds/weworkremotely";
 import { jobicyFeed } from "./feeds/jobicy";
-import { remotiveFeed } from "./feeds/remotive";
 import { greenhouseFeed } from "./feeds/greenhouse";
 import { leverFeed } from "./feeds/lever";
 import { ashbyFeed } from "./feeds/ashby";
@@ -10,13 +9,13 @@ import { landingJobsFeed } from "./feeds/landingjobs";
 import { jobspressoFeed } from "./feeds/jobspresso";
 import { authenticJobsFeed } from "./feeds/authenticjobs";
 import { nodeskFeed } from "./feeds/nodesk";
+import { justRemoteFeed } from "./feeds/justremote";
 import { upsertScrapedJob } from "../scrapedJobs";
 import { getAllConfig } from "../config";
 
 const FEEDS: Feed[] = [
   // single-endpoint json feeds
   remoteOkFeed,
-  remotiveFeed,
   jobicyFeed,
   landingJobsFeed,
   // RSS-driven boards (default URL, user can override)
@@ -24,6 +23,8 @@ const FEEDS: Feed[] = [
   jobspressoFeed,
   authenticJobsFeed,
   nodeskFeed,
+  // SPA boards with no public api — scraped from embedded SSR payload
+  justRemoteFeed,
   // multi-company ATS
   greenhouseFeed,
   leverFeed,
