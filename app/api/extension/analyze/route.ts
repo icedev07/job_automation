@@ -43,10 +43,6 @@ export async function POST(req: NextRequest) {
 
   try {
     // Log what was received from the extension
-    const preferredUrl =
-      typeof applyUrl === "string" && applyUrl.trim().length > 0 && !easyApply
-        ? applyUrl.trim()
-        : url;
     const manualApplyStored =
       !easyApply && typeof applyUrl === "string" && applyUrl.trim().length > 0 ? applyUrl.trim() : null;
     console.log(`[Extension] Received: title="${title}", company="${company}", location="${location}", easyApply=${easyApply}, descLen=${description?.length || 0}, url=${url}, applyUrl=${typeof applyUrl === "string" ? applyUrl : ""}`);
@@ -58,7 +54,7 @@ export async function POST(req: NextRequest) {
         platform: "linkedin",
         title,
         company,
-        url: preferredUrl,
+        url,
         location,
         description:
           typeof description === "string" ? description.slice(0, MAX_DESC_CHARS) : description,
@@ -110,7 +106,7 @@ export async function POST(req: NextRequest) {
       platform: "linkedin",
       title,
       company,
-      url: preferredUrl,
+      url,
       location,
       description:
         typeof description === "string" ? description.slice(0, MAX_DESC_CHARS) : description,
