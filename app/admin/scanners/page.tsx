@@ -123,6 +123,24 @@ type LastScan = {
   createdAt: string;
 };
 
+// Group scanners by source family so the Greenhouse pair (public + authenticated
+// portal) and the shared session cookie config live in one place. The "all" tab
+// is the original flat view.
+type TabDef = {
+  id: string;
+  label: string;
+  scannerKeys: string[];
+};
+
+const TABS: TabDef[] = [
+  { id: "all", label: "All sources", scannerKeys: SCANNERS.map((s) => s.key) },
+  { id: "greenhouse", label: "Greenhouse", scannerKeys: ["greenhouse", "mygreenhouse"] },
+  { id: "lever", label: "Lever", scannerKeys: ["lever"] },
+  { id: "ashby", label: "Ashby", scannerKeys: ["ashby"] },
+  { id: "rss", label: "RSS feeds", scannerKeys: ["weworkremotely", "jobspresso", "authenticjobs", "nodesk"] },
+  { id: "json", label: "JSON feeds", scannerKeys: ["remoteok", "jobicy", "landingjobs", "justremote"] },
+];
+
 export default function ScannersPage() {
   const [config, setConfig] = useState<Record<string, string>>({});
   const [running, setRunning] = useState<string | null>(null);
@@ -131,6 +149,7 @@ export default function ScannersPage() {
   const [analyzeResult, setAnalyzeResult] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
   const [lastScans, setLastScans] = useState<Record<string, LastScan>>({});
+  const [activeTab, setActiveTab] = useState<string>("greenhouse");
 
   useEffect(() => {
     fetch("/api/admin/scanners").then((r) => r.json()).then(setConfig);
@@ -337,41 +356,40 @@ export default function ScannersPage() {
         )}
       </div>
 
-      <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: "8px", padding: "0.85rem 1rem", marginBottom: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#78350f" }}>MyGreenhouse session cookie</div>
-          <div style={{ fontSize: "0.72rem", color: "#92400e" }}>
-            Required for the MyGreenhouse scanner. Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, copy the whole Cookie header value (include <code>_session_id</code> and <code>MYGREENHOUSE-XSRF-TOKEN</code>), and paste below. The X-CSRF-Token is auto-extracted and URL-decoded from the cookie; only fill the field below if you need to override it. The cookie lives ~14 days; re-paste when scans warn it expired.
-          </div>
-        </div>
-        <div>
-          <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>Cookie header value</label>
-          <input
-            type="password"
-            autoComplete="off"
-            value={config.mygreenhouse_session_cookie ?? ""}
-            onChange={(e) => setConfig({ ...config, mygreenhouse_session_cookie: e.target.value })}
-            onBlur={saveConfig}
-            placeholder="_session_id=...; MYGREENHOUSE-XSRF-TOKEN=...; ..."
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>X-CSRF-Token (optional)</label>
-          <input
-            type="password"
-            autoComplete="off"
-            value={config.mygreenhouse_xsrf_token ?? ""}
-            onChange={(e) => setConfig({ ...config, mygreenhouse_xsrf_token: e.target.value })}
-            onBlur={saveConfig}
-            placeholder="leave blank — auto-extracted from the cookie above"
-            style={inputStyle}
-          />
-        </div>
+      <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", borderBottom: "1px solid #e5e7eb", marginBottom: "1rem" }}>
+        {TABS.map((tab) => {
+          const isActive = tab.id === activeTab;
+          const visibleCount = tab.scannerKeys.length;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: "0.45rem 0.9rem",
+                background: isActive ? "white" : "transparent",
+                color: isActive ? "#1d4ed8" : "#4b5563",
+                border: "1px solid",
+                borderColor: isActive ? "#e5e7eb" : "transparent",
+                borderBottomColor: isActive ? "white" : "transparent",
+                borderRadius: "6px 6px 0 0",
+                cursor: "pointer",
+                fontSize: "0.8rem",
+                fontWeight: isActive ? 600 : 500,
+                marginBottom: "-1px",
+              }}
+            >
+              {tab.label} <span style={{ color: "#9ca3af", fontWeight: 400 }}>({visibleCount})</span>
+            </button>
+          );
+        })}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        {SCANNERS.map((s) => {
+        {SCANNERS.filter((s) => {
+          const tab = TABS.find((t) => t.id === activeTab);
+          if (!tab) return true;
+          return tab.scannerKeys.includes(s.key);
+        }).map((s) => {
           const urlKey = `${s.key}_search_url`;
           const maxKey = `${s.key}_max_jobs`;
           const enabledKey = `${s.key}_enabled`;
@@ -401,6 +419,37 @@ export default function ScannersPage() {
                 </button>
               </div>
               <div style={{ fontSize: "0.7rem", color: "#6b7280", marginBottom: "0.5rem" }}>{s.hint}</div>
+              {s.key === "mygreenhouse" && (
+                <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: "6px", padding: "0.7rem 0.85rem", marginBottom: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <div style={{ fontSize: "0.7rem", color: "#92400e", lineHeight: 1.4 }}>
+                    Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, copy the whole Cookie header value (include <code>_session_id</code> and <code>MYGREENHOUSE-XSRF-TOKEN</code>), and paste below. The X-CSRF-Token is auto-extracted and URL-decoded from the cookie; only fill the override field if needed. The cookie lives ~14 days; re-paste when scans warn it expired.
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>Cookie header value</label>
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={config.mygreenhouse_session_cookie ?? ""}
+                      onChange={(e) => setConfig({ ...config, mygreenhouse_session_cookie: e.target.value })}
+                      onBlur={saveConfig}
+                      placeholder="_session_id=...; MYGREENHOUSE-XSRF-TOKEN=...; ..."
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>X-CSRF-Token (optional override)</label>
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={config.mygreenhouse_xsrf_token ?? ""}
+                      onChange={(e) => setConfig({ ...config, mygreenhouse_xsrf_token: e.target.value })}
+                      onBlur={saveConfig}
+                      placeholder="leave blank — auto-extracted from the cookie above"
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "0.75rem" }}>
                 <div>
                   <label style={{ fontSize: "0.7rem", color: "#6b7280", display: "flex", justifyContent: "space-between" }}>
