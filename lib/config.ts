@@ -31,13 +31,44 @@ export async function setConfigValue(key: string, value: string): Promise<void> 
     update: { value },
     create: { key, value },
   });
+  invalidateConfigCache();
+}
+
+// Supabase free tier limits us to 15 sessions on the connection pool. A single
+// analyze batch otherwise calls getAllConfig() ~3 times per job (analyzer +
+// LLM client + sheets sync), so 8 jobs × 3 = 24 findMany() calls easily blows
+// the pool and produces "FATAL: max clients reached in session mode".
+// A short module-level cache collapses every batch down to a single DB read.
+let cachedConfig: { value: Record<string, string>; expiresAt: number } | null = null;
+let inflightConfig: Promise<Record<string, string>> | null = null;
+const CONFIG_TTL_MS = 10_000;
+
+export function invalidateConfigCache(): void {
+  cachedConfig = null;
+  inflightConfig = null;
 }
 
 export async function getAllConfig(): Promise<Record<string, string>> {
-  const rows = await prisma.appConfig.findMany();
-  const config: Record<string, string> = {};
-  for (const row of rows) config[row.key] = row.value;
-  return config;
+  const now = Date.now();
+  if (cachedConfig && cachedConfig.expiresAt > now) {
+    return cachedConfig.value;
+  }
+  // If a concurrent call is already loading, ride along on it instead of
+  // opening a second session.
+  if (inflightConfig) return inflightConfig;
+
+  inflightConfig = (async () => {
+    try {
+      const rows = await prisma.appConfig.findMany();
+      const config: Record<string, string> = {};
+      for (const row of rows) config[row.key] = row.value;
+      cachedConfig = { value: config, expiresAt: Date.now() + CONFIG_TTL_MS };
+      return config;
+    } finally {
+      inflightConfig = null;
+    }
+  })();
+  return inflightConfig;
 }
 
 export async function getConfig() {

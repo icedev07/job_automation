@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { invalidateConfigCache } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   const body = await req.json();
+  let wrote = false;
   for (const [key, value] of Object.entries(body)) {
     if (isAllowedKey(key) && typeof value === "string") {
       await prisma.appConfig.upsert({
@@ -58,7 +60,9 @@ export async function PUT(req: NextRequest) {
         update: { value },
         create: { key, value },
       });
+      wrote = true;
     }
   }
+  if (wrote) invalidateConfigCache();
   return NextResponse.json({ ok: true });
 }
