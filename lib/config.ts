@@ -17,6 +17,7 @@ export const CONFIG_KEYS = {
   SHEET_COLUMNS: "sheet_columns",
   LINKEDIN_SHEET_TAB: "linkedin_sheet_tab",
   EXTENSION_API_KEY: "extension_api_key",
+  ANALYZER_REQUEST_DELAY_MS: "analyzer_request_delay_ms",
 } as const;
 
 export async function getConfigValue(key: string): Promise<string | null> {
@@ -63,6 +64,13 @@ export async function getConfig() {
     sheetColumns: all[CONFIG_KEYS.SHEET_COLUMNS] || "",
     linkedinSheetTab: all[CONFIG_KEYS.LINKEDIN_SHEET_TAB] || "LinkedIn",
     extensionApiKey: all[CONFIG_KEYS.EXTENSION_API_KEY] || "",
+    // Inter-request pacing for the LLM. Default 2500ms keeps OpenRouter free
+    // tier (20 req/min) safely under the per-minute cap with margin for the
+    // network round-trip. Set to 0 to disable when using a paid model.
+    analyzerRequestDelayMs: Math.max(
+      0,
+      Number(all[CONFIG_KEYS.ANALYZER_REQUEST_DELAY_MS]) || 2_500,
+    ),
   };
 }
 

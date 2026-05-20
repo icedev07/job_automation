@@ -212,7 +212,7 @@ export default function ScannersPage() {
   // processes a small batch (default 8 jobs ≈ 50s of LLM time) and returns
   // immediately. The admin UI keeps calling it until `remaining = 0` so a long
   // backlog can be worked through without ever hitting a 504.
-  async function analyzeBatchOnce(): Promise<{ ok: boolean; approved: number; rejected: number; analyzed: number; remaining: number; error?: string }>
+  async function analyzeBatchOnce(): Promise<{ ok: boolean; approved: number; rejected: number; analyzed: number; remaining: number; rateLimited?: boolean; rateLimitReason?: string; retryAfterMs?: number; error?: string }>
   {
     try {
       const res = await fetch("/api/admin/analyze", {
@@ -230,6 +230,9 @@ export default function ScannersPage() {
         rejected: Number(data.rejected || 0),
         analyzed: Number(data.analyzed || 0),
         remaining: Number(data.remaining || 0),
+        rateLimited: Boolean(data.rateLimited),
+        rateLimitReason: data.rateLimitReason || undefined,
+        retryAfterMs: typeof data.retryAfterMs === "number" ? data.retryAfterMs : undefined,
       };
     } catch (err: any) {
       return { ok: false, approved: 0, rejected: 0, analyzed: 0, remaining: 0, error: err.message };
@@ -260,6 +263,17 @@ export default function ScannersPage() {
       setAnalyzeResult(
         `Analyzing... ${totalAnalyzed} done, ${totalApproved} approved, ${totalRejected} rejected, ${lastRemaining} remaining`,
       );
+      if (r.rateLimited) {
+        const secs = r.retryAfterMs ? Math.ceil(r.retryAfterMs / 1000) : null;
+        setAnalyzeResult(
+          `Rate limited by AI provider — ${r.rateLimitReason || "wait and retry"}. ` +
+            `Progress: ${totalApproved} approved, ${totalRejected} rejected out of ${totalAnalyzed}; ${lastRemaining} still pending` +
+            (secs ? ` (retry in ~${secs}s)` : "") + ".",
+        );
+        setAnalyzing(false);
+        refreshStats();
+        return;
+      }
       if (r.remaining === 0 || r.analyzed === 0) break;
     }
     setAnalyzeResult(

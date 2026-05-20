@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { generateText } from "./llmClient";
+import { generateText, LLMRateLimitedError } from "./llmClient";
 import { getConfig } from "./config";
 
 export type AnalysisResult = {
@@ -93,7 +93,7 @@ function parseAIResponse(text: string): AnalysisResult {
   }
 }
 
-export async function analyzeJob(jobId: number): Promise<AnalysisResult> {
+export async function analyzeJob(jobId: number, signal?: AbortSignal): Promise<AnalysisResult> {
   // atomic check: only analyze if still PENDING (prevents double-analysis race condition)
   const updated = await prisma.scrapedJob.updateMany({
     where: { id: jobId, status: "PENDING" },
@@ -139,8 +139,14 @@ export async function analyzeJob(jobId: number): Promise<AnalysisResult> {
 
   let llmResult: { text: string; model: string; tokensUsed: number };
   try {
-    llmResult = await generateText(prompt);
+    llmResult = await generateText(prompt, signal);
   } catch (err: any) {
+    // Rate-limit / quota errors are surfaced to the caller without marking the
+    // job REJECTED — the row stays PENDING so the next batch can retry once
+    // the provider window resets.
+    if (err instanceof LLMRateLimitedError) {
+      throw err;
+    }
     const raw = err?.message ?? String(err);
     const logReason = raw.length > 4000 ? raw.slice(0, 4000) : raw;
     const reason =
@@ -211,7 +217,36 @@ export type AnalyzeBatchOptions = {
   limit?: number;
   /** Bail out once we're this close to the function deadline (ms). */
   timeBudgetMs?: number;
+  /** Override the configured inter-request delay (ms). 0 disables pacing. */
+  requestDelayMs?: number;
 };
+
+// Leave at least this much wall-clock for the response + post-batch sheets
+// sync. Without this floor a slow LLM call can push the function past Vercel's
+// 60s cap and the user sees a generic FUNCTION_INVOCATION_TIMEOUT instead of a
+// graceful "batch partial, click again" message.
+const HEADROOM_MS = 12_000;
+// Refuse to start a new LLM call if we don't have at least this much budget
+// left. A typical free-tier OpenRouter response lands in 3–8s.
+const MIN_CALL_BUDGET_MS = 10_000;
+
+async function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  if (ms <= 0) return;
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const t = setTimeout(resolve, ms);
+    if (signal) {
+      signal.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(t);
+          resolve();
+        },
+        { once: true },
+      );
+    }
+  });
+}
 
 export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Promise<{
   analyzed: number;
@@ -220,14 +255,24 @@ export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Prom
   skipped: number;
   remaining: number;
   timedOut: boolean;
+  rateLimited?: boolean;
+  rateLimitReason?: string;
+  retryAfterMs?: number;
 }> {
   const limit = Math.min(50, Math.max(1, options.limit ?? 8));
-  // Vercel hobby/pro caps this route at 60s (vercel.json). Default to 50s of
+  // Vercel hobby/pro caps this route at 60s (vercel.json). Default to 48s of
   // working budget so we always have headroom to return a response and write
-  // the final scan log. Each LLM call is 3–10s, so ~5–10 jobs/iteration is
+  // the final scan log. Each LLM call is 3–10s, so ~5–8 jobs/iteration is
   // realistic; the admin UI loops until pending=0.
-  const budgetMs = Math.max(5_000, options.timeBudgetMs ?? 50_000);
+  const budgetMs = Math.max(5_000, options.timeBudgetMs ?? 48_000);
   const startedAt = Date.now();
+
+  const config = await getConfig();
+  const requestDelayMs = Math.max(0, options.requestDelayMs ?? config.analyzerRequestDelayMs);
+
+  const batchController = new AbortController();
+  // Hard kill the in-flight LLM call once we're inside the headroom window.
+  const killTimer = setTimeout(() => batchController.abort(), Math.max(1_000, budgetMs - HEADROOM_MS));
 
   const pending = await prisma.scrapedJob.findMany({
     where: { status: "PENDING" },
@@ -240,31 +285,60 @@ export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Prom
   let skipped = 0;
   let processed = 0;
   let timedOut = false;
+  let rateLimited = false;
+  let rateLimitReason: string | undefined;
+  let retryAfterMs: number | undefined;
 
-  for (const job of pending) {
-    if (Date.now() - startedAt > budgetMs) {
-      timedOut = true;
-      break;
-    }
-    const current = await prisma.scrapedJob.findUnique({
-      where: { id: job.id },
-      select: { status: true },
-    });
-    if (!current || current.status !== "PENDING") {
-      skipped++;
-      processed++;
-      continue;
-    }
+  try {
+    for (let i = 0; i < pending.length; i++) {
+      const job = pending[i];
+      const elapsed = Date.now() - startedAt;
+      if (elapsed > budgetMs - HEADROOM_MS || budgetMs - elapsed < MIN_CALL_BUDGET_MS) {
+        timedOut = true;
+        break;
+      }
+      const current = await prisma.scrapedJob.findUnique({
+        where: { id: job.id },
+        select: { status: true },
+      });
+      if (!current || current.status !== "PENDING") {
+        skipped++;
+        processed++;
+        continue;
+      }
 
-    try {
-      const result = await analyzeJob(job.id);
-      if (result.approved) approved++;
-      else rejected++;
-    } catch (err: any) {
-      console.error(`Failed to analyze job ${job.id}: ${err.message}`);
-      rejected++;
+      try {
+        const result = await analyzeJob(job.id, batchController.signal);
+        if (result.approved) approved++;
+        else rejected++;
+        processed++;
+      } catch (err: any) {
+        if (err instanceof LLMRateLimitedError) {
+          rateLimited = true;
+          rateLimitReason = err.message;
+          retryAfterMs = err.retryAfterMs;
+          // Leave the row PENDING so the next click picks it up.
+          break;
+        }
+        console.error(`Failed to analyze job ${job.id}: ${err.message}`);
+        rejected++;
+        processed++;
+      }
+
+      // Pace the next request so we stay under OpenRouter free-tier 20 RPM.
+      // Skip the sleep on the last iteration to avoid burning budget for no
+      // reason.
+      if (i < pending.length - 1 && requestDelayMs > 0) {
+        const remaining = budgetMs - (Date.now() - startedAt) - HEADROOM_MS;
+        if (remaining < MIN_CALL_BUDGET_MS) {
+          timedOut = true;
+          break;
+        }
+        await delay(Math.min(requestDelayMs, Math.max(0, remaining - MIN_CALL_BUDGET_MS)), batchController.signal);
+      }
     }
-    processed++;
+  } finally {
+    clearTimeout(killTimer);
   }
 
   const remaining = await prisma.scrapedJob.count({ where: { status: "PENDING" } });
@@ -276,5 +350,8 @@ export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Prom
     skipped,
     remaining,
     timedOut,
+    ...(rateLimited
+      ? { rateLimited: true, rateLimitReason, retryAfterMs }
+      : {}),
   };
 }
