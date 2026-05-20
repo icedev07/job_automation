@@ -17,7 +17,11 @@ type RunOutcome = {
   warning?: string;
 };
 
-async function runOne(board: string, preloadedConfig?: Record<string, string>): Promise<RunOutcome> {
+async function runOne(
+  board: string,
+  preloadedConfig?: Record<string, string>,
+  timeBudgetMs?: number,
+): Promise<RunOutcome> {
   const startedAt = Date.now();
   let outcome: RunOutcome = { board, jobsFound: 0, jobsSaved: 0, jobsRefreshed: 0, jobsRescanned: 0, durationMs: 0 };
   try {
@@ -27,7 +31,7 @@ async function runOne(board: string, preloadedConfig?: Record<string, string>): 
           `Available: ${FEED_KEYS.join(", ")}.`,
       );
     }
-    const result = await runFeedScan(board, preloadedConfig);
+    const result = await runFeedScan(board, preloadedConfig, { timeBudgetMs });
     outcome = {
       board,
       jobsFound: result.found,
@@ -80,8 +84,15 @@ export async function POST(req: NextRequest) {
   if (board === "all") {
     const sharedConfig = await getAllConfig();
     const outcomes: RunOutcome[] = [];
+    // Reserve ~5s headroom for the response + analysis chain. Spread the rest
+    // evenly so one slow board cannot eat the budget for every later board.
+    const allStartedAt = Date.now();
     for (const key of FEED_KEYS) {
-      outcomes.push(await runOne(key, sharedConfig));
+      const elapsed = Date.now() - allStartedAt;
+      const remaining = Math.max(5_000, 55_000 - elapsed);
+      const stillToRun = Math.max(1, FEED_KEYS.length - outcomes.length);
+      const budget = Math.max(3_000, Math.floor(remaining / stillToRun));
+      outcomes.push(await runOne(key, sharedConfig, budget));
     }
     const totalSaved = outcomes.reduce((s, o) => s + o.jobsSaved, 0);
     const totalFound = outcomes.reduce((s, o) => s + o.jobsFound, 0);
@@ -127,7 +138,12 @@ export async function GET(req: NextRequest) {
   const sharedConfig = await getAllConfig();
   const outcomes: RunOutcome[] = [];
   for (const key of FEED_KEYS) {
-    outcomes.push(await runOne(key, sharedConfig));
+    const elapsed = Date.now() - functionStartedAt;
+    // Keep ~10s in reserve for the analysis chain + response.
+    const remaining = Math.max(5_000, 50_000 - elapsed);
+    const stillToRun = Math.max(1, FEED_KEYS.length - outcomes.length);
+    const budget = Math.max(3_000, Math.floor(remaining / stillToRun));
+    outcomes.push(await runOne(key, sharedConfig, budget));
   }
   const totalSaved = outcomes.reduce((s, o) => s + o.jobsSaved, 0);
   const totalFound = outcomes.reduce((s, o) => s + o.jobsFound, 0);

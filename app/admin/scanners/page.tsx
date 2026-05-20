@@ -341,7 +341,7 @@ export default function ScannersPage() {
         <div>
           <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#78350f" }}>MyGreenhouse session cookie</div>
           <div style={{ fontSize: "0.72rem", color: "#92400e" }}>
-            Required for the MyGreenhouse scanner. Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, copy the whole Cookie header value (include <code>_session_id</code> and <code>MYGREENHOUSE-XSRF-TOKEN</code>), and paste below. The cookie lives ~14 days; re-paste when scans warn it expired.
+            Required for the MyGreenhouse scanner. Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, copy the whole Cookie header value (include <code>_session_id</code> and <code>MYGREENHOUSE-XSRF-TOKEN</code>), and paste below. The X-CSRF-Token is auto-extracted and URL-decoded from the cookie; only fill the field below if you need to override it. The cookie lives ~14 days; re-paste when scans warn it expired.
           </div>
         </div>
         <div>
@@ -364,7 +364,7 @@ export default function ScannersPage() {
             value={config.mygreenhouse_xsrf_token ?? ""}
             onChange={(e) => setConfig({ ...config, mygreenhouse_xsrf_token: e.target.value })}
             onBlur={saveConfig}
-            placeholder="value of the MYGREENHOUSE-XSRF-TOKEN cookie (leave blank to skip)"
+            placeholder="leave blank — auto-extracted from the cookie above"
             style={inputStyle}
           />
         </div>

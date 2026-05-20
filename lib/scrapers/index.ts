@@ -49,7 +49,16 @@ export type ScanOutcome = {
   warning?: string;
 };
 
-export async function runFeedScan(key: string, preloadedConfig?: Record<string, string>): Promise<ScanOutcome> {
+export type RunFeedScanOptions = {
+  /** Hard wall-clock budget for the scrape step. Persistence runs afterward. */
+  timeBudgetMs?: number;
+};
+
+export async function runFeedScan(
+  key: string,
+  preloadedConfig?: Record<string, string>,
+  options: RunFeedScanOptions = {},
+): Promise<ScanOutcome> {
   const feed = getFeed(key);
   if (!feed) throw new Error(`Unknown scanner: ${key}`);
 
@@ -65,11 +74,21 @@ export async function runFeedScan(key: string, preloadedConfig?: Record<string, 
   const maxJobs = Math.min(200, Math.max(1, Number(config[`${key}_max_jobs`]) || 25));
   const rescanAfterDays = Math.max(0, Number(config["scanner_rescan_after_days"]) || 0);
 
-  const result: FeedFetchResult = await feed.fetch({
-    maxJobs,
-    searchUrl: config[`${key}_search_url`] || undefined,
-    config,
-  });
+  const controller = new AbortController();
+  const budgetMs = options.timeBudgetMs;
+  const timer = budgetMs && budgetMs > 0 ? setTimeout(() => controller.abort(), budgetMs) : null;
+
+  let result: FeedFetchResult;
+  try {
+    result = await feed.fetch({
+      maxJobs,
+      searchUrl: config[`${key}_search_url`] || undefined,
+      signal: controller.signal,
+      config,
+    });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 
   let saved = 0;
   let refreshed = 0;

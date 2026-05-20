@@ -11,15 +11,18 @@ import { stripHtml } from "../rss";
 //   mygreenhouse_session_cookie  Full Cookie header value as copied from
 //                                browser DevTools (Application → Cookies on
 //                                my.greenhouse.io). MUST include _session_id;
-//                                MYGREENHOUSE-XSRF-TOKEN is also recommended.
+//                                MYGREENHOUSE-XSRF-TOKEN is auto-extracted from
+//                                this string when present.
 // Optional config keys:
-//   mygreenhouse_xsrf_token      Value of the MYGREENHOUSE-XSRF-TOKEN cookie,
-//                                sent as an X-CSRF-Token header. Most GETs do
-//                                not require it but Rails apps occasionally do.
+//   mygreenhouse_xsrf_token      Decoded value of the MYGREENHOUSE-XSRF-TOKEN
+//                                cookie. Optional override — when blank the
+//                                feed extracts and URL-decodes it from the
+//                                cookie string above. Sent as X-CSRF-Token.
 
 const MYGH_BASE = "https://my.greenhouse.io";
 const JOBS_JSON = `${MYGH_BASE}/jobs.json`;
 const MAX_PAGES = 25;
+const PER_REQUEST_TIMEOUT_MS = 12_000;
 
 type MyGhJobRaw = Record<string, unknown> & {
   id?: number | string;
@@ -121,12 +124,92 @@ function buildPageUrl(baseUrl: string, searchAfter: string | null): string {
   return u.toString();
 }
 
-function looksLikeSignInRedirect(res: Response, body: string): boolean {
-  if (res.status === 401) return true;
+// Parse "k1=v1; k2=v2" cookie header into a plain map. Values are returned
+// verbatim — URL-decoding is left to the caller because the X-CSRF-Token
+// header requires the decoded form but the Cookie header requires the raw form.
+function parseCookieHeader(raw: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const piece of raw.split(/;\s*/)) {
+    if (!piece) continue;
+    const idx = piece.indexOf("=");
+    if (idx <= 0) continue;
+    const name = piece.slice(0, idx).trim();
+    const value = piece.slice(idx + 1).trim();
+    if (name) out[name] = value;
+  }
+  return out;
+}
+
+function safeUrlDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+// Pull the XSRF token out of the cookie header if the user did not supply it
+// separately, and URL-decode it (Rails stores `+/=` as `%2B%2F%3D` in cookies).
+function resolveXsrfToken(cookieJar: Record<string, string>, override: string): string | null {
+  const explicit = override.trim();
+  if (explicit) {
+    // If the user pasted the raw cookie value into the override field, decode it.
+    return explicit.includes("%") ? safeUrlDecode(explicit) : explicit;
+  }
+  const fromJar = cookieJar["MYGREENHOUSE-XSRF-TOKEN"];
+  if (fromJar) return safeUrlDecode(fromJar);
+  return null;
+}
+
+// True when the response body looks like the Rails sign-in HTML page rather
+// than the JSON jobs feed. The candidate portal serves the sign-in page with
+// status 200 and `text/html`, so we have to sniff the body.
+function looksLikeHtml(body: string): boolean {
+  const head = body.slice(0, 200).trimStart().toLowerCase();
+  return head.startsWith("<!doctype") || head.startsWith("<html");
+}
+
+function looksLikeSignInRedirect(res: Response, body: string, contentType: string): boolean {
+  if (res.status === 401 || res.status === 403) return true;
+  if (res.status >= 300 && res.status < 400) {
+    const loc = res.headers.get("location") || "";
+    if (/\/users\/sign_in|\/login/i.test(loc)) return true;
+  }
   if (res.redirected && /\/users\/sign_in/i.test(res.url)) return true;
   if (res.status === 406 && body.length === 0) return true;
-  if (/sign[_ ]in/i.test(body) && body.length < 4000) return true;
+  if (/text\/html/i.test(contentType) && looksLikeHtml(body)) return true;
+  if (/sign[_ ]in|please log in|session expired/i.test(body) && body.length < 8_000) return true;
   return false;
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  parentSignal: AbortSignal | undefined,
+): Promise<Response> {
+  const controller = new AbortController();
+  const onParentAbort = () => controller.abort();
+  if (parentSignal) {
+    if (parentSignal.aborted) throw new Error("aborted");
+    parentSignal.addEventListener("abort", onParentAbort, { once: true });
+  }
+  const timer = setTimeout(() => controller.abort(), PER_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+    if (parentSignal) parentSignal.removeEventListener("abort", onParentAbort);
+  }
+}
+
+// Validate the session cookie has the bits we actually need. Returning an
+// explicit warning here saves a wasted HTTP round-trip and gives the user a
+// targeted error message instead of "session expired".
+function validateCookieJar(jar: Record<string, string>): string | null {
+  if (!jar["_session_id"]) {
+    return "session cookie is missing _session_id — copy the FULL Cookie header value, including _session_id";
+  }
+  return null;
 }
 
 export const myGreenhouseFeed: Feed = {
@@ -137,10 +220,17 @@ export const myGreenhouseFeed: Feed = {
     if (!cookie) {
       return {
         jobs: [],
-        warning: "session cookie not configured — paste from browser DevTools (Application → Cookies on my.greenhouse.io)",
+        warning:
+          "session cookie not configured — paste from browser DevTools (Application → Cookies on my.greenhouse.io)",
       };
     }
-    const xsrf = (config?.mygreenhouse_xsrf_token || "").trim();
+    const cookieJar = parseCookieHeader(cookie);
+    const validationWarning = validateCookieJar(cookieJar);
+    if (validationWarning) {
+      return { jobs: [], warning: validationWarning };
+    }
+
+    const xsrfDecoded = resolveXsrfToken(cookieJar, config?.mygreenhouse_xsrf_token || "");
     const baseUrl = (searchUrl || "").trim().startsWith("http")
       ? (searchUrl as string).trim()
       : JOBS_JSON;
@@ -149,24 +239,54 @@ export const myGreenhouseFeed: Feed = {
     const seen = new Set<string>();
     let cursor: string | null = null;
     let warning: string | undefined;
+    let consecutiveEmptyPages = 0;
 
     for (let page = 0; page < MAX_PAGES; page++) {
+      if (signal?.aborted) {
+        warning = warning || "scan aborted before completion";
+        break;
+      }
       const url = buildPageUrl(baseUrl, page === 0 ? null : cursor);
       const headers: Record<string, string> = {
         "User-Agent":
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": "en-US,en;q=0.9",
         "X-Requested-With": "XMLHttpRequest",
         "Referer": `${MYGH_BASE}/jobs`,
+        "Origin": MYGH_BASE,
         "Cookie": cookie,
       };
-      if (xsrf) headers["X-CSRF-Token"] = xsrf;
+      if (xsrfDecoded) headers["X-CSRF-Token"] = xsrfDecoded;
 
-      const res = await fetch(url, { headers, signal, redirect: "manual", cache: "no-store" });
+      let res: Response;
+      try {
+        res = await fetchWithTimeout(
+          url,
+          { headers, redirect: "manual", cache: "no-store" },
+          signal,
+        );
+      } catch (err) {
+        const msg = (err as Error).message || String(err);
+        warning = /abort/i.test(msg) ? "request timed out (12s) — my.greenhouse.io is slow or unreachable" : `network error: ${msg.slice(0, 200)}`;
+        break;
+      }
       const body = await res.text();
+      const contentType = res.headers.get("content-type") || "";
 
-      if (looksLikeSignInRedirect(res, body)) {
-        warning = "session expired — sign in again at my.greenhouse.io and paste the fresh cookie";
+      if (looksLikeSignInRedirect(res, body, contentType)) {
+        warning = "session expired or invalid — sign in again at my.greenhouse.io and paste a fresh cookie (include _session_id and MYGREENHOUSE-XSRF-TOKEN)";
+        break;
+      }
+
+      // Server signals CSRF mismatch with 422 or {"error":"InvalidAuthenticityToken"}.
+      if (res.status === 422 || /invalidauthenticitytoken|csrf/i.test(body.slice(0, 400))) {
+        warning =
+          "CSRF token rejected — the MYGREENHOUSE-XSRF-TOKEN value in the cookie may not match the active session. Re-copy the cookie immediately after signing in.";
+        break;
+      }
+      if (res.status === 429) {
+        warning = "rate-limited by my.greenhouse.io (HTTP 429) — try again in a few minutes";
         break;
       }
       if (!res.ok && res.status !== 200) {
@@ -178,12 +298,19 @@ export const myGreenhouseFeed: Feed = {
       try {
         payload = JSON.parse(body);
       } catch {
-        warning = "response was not JSON (the page layout may have changed)";
+        warning = looksLikeHtml(body)
+          ? "received HTML page instead of JSON — session likely expired"
+          : "response was not JSON (the page layout may have changed)";
         break;
       }
 
       const list = pickJobsArray(payload);
-      if (list.length === 0) break;
+      if (list.length === 0) {
+        consecutiveEmptyPages++;
+        if (consecutiveEmptyPages >= 2) break;
+        continue;
+      }
+      consecutiveEmptyPages = 0;
 
       let addedThisPage = 0;
       for (const entry of list) {
