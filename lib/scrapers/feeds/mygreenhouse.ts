@@ -202,12 +202,25 @@ async function fetchWithTimeout(
   }
 }
 
-// Validate the session cookie has the bits we actually need. Returning an
-// explicit warning here saves a wasted HTTP round-trip and gives the user a
-// targeted error message instead of "session expired".
+// Rails / Greenhouse can rotate the exact session cookie name (e.g.
+// _session_id vs _my_greenhouse_session vs _greenhouse_session). Match
+// anything that looks like a session cookie instead of hard-coding one name.
+function hasSessionCookie(jar: Record<string, string>): boolean {
+  for (const name of Object.keys(jar)) {
+    if (/^_session_id$/i.test(name)) return true;
+    if (/_session(_id)?$/i.test(name)) return true;
+    if (/^_[a-z0-9_-]+_session$/i.test(name)) return true;
+  }
+  return false;
+}
+
+// We only block when the cookie text is empty / clearly malformed. If the
+// session cookie is present but under an unexpected name, send the request
+// anyway and let the real HTTP response (sign-in redirect, 401, 422 CSRF)
+// surface the actual failure with a precise message.
 function validateCookieJar(jar: Record<string, string>): string | null {
-  if (!jar["_session_id"]) {
-    return "session cookie is missing _session_id — copy the FULL Cookie header value, including _session_id";
+  if (Object.keys(jar).length === 0) {
+    return "session cookie is empty or malformed — paste the full Cookie header value from DevTools (Application → Cookies on my.greenhouse.io)";
   }
   return null;
 }
@@ -275,7 +288,11 @@ export const myGreenhouseFeed: Feed = {
       const contentType = res.headers.get("content-type") || "";
 
       if (looksLikeSignInRedirect(res, body, contentType)) {
-        warning = "session expired or invalid — sign in again at my.greenhouse.io and paste a fresh cookie (include _session_id and MYGREENHOUSE-XSRF-TOKEN)";
+        const names = Object.keys(cookieJar).sort();
+        const hasSession = hasSessionCookie(cookieJar);
+        warning = hasSession
+          ? `session expired or invalid (server redirected to sign-in). Sign in again at my.greenhouse.io and paste a fresh cookie. Cookies sent: ${names.join(", ") || "(none)"}.`
+          : `cookie does not contain a recognizable session value (sent: ${names.join(", ") || "(none)"}). Make sure you copied the Cookie header from a logged-in my.greenhouse.io tab, not from a different domain.`;
         break;
       }
 
