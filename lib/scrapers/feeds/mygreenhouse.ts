@@ -1,132 +1,84 @@
-import type { Feed, NormalizedJob } from "../types";
+import type { Feed, FeedFetchResult, NormalizedJob } from "../types";
 import { stripHtml } from "../rss";
 
-// MyGreenhouse is the candidate-side aggregator portal (my.greenhouse.io) that
-// surfaces jobs from every employer who opted into MyGreenhouse. It has no
-// public api — the candidate UI calls /jobs.json behind a Rails passwordless
-// session. We replicate that by sending the user's pasted session cookie
-// verbatim. The cookie lives ~14 days, after which the user re-pastes.
+// MyGreenhouse (my.greenhouse.io) is the candidate-side aggregator portal that
+// surfaces remote-friendly jobs from every employer on Greenhouse plus a few
+// other ATSs. It is NOT a JSON API — it is an Inertia.js single-page app behind
+// a Rails passwordless session. We replicate the browser exactly:
 //
-// Required config keys:
-//   mygreenhouse_session_cookie  Full Cookie header value as copied from
-//                                browser DevTools (Application → Cookies on
-//                                my.greenhouse.io). MUST include _session_id;
-//                                MYGREENHOUSE-XSRF-TOKEN is auto-extracted from
-//                                this string when present.
-// Optional config keys:
-//   mygreenhouse_xsrf_token      Decoded value of the MYGREENHOUSE-XSRF-TOKEN
-//                                cookie. Optional override — when blank the
-//                                feed extracts and URL-decodes it from the
-//                                cookie string above. Sent as X-CSRF-Token.
+//   Step A (cheap, always): an Inertia "partial reload" of /jobs returns the
+//     job-search results as JSON. We paginate it with work_type[]=remote so
+//     only remote roles are ever pulled. Each result is THIN — it has a title,
+//     company, location and work type, but NO description.
+//
+//   Step B (enrichment): most results link to job-boards.greenhouse.io, which
+//     has a clean public API (boards-api.greenhouse.io) carrying the full
+//     description. We call that per job. Non-Greenhouse links get a best-effort
+//     page fetch; whatever B cannot resolve keeps a synthesized thin
+//     description so the job still reaches the AI analyzer instead of being
+//     dropped.
+//
+// Required config key:
+//   mygreenhouse_session_cookie  The Cookie header value from a logged-in
+//                                my.greenhouse.io tab. Only `_session_id` is
+//                                actually needed — these are GET requests, so
+//                                Rails does not check a CSRF token.
+// Optional config key:
+//   mygreenhouse_search_url      Extra query params (e.g. "date_posted=past_day")
+//                                merged into the job-search request.
 
 const MYGH_BASE = "https://my.greenhouse.io";
-const JOBS_JSON = `${MYGH_BASE}/jobs.json`;
-const MAX_PAGES = 25;
-const PER_REQUEST_TIMEOUT_MS = 12_000;
+const JOBS_PATH = `${MYGH_BASE}/jobs`;
+const INERTIA_COMPONENT = "job_search";
+const INERTIA_PARTIAL_DATA = "jobPosts,moreResultsAvailable,page";
+const MAX_PAGES = 30;
+const PORTAL_TIMEOUT_MS = 12_000;
+const ENRICH_TIMEOUT_MS = 10_000;
+const ENRICH_CONCURRENCY = 6;
+const DESCRIPTION_MAX_CHARS = 8_000;
+// A non-Greenhouse page must yield at least this much visible text to be
+// trusted as a real description; below it we assume a JS-only SPA and keep the
+// thin fallback.
+const MIN_SCRAPED_DESCRIPTION = 400;
 
-type MyGhJobRaw = Record<string, unknown> & {
-  id?: number | string;
-  title?: string;
-  name?: string;
-  company?: string;
-  company_name?: string;
-  employer_name?: string;
-  employer?: { name?: string } | string;
-  location?: string | { name?: string };
-  locations?: Array<{ name?: string } | string>;
-  url?: string;
-  absolute_url?: string;
-  href?: string;
-  apply_url?: string;
-  description?: string;
-  content?: string;
-  updated_at?: string;
-  posted_at?: string;
-  created_at?: string;
+const BROWSER_UA =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+const WORK_TYPE_LABEL: Record<string, string> = {
+  remote: "Remote",
+  hybrid: "Hybrid",
+  in_person: "In-person",
 };
 
-function extractString(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (value && typeof value === "object" && "name" in (value as any)) {
-    const n = (value as { name?: unknown }).name;
-    if (typeof n === "string") return n.trim();
-  }
-  return "";
-}
+// ---------------------------------------------------------------------------
+// Raw shapes
+// ---------------------------------------------------------------------------
 
-function extractLocation(entry: MyGhJobRaw): string | null {
-  const single = extractString(entry.location);
-  if (single) return single;
-  if (Array.isArray(entry.locations) && entry.locations.length) {
-    const parts = entry.locations.map(extractString).filter(Boolean);
-    if (parts.length) return parts.join(", ");
-  }
-  return null;
-}
+type JobPostRaw = {
+  id?: number | string;
+  title?: string;
+  companyName?: string;
+  publicUrl?: string;
+  viewJobPath?: string | null;
+  locations?: unknown;
+  workType?: string;
+  payRanges?: unknown;
+};
 
-function extractCompany(entry: MyGhJobRaw): string {
-  const candidates = [entry.company_name, entry.company, entry.employer_name];
-  for (const c of candidates) {
-    const v = extractString(c);
-    if (v) return v;
-  }
-  const emp = extractString(entry.employer);
-  return emp || "Unknown";
-}
+type GreenhouseApiJob = {
+  title?: string;
+  content?: string;
+  location?: { name?: string } | string | null;
+  company_name?: string;
+  metadata?: Array<{ name?: string; value?: unknown }>;
+};
 
-function extractUrl(entry: MyGhJobRaw): { url: string; applyUrl?: string } {
-  const url = extractString(entry.absolute_url) || extractString(entry.url) || extractString(entry.href);
-  const applyUrl = extractString(entry.apply_url);
-  return { url, applyUrl: applyUrl || undefined };
-}
+// ---------------------------------------------------------------------------
+// Cookie handling
+// ---------------------------------------------------------------------------
 
-function pickJobsArray(payload: unknown): MyGhJobRaw[] {
-  if (Array.isArray(payload)) return payload as MyGhJobRaw[];
-  if (payload && typeof payload === "object") {
-    for (const key of ["jobs", "data", "results", "items", "postings"]) {
-      const v = (payload as Record<string, unknown>)[key];
-      if (Array.isArray(v)) return v as MyGhJobRaw[];
-    }
-  }
-  return [];
-}
-
-function pickNextCursor(payload: unknown, jobs: MyGhJobRaw[]): string | null {
-  if (payload && typeof payload === "object") {
-    const obj = payload as Record<string, unknown>;
-    for (const key of ["next_search_after", "search_after", "next_cursor", "next"]) {
-      const v = obj[key];
-      if (typeof v === "string" && v.trim()) return v.trim();
-    }
-    const meta = obj.meta as Record<string, unknown> | undefined;
-    if (meta) {
-      for (const key of ["next_search_after", "search_after", "next_cursor", "next"]) {
-        const v = meta[key];
-        if (typeof v === "string" && v.trim()) return v.trim();
-      }
-    }
-  }
-  // Fallback: derive next cursor from the last job's timestamp, matching the
-  // search_after pattern in the UI URL the user shared.
-  const last = jobs[jobs.length - 1];
-  if (last) {
-    for (const key of ["updated_at", "posted_at", "created_at"]) {
-      const v = (last as Record<string, unknown>)[key];
-      if (typeof v === "string" && v.trim()) return v.trim();
-    }
-  }
-  return null;
-}
-
-function buildPageUrl(baseUrl: string, searchAfter: string | null): string {
-  const u = new URL(baseUrl);
-  if (searchAfter) u.searchParams.set("search_after", searchAfter);
-  return u.toString();
-}
-
-// Parse "k1=v1; k2=v2" cookie header into a plain map. Values are returned
-// verbatim — URL-decoding is left to the caller because the X-CSRF-Token
-// header requires the decoded form but the Cookie header requires the raw form.
+// Parse "k1=v1; k2=v2" into a map. Values are kept verbatim; we send the whole
+// original string back as the Cookie header anyway.
 function parseCookieHeader(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const piece of raw.split(/;\s*/)) {
@@ -134,57 +86,62 @@ function parseCookieHeader(raw: string): Record<string, string> {
     const idx = piece.indexOf("=");
     if (idx <= 0) continue;
     const name = piece.slice(0, idx).trim();
-    const value = piece.slice(idx + 1).trim();
-    if (name) out[name] = value;
+    if (name) out[name] = piece.slice(idx + 1).trim();
   }
   return out;
 }
 
-function safeUrlDecode(value: string): string {
+// Greenhouse/Rails can rotate the session cookie name; match anything that
+// looks like one rather than hard-coding `_session_id`.
+function hasSessionCookie(jar: Record<string, string>): boolean {
+  return Object.keys(jar).some(
+    (n) => /^_session_id$/i.test(n) || /_session(_id)?$/i.test(n) || /^_[a-z0-9_-]+_session$/i.test(n),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HTML / Inertia helpers
+// ---------------------------------------------------------------------------
+
+function htmlAttrUnescape(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+// The Inertia app embeds its asset version inside the <div id="app" data-page>
+// blob. We must send that exact version on every partial reload or the server
+// answers 409 (asset-version mismatch).
+function extractInertiaVersion(html: string): string | null {
+  const m = html.match(/\bdata-page="([^"]*)"/);
+  if (!m) return null;
   try {
-    return decodeURIComponent(value);
+    const json = JSON.parse(htmlAttrUnescape(m[1]));
+    const v = json?.version;
+    return typeof v === "string" && v ? v : null;
   } catch {
-    return value;
+    return null;
   }
 }
 
-// Pull the XSRF token out of the cookie header if the user did not supply it
-// separately, and URL-decode it (Rails stores `+/=` as `%2B%2F%3D` in cookies).
-function resolveXsrfToken(cookieJar: Record<string, string>, override: string): string | null {
-  const explicit = override.trim();
-  if (explicit) {
-    // If the user pasted the raw cookie value into the override field, decode it.
-    return explicit.includes("%") ? safeUrlDecode(explicit) : explicit;
-  }
-  const fromJar = cookieJar["MYGREENHOUSE-XSRF-TOKEN"];
-  if (fromJar) return safeUrlDecode(fromJar);
-  return null;
-}
-
-// True when the response body looks like the Rails sign-in HTML page rather
-// than the JSON jobs feed. The candidate portal serves the sign-in page with
-// status 200 and `text/html`, so we have to sniff the body.
-function looksLikeHtml(body: string): boolean {
-  const head = body.slice(0, 200).trimStart().toLowerCase();
-  return head.startsWith("<!doctype") || head.startsWith("<html");
-}
-
-function looksLikeSignInRedirect(res: Response, body: string, contentType: string): boolean {
+function looksLikeSignIn(res: Response, body: string): boolean {
   if (res.status === 401 || res.status === 403) return true;
   if (res.status >= 300 && res.status < 400) {
     const loc = res.headers.get("location") || "";
     if (/\/users\/sign_in|\/login/i.test(loc)) return true;
   }
   if (res.redirected && /\/users\/sign_in/i.test(res.url)) return true;
-  if (res.status === 406 && body.length === 0) return true;
-  if (/text\/html/i.test(contentType) && looksLikeHtml(body)) return true;
-  if (/sign[_ ]in|please log in|session expired/i.test(body) && body.length < 8_000) return true;
+  if (/<title>[^<]*sign in/i.test(body)) return true;
   return false;
 }
 
 async function fetchWithTimeout(
   url: string,
   init: RequestInit,
+  timeoutMs: number,
   parentSignal: AbortSignal | undefined,
 ): Promise<Response> {
   const controller = new AbortController();
@@ -193,7 +150,7 @@ async function fetchWithTimeout(
     if (parentSignal.aborted) throw new Error("aborted");
     parentSignal.addEventListener("abort", onParentAbort, { once: true });
   }
-  const timer = setTimeout(() => controller.abort(), PER_REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } finally {
@@ -202,160 +159,376 @@ async function fetchWithTimeout(
   }
 }
 
-// Rails / Greenhouse can rotate the exact session cookie name (e.g.
-// _session_id vs _my_greenhouse_session vs _greenhouse_session). Match
-// anything that looks like a session cookie instead of hard-coding one name.
-function hasSessionCookie(jar: Record<string, string>): boolean {
-  for (const name of Object.keys(jar)) {
-    if (/^_session_id$/i.test(name)) return true;
-    if (/_session(_id)?$/i.test(name)) return true;
-    if (/^_[a-z0-9_-]+_session$/i.test(name)) return true;
-  }
-  return false;
+// ---------------------------------------------------------------------------
+// URL building
+// ---------------------------------------------------------------------------
+
+function buildJobsUrl(extraParams: Record<string, string>, page: number): string {
+  const u = new URL(JOBS_PATH);
+  u.searchParams.append("work_type[]", "remote");
+  for (const [k, v] of Object.entries(extraParams)) u.searchParams.set(k, v);
+  u.searchParams.set("page", String(page));
+  return u.toString();
 }
 
-// We only block when the cookie text is empty / clearly malformed. If the
-// session cookie is present but under an unexpected name, send the request
-// anyway and let the real HTTP response (sign-in redirect, 401, 422 CSRF)
-// surface the actual failure with a precise message.
-function validateCookieJar(jar: Record<string, string>): string | null {
-  if (Object.keys(jar).length === 0) {
-    return "session cookie is empty or malformed — paste the full Cookie header value from DevTools (Application → Cookies on my.greenhouse.io)";
+// Parse "date_posted=past_day, salary=true" style overrides from the search-url
+// config field. http(s) values are ignored — the endpoint is fixed.
+function parseExtraParams(searchUrl: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!searchUrl || /^https?:/i.test(searchUrl.trim())) return out;
+  for (const piece of searchUrl.split(/[,&\n]/)) {
+    const idx = piece.indexOf("=");
+    if (idx <= 0) continue;
+    const k = piece.slice(0, idx).trim();
+    const v = piece.slice(idx + 1).trim();
+    if (k && v && k !== "page" && k !== "work_type[]") out[k] = v;
+  }
+  return out;
+}
+
+// Drop the my.greenhouse tracking param so the same job always dedupes to one
+// canonical URL.
+function canonicalizeUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    u.searchParams.delete("gh_src");
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
+// job-boards.greenhouse.io/{token}/jobs/{id} → the clean public boards API.
+function parseGreenhouseBoard(raw: string): { token: string; id: string } | null {
+  const m = raw.match(/(?:job-boards|boards)\.greenhouse\.io\/([^/?#]+)\/jobs\/(\d+)/i);
+  return m ? { token: m[1], id: m[2] } : null;
+}
+
+// ---------------------------------------------------------------------------
+// Field extraction
+// ---------------------------------------------------------------------------
+
+function extractThinLocation(entry: JobPostRaw): string | null {
+  const locs = entry.locations;
+  if (Array.isArray(locs)) {
+    const parts = locs
+      .map((l) => (typeof l === "string" ? l : l && typeof l === "object" ? (l as any).name : ""))
+      .map((s) => String(s || "").trim())
+      .filter(Boolean);
+    if (parts.length) return parts.join(", ");
   }
   return null;
 }
 
+function extractApiLocation(loc: GreenhouseApiJob["location"]): string | null {
+  if (!loc) return null;
+  if (typeof loc === "string") return loc.trim() || null;
+  return (loc.name || "").trim() || null;
+}
+
+function findApiSalary(meta: GreenhouseApiJob["metadata"]): string | null {
+  if (!Array.isArray(meta)) return null;
+  const hit = meta.find((m) => /salary|compensation|pay/i.test(m?.name || ""));
+  const v = hit?.value;
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+function formatPayRanges(payRanges: unknown): string | null {
+  if (!Array.isArray(payRanges) || payRanges.length === 0) return null;
+  const r = payRanges[0];
+  if (!r || typeof r !== "object") return null;
+  const o = r as Record<string, unknown>;
+  const cur = typeof o.currency === "string" ? o.currency : "";
+  const min = typeof o.min === "number" ? o.min : typeof o.minValue === "number" ? o.minValue : null;
+  const max = typeof o.max === "number" ? o.max : typeof o.maxValue === "number" ? o.maxValue : null;
+  if (min == null && max == null) return null;
+  const range = [min, max].filter((n) => n != null).join("–");
+  return `${cur}${range}`.trim() || null;
+}
+
+// Thin description used when B cannot resolve a real one — kept above the
+// analyzer's 50-char minimum so the job is still classified, not auto-rejected.
+function synthDescription(entry: JobPostRaw, company: string, location: string | null): string {
+  const wt = WORK_TYPE_LABEL[entry.workType || ""] || entry.workType || "";
+  return [
+    `${entry.title || "Untitled role"} at ${company}.`,
+    `Location: ${location || "not specified"}.`,
+    wt ? `Work type: ${wt}.` : "",
+    "Aggregated MyGreenhouse listing — the full description was not retrieved; classify suitability from the title, company, location and work type above.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function htmlPageToText(html: string): string {
+  const cleaned = html.replace(/<(script|style|noscript|svg|head)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
+  return stripHtml(cleaned).replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// ---------------------------------------------------------------------------
+// Concurrency
+// ---------------------------------------------------------------------------
+
+async function mapWithConcurrency<T>(
+  items: T[],
+  worker: (item: T) => Promise<void>,
+  concurrency: number,
+  shouldStop: () => boolean,
+): Promise<void> {
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (!shouldStop()) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      await worker(items[i]);
+    }
+  });
+  await Promise.all(runners);
+}
+
+// ---------------------------------------------------------------------------
+// Step B — description enrichment
+// ---------------------------------------------------------------------------
+
+type EnrichTarget = { job: NormalizedJob; sourceUrl: string };
+
+async function enrichFromGreenhouse(
+  token: string,
+  id: string,
+  signal: AbortSignal | undefined,
+): Promise<{ description: string; location: string | null; salary: string | null } | null> {
+  const url = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs/${id}`;
+  const res = await fetchWithTimeout(
+    url,
+    { headers: { "User-Agent": BROWSER_UA, Accept: "application/json" }, cache: "no-store" },
+    ENRICH_TIMEOUT_MS,
+    signal,
+  );
+  if (!res.ok) return null;
+  const data = (await res.json()) as GreenhouseApiJob;
+  const description = data.content ? stripHtml(data.content) : "";
+  if (description.length < 50) return null;
+  return {
+    description: description.slice(0, DESCRIPTION_MAX_CHARS),
+    location: extractApiLocation(data.location),
+    salary: findApiSalary(data.metadata),
+  };
+}
+
+async function enrichFromPage(
+  url: string,
+  signal: AbortSignal | undefined,
+): Promise<string | null> {
+  const res = await fetchWithTimeout(
+    url,
+    { headers: { "User-Agent": BROWSER_UA, Accept: "text/html,*/*" }, redirect: "follow", cache: "no-store" },
+    ENRICH_TIMEOUT_MS,
+    signal,
+  );
+  if (!res.ok) return null;
+  const text = htmlPageToText(await res.text());
+  if (text.length < MIN_SCRAPED_DESCRIPTION) return null;
+  return text.slice(0, DESCRIPTION_MAX_CHARS);
+}
+
+async function enrichOne(target: EnrichTarget, signal: AbortSignal | undefined): Promise<void> {
+  const gh = parseGreenhouseBoard(target.sourceUrl);
+  try {
+    if (gh) {
+      const r = await enrichFromGreenhouse(gh.token, gh.id, signal);
+      if (r) {
+        target.job.description = r.description;
+        if (r.location) target.job.location = r.location;
+        if (r.salary && !target.job.salary) target.job.salary = r.salary;
+      }
+      return;
+    }
+    const text = await enrichFromPage(target.sourceUrl, signal);
+    if (text) target.job.description = text;
+  } catch {
+    // Best-effort: any failure leaves the synthesized thin description in place.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Feed
+// ---------------------------------------------------------------------------
+
 export const myGreenhouseFeed: Feed = {
   key: "mygreenhouse",
   label: "MyGreenhouse (authenticated)",
-  fetch: async ({ maxJobs, searchUrl, signal, config }) => {
+  fetch: async ({ maxJobs, searchUrl, signal, config }): Promise<FeedFetchResult> => {
     const cookie = (config?.mygreenhouse_session_cookie || "").trim();
     if (!cookie) {
       return {
         jobs: [],
         warning:
-          "session cookie not configured — paste from browser DevTools (Application → Cookies on my.greenhouse.io)",
+          "session cookie not configured — paste the Cookie header value (it must include _session_id) from a logged-in my.greenhouse.io tab",
       };
     }
     const cookieJar = parseCookieHeader(cookie);
-    const validationWarning = validateCookieJar(cookieJar);
-    if (validationWarning) {
-      return { jobs: [], warning: validationWarning };
+    if (Object.keys(cookieJar).length === 0) {
+      return { jobs: [], warning: "session cookie is empty or malformed — re-copy it from DevTools" };
     }
 
-    const xsrfDecoded = resolveXsrfToken(cookieJar, config?.mygreenhouse_xsrf_token || "");
-    const baseUrl = (searchUrl || "").trim().startsWith("http")
-      ? (searchUrl as string).trim()
-      : JOBS_JSON;
+    const extraParams = parseExtraParams(searchUrl);
+    const baseHeaders: Record<string, string> = {
+      "User-Agent": BROWSER_UA,
+      "Accept-Language": "en-US,en;q=0.9",
+      Cookie: cookie,
+    };
 
-    const jobs: NormalizedJob[] = [];
+    // --- get the Inertia asset version (and prove the session is alive) ---
+    let version: string;
+    try {
+      const htmlRes = await fetchWithTimeout(
+        buildJobsUrl(extraParams, 1),
+        {
+          headers: {
+            ...baseHeaders,
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          },
+          redirect: "manual",
+          cache: "no-store",
+        },
+        PORTAL_TIMEOUT_MS,
+        signal,
+      );
+      const htmlBody = await htmlRes.text();
+      if (looksLikeSignIn(htmlRes, htmlBody)) {
+        const names = Object.keys(cookieJar).sort().join(", ") || "(none)";
+        return {
+          jobs: [],
+          warning: hasSessionCookie(cookieJar)
+            ? `session expired (my.greenhouse.io redirected to sign-in). Sign in again and paste a fresh cookie. Cookies sent: ${names}.`
+            : `cookie has no recognizable session value (sent: ${names}). Copy the Cookie header from a logged-in my.greenhouse.io tab.`,
+        };
+      }
+      const v = extractInertiaVersion(htmlBody);
+      if (!v) {
+        return { jobs: [], warning: "could not read the Inertia page version — my.greenhouse.io layout may have changed" };
+      }
+      version = v;
+    } catch (err) {
+      const msg = (err as Error).message || String(err);
+      return {
+        jobs: [],
+        warning: /abort/i.test(msg)
+          ? "request timed out — my.greenhouse.io is slow or unreachable"
+          : `network error reaching my.greenhouse.io: ${msg.slice(0, 160)}`,
+      };
+    }
+
+    // --- Step A: paginate the thin job-search results ---
+    const targets: EnrichTarget[] = [];
     const seen = new Set<string>();
-    let cursor: string | null = null;
     let warning: string | undefined;
-    let consecutiveEmptyPages = 0;
 
-    for (let page = 0; page < MAX_PAGES; page++) {
+    for (let page = 1; page <= MAX_PAGES; page++) {
       if (signal?.aborted) {
         warning = warning || "scan aborted before completion";
         break;
       }
-      const url = buildPageUrl(baseUrl, page === 0 ? null : cursor);
-      const headers: Record<string, string> = {
-        "User-Agent":
-          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Accept-Language": "en-US,en;q=0.9",
-        "X-Requested-With": "XMLHttpRequest",
-        "Referer": `${MYGH_BASE}/jobs`,
-        "Origin": MYGH_BASE,
-        "Cookie": cookie,
-      };
-      if (xsrfDecoded) headers["X-CSRF-Token"] = xsrfDecoded;
-
       let res: Response;
+      let body: string;
       try {
         res = await fetchWithTimeout(
-          url,
-          { headers, redirect: "manual", cache: "no-store" },
+          buildJobsUrl(extraParams, page),
+          {
+            headers: {
+              ...baseHeaders,
+              Accept: "text/html, application/xhtml+xml",
+              "X-Inertia": "true",
+              "X-Inertia-Version": version,
+              "X-Inertia-Partial-Component": INERTIA_COMPONENT,
+              "X-Inertia-Partial-Data": INERTIA_PARTIAL_DATA,
+              "X-Requested-With": "XMLHttpRequest",
+              Referer: JOBS_PATH,
+            },
+            redirect: "manual",
+            cache: "no-store",
+          },
+          PORTAL_TIMEOUT_MS,
           signal,
         );
+        body = await res.text();
       } catch (err) {
         const msg = (err as Error).message || String(err);
-        warning = /abort/i.test(msg) ? "request timed out (12s) — my.greenhouse.io is slow or unreachable" : `network error: ${msg.slice(0, 200)}`;
-        break;
-      }
-      const body = await res.text();
-      const contentType = res.headers.get("content-type") || "";
-
-      if (looksLikeSignInRedirect(res, body, contentType)) {
-        const names = Object.keys(cookieJar).sort();
-        const hasSession = hasSessionCookie(cookieJar);
-        warning = hasSession
-          ? `session expired or invalid (server redirected to sign-in). Sign in again at my.greenhouse.io and paste a fresh cookie. Cookies sent: ${names.join(", ") || "(none)"}.`
-          : `cookie does not contain a recognizable session value (sent: ${names.join(", ") || "(none)"}). Make sure you copied the Cookie header from a logged-in my.greenhouse.io tab, not from a different domain.`;
+        warning = /abort/i.test(msg) ? "request timed out mid-scan" : `network error mid-scan: ${msg.slice(0, 140)}`;
         break;
       }
 
-      // Server signals CSRF mismatch with 422 or {"error":"InvalidAuthenticityToken"}.
-      if (res.status === 422 || /invalidauthenticitytoken|csrf/i.test(body.slice(0, 400))) {
-        warning =
-          "CSRF token rejected — the MYGREENHOUSE-XSRF-TOKEN value in the cookie may not match the active session. Re-copy the cookie immediately after signing in.";
+      if (looksLikeSignIn(res, body)) {
+        warning = "session expired mid-scan — paste a fresh my.greenhouse.io cookie";
         break;
       }
-      if (res.status === 429) {
-        warning = "rate-limited by my.greenhouse.io (HTTP 429) — try again in a few minutes";
+      // 409 = the app was redeployed and our asset version is stale.
+      if (res.status === 409) {
+        warning = "my.greenhouse.io was updated mid-scan (version changed) — re-run the scan";
         break;
       }
-      if (!res.ok && res.status !== 200) {
-        warning = `MyGreenhouse responded ${res.status}`;
+      if (!res.ok) {
+        warning = `my.greenhouse.io responded HTTP ${res.status}`;
         break;
       }
 
-      let payload: unknown;
+      let payload: any;
       try {
         payload = JSON.parse(body);
       } catch {
-        warning = looksLikeHtml(body)
-          ? "received HTML page instead of JSON — session likely expired"
-          : "response was not JSON (the page layout may have changed)";
+        warning = "job-search response was not JSON (the portal layout may have changed)";
         break;
       }
 
-      const list = pickJobsArray(payload);
-      if (list.length === 0) {
-        consecutiveEmptyPages++;
-        if (consecutiveEmptyPages >= 2) break;
-        continue;
-      }
-      consecutiveEmptyPages = 0;
-
-      let addedThisPage = 0;
+      const props = payload?.props || {};
+      const list: JobPostRaw[] = Array.isArray(props.jobPosts) ? props.jobPosts : [];
       for (const entry of list) {
-        const title = extractString(entry.title) || extractString(entry.name);
-        const { url: jobUrl, applyUrl } = extractUrl(entry);
-        if (!title || !jobUrl) continue;
-        if (seen.has(jobUrl)) continue;
-        seen.add(jobUrl);
-        const description = entry.description ?? entry.content ?? "";
-        jobs.push({
-          platform: "mygreenhouse",
-          title,
-          company: extractCompany(entry),
-          url: jobUrl,
-          applyUrl: applyUrl,
-          location: extractLocation(entry),
-          description: typeof description === "string" && description ? stripHtml(description) : null,
-          salary: null,
+        const title = (entry.title || "").trim();
+        const rawUrl = (entry.publicUrl || "").trim();
+        if (!title || !rawUrl) continue;
+        const url = canonicalizeUrl(rawUrl);
+        if (seen.has(url)) continue;
+        seen.add(url);
+
+        const company = (entry.companyName || "").trim() || "Unknown";
+        const location = extractThinLocation(entry);
+        targets.push({
+          sourceUrl: rawUrl,
+          job: {
+            platform: "mygreenhouse",
+            title,
+            company,
+            url,
+            location,
+            description: synthDescription(entry, company, location),
+            salary: formatPayRanges(entry.payRanges),
+          },
         });
-        addedThisPage++;
-        if (jobs.length >= maxJobs) break;
+        if (targets.length >= maxJobs) break;
       }
 
-      if (jobs.length >= maxJobs) break;
-      const next = pickNextCursor(payload, list);
-      if (!next || next === cursor) break;
-      cursor = next;
-      if (addedThisPage === 0) break;
+      if (targets.length >= maxJobs) break;
+      if (props.moreResultsAvailable !== true) break;
+      if (list.length === 0) break;
+    }
+
+    // --- Step B: enrich descriptions (Greenhouse boards API, else page fetch) ---
+    if (targets.length > 0 && !signal?.aborted) {
+      await mapWithConcurrency(
+        targets,
+        (t) => enrichOne(t, signal),
+        ENRICH_CONCURRENCY,
+        () => !!signal?.aborted,
+      );
+    }
+
+    const jobs = targets.map((t) => t.job);
+    const enriched = jobs.filter(
+      (j) => j.description != null && !j.description.includes("Aggregated MyGreenhouse listing"),
+    ).length;
+    if (jobs.length > 0) {
+      const note = `${enriched}/${jobs.length} jobs got a full description`;
+      warning = warning ? `${warning}; ${note}` : note;
     }
 
     return { jobs, warning };

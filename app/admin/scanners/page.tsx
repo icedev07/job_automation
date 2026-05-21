@@ -108,10 +108,10 @@ const SCANNERS: Scanner[] = [
   {
     key: "mygreenhouse",
     label: "MyGreenhouse (authenticated)",
-    hint: "candidate-portal aggregator across every opted-in employer. requires a session cookie pasted below; see the MyGreenhouse session section above.",
+    hint: "candidate-portal aggregator of remote jobs across every Greenhouse employer. requires the _session_id cookie pasted below.",
     defaultMax: 200,
     defaultSearchUrl: "",
-    searchPlaceholder: "(leave blank — defaults to https://my.greenhouse.io/jobs.json)",
+    searchPlaceholder: "(optional extra filters, e.g. date_posted=past_day)",
   },
 ];
 
@@ -485,29 +485,17 @@ export default function ScannersPage() {
               {s.key === "mygreenhouse" && (
                 <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: "6px", padding: "0.7rem 0.85rem", marginBottom: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                   <div style={{ fontSize: "0.7rem", color: "#92400e", lineHeight: 1.4 }}>
-                    Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, copy the whole Cookie header value (include <code>_session_id</code> and <code>MYGREENHOUSE-XSRF-TOKEN</code>), and paste below. The X-CSRF-Token is auto-extracted and URL-decoded from the cookie; only fill the override field if needed. The cookie lives ~14 days; re-paste when scans warn it expired.
+                    Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, copy the <code>_session_id</code> value, and paste it below as <code>_session_id=&lt;value&gt;</code>. That one cookie is all the scanner needs — no CSRF token. The session lasts ~2 weeks; re-paste when a scan warns it expired.
                   </div>
                   <div>
-                    <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>Cookie header value</label>
+                    <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>Session cookie</label>
                     <input
                       type="password"
                       autoComplete="off"
                       value={config.mygreenhouse_session_cookie ?? ""}
                       onChange={(e) => setConfig({ ...config, mygreenhouse_session_cookie: e.target.value })}
                       onBlur={saveConfig}
-                      placeholder="_session_id=...; MYGREENHOUSE-XSRF-TOKEN=...; ..."
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>X-CSRF-Token (optional override)</label>
-                    <input
-                      type="password"
-                      autoComplete="off"
-                      value={config.mygreenhouse_xsrf_token ?? ""}
-                      onChange={(e) => setConfig({ ...config, mygreenhouse_xsrf_token: e.target.value })}
-                      onBlur={saveConfig}
-                      placeholder="leave blank — auto-extracted from the cookie above"
+                      placeholder="_session_id=05384b3f..."
                       style={inputStyle}
                     />
                   </div>
