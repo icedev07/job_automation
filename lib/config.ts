@@ -18,6 +18,7 @@ export const CONFIG_KEYS = {
   LINKEDIN_SHEET_TAB: "linkedin_sheet_tab",
   EXTENSION_API_KEY: "extension_api_key",
   ANALYZER_REQUEST_DELAY_MS: "analyzer_request_delay_ms",
+  ANALYZER_BATCH_SIZE: "analyzer_batch_size",
 } as const;
 
 export async function getConfigValue(key: string): Promise<string | null> {
@@ -101,6 +102,15 @@ export async function getConfig() {
     analyzerRequestDelayMs: Math.max(
       0,
       Number(all[CONFIG_KEYS.ANALYZER_REQUEST_DELAY_MS]) || 2_500,
+    ),
+    // How many jobs to pack into a single LLM call. Batching is the main lever
+    // for the OpenRouter free tier: at 8 jobs/request an 80-job backlog becomes
+    // ~10 requests instead of 80, which keeps a full run well under the
+    // ~20 req/min and ~50 req/day free caps. Clamped 1–12 so the prompt always
+    // fits a free model's context window.
+    analyzerBatchSize: Math.min(
+      12,
+      Math.max(1, Number(all[CONFIG_KEYS.ANALYZER_BATCH_SIZE]) || 8),
     ),
   };
 }

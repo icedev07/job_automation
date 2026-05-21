@@ -209,10 +209,11 @@ export default function ScannersPage() {
   }
 
   // Drives the analyze loop. Vercel functions cap at 60s, so /api/admin/analyze
-  // processes a small batch (default 8 jobs ≈ 50s of LLM time) and returns
-  // immediately. The admin UI keeps calling it until `remaining = 0` so a long
-  // backlog can be worked through without ever hitting a 504.
-  async function analyzeBatchOnce(): Promise<{ ok: boolean; approved: number; rejected: number; analyzed: number; remaining: number; rateLimited?: boolean; rateLimitReason?: string; retryAfterMs?: number; error?: string }>
+  // analyzes jobs in batched LLM calls (≈8 jobs per request) and returns once
+  // its time budget is spent. The admin UI keeps calling it until
+  // `remaining = 0`, auto-waiting through any transient rate-limit, so a full
+  // backlog is cleared in one click without ever hitting a 504.
+  async function analyzeBatchOnce(): Promise<{ ok: boolean; approved: number; rejected: number; analyzed: number; remaining: number; rateLimited?: boolean; rateLimitReason?: string; retryAfterMs?: number; batchError?: string; error?: string }>
   {
     try {
       const res = await fetch("/api/admin/analyze", {
@@ -233,6 +234,7 @@ export default function ScannersPage() {
         rateLimited: Boolean(data.rateLimited),
         rateLimitReason: data.rateLimitReason || undefined,
         retryAfterMs: typeof data.retryAfterMs === "number" ? data.retryAfterMs : undefined,
+        batchError: data.batchError || undefined,
       };
     } catch (err: any) {
       return { ok: false, approved: 0, rejected: 0, analyzed: 0, remaining: 0, error: err.message };
@@ -245,10 +247,12 @@ export default function ScannersPage() {
     let totalRejected = 0;
     let totalAnalyzed = 0;
     let lastRemaining = pendingCount;
+    let rateLimitWaits = 0;
     setAnalyzeResult(`Analyzing 0/${lastRemaining}...`);
-    // hard cap on iterations — protect against an analyzer that never reduces
-    // the remaining count (e.g. every job throws and the row stays PENDING).
-    for (let i = 0; i < 50; i++) {
+    // Hard cap on iterations — protects against an analyzer that never reduces
+    // the remaining count. With batching each call clears ~16 jobs, so 200 is
+    // far more than any real backlog needs.
+    for (let i = 0; i < 200; i++) {
       const r = await analyzeBatchOnce();
       if (!r.ok) {
         setAnalyzeResult(`Error: ${r.error}`);
@@ -263,17 +267,46 @@ export default function ScannersPage() {
       setAnalyzeResult(
         `Analyzing... ${totalAnalyzed} done, ${totalApproved} approved, ${totalRejected} rejected, ${lastRemaining} remaining`,
       );
+
       if (r.rateLimited) {
-        const secs = r.retryAfterMs ? Math.ceil(r.retryAfterMs / 1000) : null;
+        const waitMs = r.retryAfterMs ?? 60_000;
+        // Long backoff — daily free quota or insufficient credits. Nothing the
+        // loop can do; stop and let the user retry later.
+        if (waitMs > 5 * 60_000 || rateLimitWaits >= 5) {
+          setAnalyzeResult(
+            `Stopped — ${r.rateLimitReason || "AI provider rate limit"}. ` +
+              `${totalApproved} approved, ${totalRejected} rejected so far; ${lastRemaining} still pending. Try again later.`,
+          );
+          setAnalyzing(false);
+          refreshStats();
+          return;
+        }
+        // Short transient throttle — wait it out and keep going so the run
+        // finishes every pending job without the user re-clicking.
+        rateLimitWaits++;
+        const waitSecs = Math.max(1, Math.ceil(waitMs / 1000));
+        for (let s = waitSecs; s > 0; s--) {
+          setAnalyzeResult(
+            `Rate limited — auto-resuming in ${s}s… (${totalAnalyzed} done, ${lastRemaining} remaining)`,
+          );
+          await new Promise((res) => setTimeout(res, 1000));
+        }
+        continue;
+      }
+      rateLimitWaits = 0;
+
+      // The AI call failed for this batch and nothing was analyzed — stop
+      // rather than spin. The rows stay PENDING for a later retry.
+      if (r.batchError && r.analyzed === 0) {
         setAnalyzeResult(
-          `Rate limited by AI provider — ${r.rateLimitReason || "wait and retry"}. ` +
-            `Progress: ${totalApproved} approved, ${totalRejected} rejected out of ${totalAnalyzed}; ${lastRemaining} still pending` +
-            (secs ? ` (retry in ~${secs}s)` : "") + ".",
+          `Stopped — ${r.batchError}. ` +
+            `${totalApproved} approved, ${totalRejected} rejected so far; ${lastRemaining} still pending. Click again to retry.`,
         );
         setAnalyzing(false);
         refreshStats();
         return;
       }
+
       if (r.remaining === 0 || r.analyzed === 0) break;
     }
     setAnalyzeResult(
@@ -313,15 +346,31 @@ export default function ScannersPage() {
       <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: "8px", padding: "1rem", marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{pendingCount} jobs pending AI analysis</div>
-          <div style={{ fontSize: "0.75rem", color: "#92400e" }}>Run analysis to filter pending rows and sync approved ones to Google Sheets.</div>
+          <div style={{ fontSize: "0.75rem", color: "#92400e" }}>Runs every pending row through batched AI calls until none are left, then syncs approved ones to Google Sheets. Auto-waits through transient rate limits.</div>
         </div>
-        <button
-          onClick={runAnalysis}
-          disabled={analyzing || pendingCount === 0}
-          style={{ padding: "0.5rem 1.25rem", background: analyzing ? "#6b7280" : "#7c3aed", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: 500, fontSize: "0.85rem" }}
-        >
-          {analyzing ? "Analyzing..." : "Analyze Pending Jobs"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          <label style={{ fontSize: "0.72rem", color: "#92400e", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+            Jobs per AI call
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={config.analyzer_batch_size ?? "8"}
+              onChange={(e) => setConfig({ ...config, analyzer_batch_size: e.target.value })}
+              onBlur={saveConfig}
+              disabled={analyzing}
+              style={{ ...inputStyle, width: 56 }}
+              title="How many jobs to pack into one LLM request. Higher = fewer requests = faster on the free tier (max 12)."
+            />
+          </label>
+          <button
+            onClick={runAnalysis}
+            disabled={analyzing || pendingCount === 0}
+            style={{ padding: "0.5rem 1.25rem", background: analyzing ? "#6b7280" : "#7c3aed", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: 500, fontSize: "0.85rem" }}
+          >
+            {analyzing ? "Analyzing..." : "Analyze Pending Jobs"}
+          </button>
+        </div>
       </div>
       {analyzeResult && (
         <div style={{ marginBottom: "1rem", padding: "0.5rem 1rem", borderRadius: "4px", fontSize: "0.85rem", background: analyzeResult.includes("Error") ? "#fef2f2" : "#f0fdf4", color: analyzeResult.includes("Error") ? "#dc2626" : "#16a34a" }}>

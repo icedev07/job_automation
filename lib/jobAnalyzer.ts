@@ -93,6 +93,110 @@ function parseAIResponse(text: string): AnalysisResult {
   }
 }
 
+// ----------------------------------------------------------------------------
+// Batched analysis. On the OpenRouter free tier (~20 req/min, ~50 req/day) the
+// bottleneck is the NUMBER of requests, not their latency — adding parallelism
+// cannot beat 20 req/min. Packing 8–12 jobs into one prompt turns an 80-job
+// backlog into ~10 calls instead of 80, which is what makes a full run both
+// finish (under the daily cap) and finish fast.
+// ----------------------------------------------------------------------------
+
+type PendingJobRow = {
+  id: number;
+  title: string;
+  company: string;
+  location: string | null;
+  description: string | null;
+};
+
+// Per-job description budget inside a batched prompt. Smaller than the 6000
+// used for single-job analysis so 8–12 jobs still fit a free model's context
+// window comfortably; role / location / remote signals live near the top.
+const BATCH_DESCRIPTION_LIMIT = 4000;
+
+// Pull the rules + rubric out of an analysis-prompt template so the batch
+// prompt reuses the exact criteria the single-job path uses. Falls back to the
+// default template if a customised prompt dropped the section markers.
+function extractRulesCore(template: string): string {
+  const slice = (t: string): string | null => {
+    const start = t.search(/={3,}\s*HARD REJECT RULES/i);
+    const end = t.search(/={3,}\s*OUTPUT CONTRACT/i);
+    if (start !== -1 && end !== -1 && end > start) return t.slice(start, end).trim();
+    return null;
+  };
+  return slice(template) ?? slice(DEFAULT_ANALYSIS_PROMPT) ?? DEFAULT_ANALYSIS_PROMPT;
+}
+
+function buildBatchPrompt(
+  jobs: PendingJobRow[],
+  config: { targetMarket: string; currentLocation: string; jobAnalysisPrompt: string },
+): string {
+  const rules = extractRulesCore(config.jobAnalysisPrompt || DEFAULT_ANALYSIS_PROMPT)
+    .replace(/\{\{TARGET_MARKET\}\}/g, config.targetMarket)
+    .replace(/\{\{CURRENT_LOCATION\}\}/g, config.currentLocation);
+
+  const jobBlocks = jobs
+    .map((j) => {
+      const desc = (j.description || "No description available").substring(0, BATCH_DESCRIPTION_LIMIT);
+      return `### JOB id=${j.id}\nJOB_TITLE: ${j.title}\nCOMPANY: ${j.company}\nLOCATION: ${j.location || "Not specified"}\nDESCRIPTION:\n${desc}`;
+    })
+    .join("\n\n");
+
+  return `You are a strict job-suitability classifier for a software developer based in ${config.currentLocation} who is targeting ${config.targetMarket} positions.
+
+You will be given ${jobs.length} job postings. Analyze EACH ONE INDEPENDENTLY against the rules below — a verdict on one job must never influence another.
+
+${rules}
+
+==================== INPUT — ${jobs.length} JOBS ====================
+${jobBlocks}
+================================================
+
+==================== OUTPUT CONTRACT ====================
+Return ONE JSON array and NOTHING ELSE.
+- No markdown, no code fences (no \`\`\`), no preamble, no commentary.
+- The array MUST contain exactly ${jobs.length} objects — one per job above.
+- Each object schema (every key required, exact types):
+  {"id": integer, "approved": boolean, "score": integer, "reason": string, "techStack": string[]}
+- "id" MUST equal the id= value of the job it judges; never invent or omit an id.
+- Use lowercase booleans (true / false).
+- "reason" is ONE sentence under 240 characters citing the rule(s) that drove the decision.
+- "techStack" is an array of bare technology names found in that job's description; empty array if none.
+- approved=true ONLY when score >= 60.
+
+Example for two jobs with ids 11 and 12:
+[{"id":11,"approved":false,"score":18,"reason":"R1: Account Manager role, not a software position.","techStack":[]},{"id":12,"approved":true,"score":82,"reason":"Remote worldwide backend role; European company; Go + Postgres stack.","techStack":["Go","Postgres"]}]
+
+Now analyze all ${jobs.length} jobs and output ONLY the JSON array.`;
+}
+
+// Parse the model's JSON array into a verdict-by-job-id map. A missing or
+// malformed element is simply omitted — the caller leaves any unmatched job
+// PENDING for a later pass rather than guessing a verdict.
+function parseBatchResponse(text: string): Map<number, AnalysisResult> {
+  const out = new Map<number, AnalysisResult>();
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) return out;
+  let arr: unknown;
+  try {
+    arr = JSON.parse(match[0]);
+  } catch {
+    return out;
+  }
+  if (!Array.isArray(arr)) return out;
+  for (const el of arr as any[]) {
+    const id = Number(el?.id);
+    if (!Number.isInteger(id)) continue;
+    out.set(id, {
+      approved: !!el?.approved,
+      score: Math.min(100, Math.max(0, Number(el?.score) || 0)),
+      reason: String(el?.reason || ""),
+      techStack: Array.isArray(el?.techStack) ? el.techStack.map(String) : [],
+    });
+  }
+  return out;
+}
+
 export async function analyzeJob(jobId: number, signal?: AbortSignal): Promise<AnalysisResult> {
   // atomic check: only analyze if still PENDING (prevents double-analysis race condition)
   const updated = await prisma.scrapedJob.updateMany({
@@ -213,12 +317,14 @@ export async function analyzeJob(jobId: number, signal?: AbortSignal): Promise<A
 }
 
 export type AnalyzeBatchOptions = {
-  /** Hard cap on jobs queued in this invocation. */
+  /** Hard cap on jobs fetched in this invocation. */
   limit?: number;
   /** Bail out once we're this close to the function deadline (ms). */
   timeBudgetMs?: number;
   /** Override the configured inter-request delay (ms). 0 disables pacing. */
   requestDelayMs?: number;
+  /** Override how many jobs are packed into one LLM call. */
+  batchSize?: number;
 };
 
 // Leave at least this much wall-clock for the response + post-batch sheets
@@ -226,9 +332,11 @@ export type AnalyzeBatchOptions = {
 // 60s cap and the user sees a generic FUNCTION_INVOCATION_TIMEOUT instead of a
 // graceful "batch partial, click again" message.
 const HEADROOM_MS = 12_000;
-// Refuse to start a new LLM call if we don't have at least this much budget
-// left. A typical free-tier OpenRouter response lands in 3–8s.
-const MIN_CALL_BUDGET_MS = 10_000;
+// Refuse to start a new batched LLM call without at least this much working
+// time before the kill-timer. A batched call (8–12 job descriptions in, a JSON
+// array out) typically lands in 8–18s on a free model; this floor stops us
+// from starting one we cannot finish before the abort fires.
+const MIN_BATCH_BUDGET_MS = 18_000;
 
 async function delay(ms: number, signal?: AbortSignal): Promise<void> {
   if (ms <= 0) return;
@@ -248,6 +356,99 @@ async function delay(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/**
+ * Analyze one chunk of jobs with a SINGLE LLM call. Jobs with no usable
+ * description are rejected locally (no tokens spent). Jobs the model omits
+ * from its response are left PENDING and picked up on a later pass. A
+ * LLMRateLimitedError is allowed to propagate so the caller can stop cleanly.
+ */
+async function analyzeBatch(
+  jobs: PendingJobRow[],
+  config: Awaited<ReturnType<typeof getConfig>>,
+  signal?: AbortSignal,
+): Promise<{ approved: number; rejected: number; resolved: number; unresolved: number }> {
+  let approved = 0;
+  let rejected = 0;
+  let resolved = 0;
+
+  // No-description jobs never reach the LLM — same rule as the single-job path.
+  const needsLlm: PendingJobRow[] = [];
+  for (const job of jobs) {
+    if (!job.description || job.description.trim().length < 50) {
+      const u = await prisma.scrapedJob.updateMany({
+        where: { id: job.id, status: "PENDING" },
+        data: { status: "REJECTED", aiScore: 0, aiReason: "No description available for analysis" },
+      });
+      if (u.count > 0) {
+        await prisma.analysisLog.create({
+          data: {
+            scrapedJobId: job.id,
+            model: "skipped",
+            approved: false,
+            score: 0,
+            reason: "No description available for analysis",
+            tokensUsed: 0,
+            durationMs: 0,
+          },
+        });
+        rejected++;
+        resolved++;
+      }
+    } else {
+      needsLlm.push(job);
+    }
+  }
+
+  if (needsLlm.length === 0) {
+    return { approved, rejected, resolved, unresolved: 0 };
+  }
+
+  const prompt = buildBatchPrompt(needsLlm, config);
+  const startTime = Date.now();
+  const llmResult = await generateText(prompt, signal);
+  const durationMs = Date.now() - startTime;
+  const verdicts = parseBatchResponse(llmResult.text);
+
+  // One call covers the whole chunk — split its cost across the per-job logs.
+  const perJobDuration = Math.round(durationMs / needsLlm.length);
+  const perJobTokens = Math.round((llmResult.tokensUsed || 0) / needsLlm.length);
+
+  let unresolved = 0;
+  for (const job of needsLlm) {
+    const v = verdicts.get(job.id);
+    if (!v) {
+      unresolved++; // model dropped this id — leave PENDING for the next pass
+      continue;
+    }
+    const u = await prisma.scrapedJob.updateMany({
+      where: { id: job.id, status: "PENDING" },
+      data: {
+        status: v.approved ? "APPROVED" : "REJECTED",
+        aiScore: v.score,
+        aiReason: v.reason,
+        techStack: v.techStack.length > 0 ? v.techStack.join(", ") : null,
+      },
+    });
+    if (u.count === 0) continue; // already analyzed by a concurrent run
+    await prisma.analysisLog.create({
+      data: {
+        scrapedJobId: job.id,
+        model: llmResult.model,
+        approved: v.approved,
+        score: v.score,
+        reason: v.reason,
+        tokensUsed: perJobTokens,
+        durationMs: perJobDuration,
+      },
+    });
+    if (v.approved) approved++;
+    else rejected++;
+    resolved++;
+  }
+
+  return { approved, rejected, resolved, unresolved };
+}
+
 export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Promise<{
   analyzed: number;
   approved: number;
@@ -258,83 +459,84 @@ export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Prom
   rateLimited?: boolean;
   rateLimitReason?: string;
   retryAfterMs?: number;
+  batchError?: string;
 }> {
-  const limit = Math.min(50, Math.max(1, options.limit ?? 8));
-  // Vercel hobby/pro caps this route at 60s (vercel.json). Default to 48s of
-  // working budget so we always have headroom to return a response and write
-  // the final scan log. Each LLM call is 3–10s, so ~5–8 jobs/iteration is
-  // realistic; the admin UI loops until pending=0.
-  const budgetMs = Math.max(5_000, options.timeBudgetMs ?? 48_000);
-  const startedAt = Date.now();
-
   const config = await getConfig();
+  const batchSize = Math.min(12, Math.max(1, options.batchSize ?? config.analyzerBatchSize));
+  // Vercel caps this route at 60s. Keep 48s of working budget so there is
+  // always headroom to return a response and run the post-batch sheets sync.
+  const budgetMs = Math.max(5_000, options.timeBudgetMs ?? 48_000);
+  // Fetch enough rows for several chunks; the wall-clock budget is the real
+  // stop. The admin UI loops the route until remaining = 0.
+  const fetchLimit = Math.min(60, Math.max(batchSize, options.limit ?? batchSize * 4));
   const requestDelayMs = Math.max(0, options.requestDelayMs ?? config.analyzerRequestDelayMs);
+  const startedAt = Date.now();
+  // Latest moment we may still be running an LLM call. Used both for the hard
+  // abort timer and the per-chunk go/no-go check so the two never disagree.
+  const deadline = budgetMs - HEADROOM_MS;
 
   const batchController = new AbortController();
   // Hard kill the in-flight LLM call once we're inside the headroom window.
-  const killTimer = setTimeout(() => batchController.abort(), Math.max(1_000, budgetMs - HEADROOM_MS));
+  const killTimer = setTimeout(() => batchController.abort(), Math.max(1_000, deadline));
 
   const pending = await prisma.scrapedJob.findMany({
     where: { status: "PENDING" },
     orderBy: { createdAt: "asc" },
-    take: limit,
+    take: fetchLimit,
   });
 
   let approved = 0;
   let rejected = 0;
-  let skipped = 0;
-  let processed = 0;
+  let analyzed = 0;
   let timedOut = false;
   let rateLimited = false;
   let rateLimitReason: string | undefined;
   let retryAfterMs: number | undefined;
+  let batchError: string | undefined;
 
   try {
-    for (let i = 0; i < pending.length; i++) {
-      const job = pending[i];
-      const elapsed = Date.now() - startedAt;
-      if (elapsed > budgetMs - HEADROOM_MS || budgetMs - elapsed < MIN_CALL_BUDGET_MS) {
+    for (let i = 0; i < pending.length; i += batchSize) {
+      // Only start a chunk if it has a full working window before the abort.
+      if (deadline - (Date.now() - startedAt) < MIN_BATCH_BUDGET_MS) {
         timedOut = true;
         break;
       }
-      const current = await prisma.scrapedJob.findUnique({
-        where: { id: job.id },
-        select: { status: true },
-      });
-      if (!current || current.status !== "PENDING") {
-        skipped++;
-        processed++;
-        continue;
-      }
-
+      const chunk = pending.slice(i, i + batchSize);
       try {
-        const result = await analyzeJob(job.id, batchController.signal);
-        if (result.approved) approved++;
-        else rejected++;
-        processed++;
+        const r = await analyzeBatch(chunk, config, batchController.signal);
+        approved += r.approved;
+        rejected += r.rejected;
+        analyzed += r.resolved;
+        // A chunk that resolves nothing means the model failed outright
+        // (garbage output, or aborted mid-flight). Retrying identical content
+        // would just fail again — stop cleanly and leave the rows PENDING.
+        if (r.resolved === 0) {
+          batchError = "AI returned no usable verdicts for this batch";
+          break;
+        }
       } catch (err: any) {
         if (err instanceof LLMRateLimitedError) {
           rateLimited = true;
           rateLimitReason = err.message;
           retryAfterMs = err.retryAfterMs;
-          // Leave the row PENDING so the next click picks it up.
           break;
         }
-        console.error(`Failed to analyze job ${job.id}: ${err.message}`);
-        rejected++;
-        processed++;
+        // Generic LLM / network failure: leave the whole chunk PENDING (never
+        // mass-reject a batch over one transient outage) and stop.
+        console.error(`analyzeBatch failed: ${err?.message || err}`);
+        batchError = String(err?.message || err).slice(0, 300);
+        break;
       }
 
-      // Pace the next request so we stay under OpenRouter free-tier 20 RPM.
-      // Skip the sleep on the last iteration to avoid burning budget for no
-      // reason.
-      if (i < pending.length - 1 && requestDelayMs > 0) {
-        const remaining = budgetMs - (Date.now() - startedAt) - HEADROOM_MS;
-        if (remaining < MIN_CALL_BUDGET_MS) {
+      // Small courtesy pause between batched calls. With ~8 jobs per call this
+      // is far under the free-tier 20 req/min ceiling.
+      if (i + batchSize < pending.length && requestDelayMs > 0) {
+        const left = deadline - (Date.now() - startedAt);
+        if (left < MIN_BATCH_BUDGET_MS) {
           timedOut = true;
           break;
         }
-        await delay(Math.min(requestDelayMs, Math.max(0, remaining - MIN_CALL_BUDGET_MS)), batchController.signal);
+        await delay(Math.min(requestDelayMs, left - MIN_BATCH_BUDGET_MS), batchController.signal);
       }
     }
   } finally {
@@ -344,14 +546,13 @@ export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Prom
   const remaining = await prisma.scrapedJob.count({ where: { status: "PENDING" } });
 
   return {
-    analyzed: processed - skipped,
+    analyzed,
     approved,
     rejected,
-    skipped,
+    skipped: 0,
     remaining,
     timedOut,
-    ...(rateLimited
-      ? { rateLimited: true, rateLimitReason, retryAfterMs }
-      : {}),
+    ...(rateLimited ? { rateLimited: true, rateLimitReason, retryAfterMs } : {}),
+    ...(batchError ? { batchError } : {}),
   };
 }

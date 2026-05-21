@@ -18,11 +18,20 @@ export async function POST(req: NextRequest) {
       timeBudgetMs: body.timeBudgetMs,
     });
 
+    // Google Sheets sync is the slow tail of this request. The admin UI calls
+    // this route in a loop, so syncing after every mid-loop call repeated the
+    // same work ~10×. Sync only once the run is actually terminal — the queue
+    // is drained, or it stopped on a rate limit / batch error. The sync writes
+    // every unsynced approved row, so one run at the end covers the backlog.
     let syncResult = { synced: 0 };
-    try {
-      syncResult = await syncApprovedJobsToSheet();
-    } catch {
-      // sheets sync is optional — never block the analyze cycle on it
+    const terminal =
+      result.remaining === 0 || !!result.rateLimited || !!result.batchError;
+    if (terminal) {
+      try {
+        syncResult = await syncApprovedJobsToSheet();
+      } catch {
+        // sheets sync is optional — never block the analyze cycle on it
+      }
     }
 
     return NextResponse.json({

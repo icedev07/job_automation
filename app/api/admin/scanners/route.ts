@@ -28,7 +28,7 @@ const SCANNER_SECRET_KEYS = [
 ];
 
 // Standalone config keys that aren't per-scanner.
-const GLOBAL_SCANNER_KEYS = ["scanner_rescan_after_days"];
+const GLOBAL_SCANNER_KEYS = ["scanner_rescan_after_days", "analyzer_batch_size"];
 
 function isAllowedKey(key: string): boolean {
   if (GLOBAL_SCANNER_KEYS.includes(key)) return true;
