@@ -76,12 +76,29 @@ export async function POST(req: NextRequest) {
         ? liveFreeModels
         : [requested, ...liveFreeModels.filter((m) => m !== requested)];
 
+    // Walking all ~29 free models on a quota-blocked account just burns the
+    // day's remaining free requests for no new information — a few is enough.
+    const MAX_TEST_ATTEMPTS = 5;
     const attempts: string[] = [];
-    for (const m of order) {
+    let quotaBlocked = false;
+    let requestedModelDead = false;
+
+    for (const m of order.slice(0, MAX_TEST_ATTEMPTS)) {
       try {
         const res = await callOpenRouter(apiKey, m, "Reply with the single word: OK");
         const body = await res.text();
+
+        // 429 (free-models-per-day) and 402 (no credits) are account-wide:
+        // no other free model will behave differently, so stop walking here.
+        if (res.status === 429 || res.status === 402) {
+          quotaBlocked = true;
+          attempts.push(`${m}: HTTP ${res.status} ${body.slice(0, 160)}`);
+          break;
+        }
         if (!res.ok) {
+          if (res.status === 404 && m === requested && requested !== "auto") {
+            requestedModelDead = true;
+          }
           attempts.push(`${m}: HTTP ${res.status} ${body.slice(0, 160)}`);
           continue;
         }
@@ -105,13 +122,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const hints: string[] = [];
+    if (requestedModelDead) {
+      hints.push(
+        `Configured model "${requested}" no longer has any endpoints on OpenRouter — ` +
+          `set OpenRouter Model back to "auto" or pick a live :free model.`,
+      );
+    }
+    if (quotaBlocked) {
+      hints.push(
+        "OpenRouter free-tier quota is exhausted for this account. :free models are " +
+          "capped at ~50 requests/day until the account makes a one-time 10-credit " +
+          "purchase (which unlocks 1000/day) — see https://openrouter.ai/settings/credits. " +
+          "Smart Rotation (Gemini/Groq/Cerebras) keeps analysis running in the meantime.",
+      );
+    }
+
     return NextResponse.json({
       ok: false,
       keyPreview,
       requestedModel: requested,
       freeModelsAvailable: liveFreeModels.length,
       firstFreeModels: liveFreeModels.slice(0, 8),
-      error: `All ${order.length} attempts failed. ${attempts.slice(0, 5).join(" | ")}`,
+      error:
+        (hints.length ? hints.join(" ") + " " : "") +
+        `(${attempts.length} attempt${attempts.length === 1 ? "" : "s"} failed: ` +
+        `${attempts.slice(0, 5).join(" | ")})`,
     });
   }
 

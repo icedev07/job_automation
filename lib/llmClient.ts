@@ -133,11 +133,24 @@ async function fetchOpenRouterFreeModels(apiKey: string): Promise<string[]> {
   for (const m of list) {
     const id = String(m?.id || "");
     if (!id) continue;
-    const promptPrice = Number(m?.pricing?.prompt ?? "1");
-    const completionPrice = Number(m?.pricing?.completion ?? "1");
-    if (promptPrice === 0 && completionPrice === 0) {
-      free.push({ id, ctx: Number(m?.context_length || 0) });
+    // OpenRouter's genuinely-free chat variants all carry the ":free" suffix.
+    // Filtering on $0 prompt/completion pricing alone also lets through
+    // preview / cloaked models — e.g. google/lyria-* (audio generation, billed
+    // via other pricing fields) and openrouter/owl-alpha (gated by a data-
+    // policy guardrail). Those 402/404 on every call and just burn the per-day
+    // free request budget, so require the explicit free marker.
+    if (!id.endsWith(":free")) continue;
+    const pricing = m?.pricing || {};
+    const hasPaidField = ["prompt", "completion", "request", "image"].some(
+      (k) => Number(pricing[k] ?? 0) > 0,
+    );
+    if (hasPaidField) continue;
+    // Must emit text to return a chat completion — skip image/audio models.
+    const outputs = m?.architecture?.output_modalities;
+    if (Array.isArray(outputs) && outputs.length > 0 && !outputs.includes("text")) {
+      continue;
     }
+    free.push({ id, ctx: Number(m?.context_length || 0) });
   }
 
   // Prefer larger context windows first (better job description handling).
