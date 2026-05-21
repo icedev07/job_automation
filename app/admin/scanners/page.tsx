@@ -108,10 +108,10 @@ const SCANNERS: Scanner[] = [
   {
     key: "mygreenhouse",
     label: "MyGreenhouse (authenticated)",
-    hint: "candidate-portal aggregator of remote jobs across every Greenhouse employer. requires the _session_id cookie pasted below.",
+    hint: "candidate-portal aggregator across every Greenhouse employer. requires the _session_id cookie; pick search facets below.",
     defaultMax: 200,
     defaultSearchUrl: "",
-    searchPlaceholder: "(optional extra filters, e.g. date_posted=past_day)",
+    searchPlaceholder: "advanced: raw extra query params (facets are set above)",
   },
 ];
 
@@ -140,6 +140,135 @@ const TABS: TabDef[] = [
   { id: "rss", label: "RSS feeds", scannerKeys: ["weworkremotely", "jobspresso", "authenticjobs", "nodesk"] },
   { id: "json", label: "JSON feeds", scannerKeys: ["remoteok", "jobicy", "landingjobs", "justremote"] },
 ];
+
+// MyGreenhouse search facets — the value tokens are exactly what my.greenhouse.io
+// uses in its own job-search query string (see lib/scrapers/feeds/mygreenhouse.ts).
+const MYGH_DATE_POSTED = [
+  { value: "past_day", label: "Within 1 day" },
+  { value: "past_five_days", label: "Within 5 days" },
+  { value: "past_ten_days", label: "Within 10 days" },
+  { value: "past_thirty_days", label: "Within 30 days" },
+];
+const MYGH_SALARY = [
+  { value: "less_than_40k", label: "< $40,000" },
+  { value: "more_than_40k", label: "$40,000+" },
+  { value: "more_than_60k", label: "$60,000+" },
+  { value: "more_than_80k", label: "$80,000+" },
+  { value: "more_than_100k", label: "$100,000+" },
+  { value: "more_than_120k", label: "$120,000+" },
+  { value: "more_than_140k", label: "$140,000+" },
+  { value: "more_than_160k", label: "$160,000+" },
+  { value: "more_than_180k", label: "$180,000+" },
+  { value: "more_than_200k", label: "$200,000+" },
+];
+const MYGH_WORK_TYPES = [
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "in_person", label: "In person" },
+];
+const MYGH_EMPLOYMENT_TYPES = [
+  { value: "full_time", label: "Full time" },
+  { value: "part_time", label: "Part time" },
+  { value: "contract", label: "Contract" },
+  { value: "temporary", label: "Temporary" },
+];
+
+function splitCsv(raw: string | undefined): string[] {
+  return (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+// The four MyGreenhouse search facets. Single-value facets (date, salary) are
+// dropdowns; multi-value facets (work / employment type) are checkbox groups.
+// Every change is persisted immediately — these are discrete picks, not free
+// text, so there is no "blur to save" step.
+function MyGreenhouseFilters({
+  config,
+  setConfig,
+}: {
+  config: Record<string, string>;
+  setConfig: (c: Record<string, string>) => void;
+}) {
+  // Work type defaults to remote-only until the user touches it — this mirrors
+  // the scanner, whose historical behaviour is remote-only.
+  const workTypes =
+    "mygreenhouse_work_types" in config
+      ? splitCsv(config.mygreenhouse_work_types)
+      : ["remote"];
+  const employmentTypes = splitCsv(config.mygreenhouse_employment_types);
+
+  function persist(next: Record<string, string>) {
+    setConfig(next);
+    fetch("/api/admin/scanners", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+  }
+
+  function toggleMulti(key: string, current: string[], value: string) {
+    const next = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
+    persist({ ...config, [key]: next.join(",") });
+  }
+
+  return (
+    <div style={{ borderTop: "1px solid #fcd34d", paddingTop: "0.6rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.65rem 1rem" }}>
+      <div>
+        <label style={mghFilterLabel}>Date posted</label>
+        <select
+          value={config.mygreenhouse_date_posted ?? ""}
+          onChange={(e) => persist({ ...config, mygreenhouse_date_posted: e.target.value })}
+          style={inputStyle}
+        >
+          <option value="">Any time</option>
+          {MYGH_DATE_POSTED.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+      <div>
+        <label style={mghFilterLabel}>Minimum salary</label>
+        <select
+          value={config.mygreenhouse_salary ?? ""}
+          onChange={(e) => persist({ ...config, mygreenhouse_salary: e.target.value })}
+          style={inputStyle}
+        >
+          <option value="">Any salary</option>
+          {MYGH_SALARY.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>
+      <div>
+        <label style={mghFilterLabel}>Work type</label>
+        <div style={mghCheckRow}>
+          {MYGH_WORK_TYPES.map((o) => (
+            <label key={o.value} style={mghCheckLabel}>
+              <input
+                type="checkbox"
+                checked={workTypes.includes(o.value)}
+                onChange={() => toggleMulti("mygreenhouse_work_types", workTypes, o.value)}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label style={mghFilterLabel}>Employment type</label>
+        <div style={mghCheckRow}>
+          {MYGH_EMPLOYMENT_TYPES.map((o) => (
+            <label key={o.value} style={mghCheckLabel}>
+              <input
+                type="checkbox"
+                checked={employmentTypes.includes(o.value)}
+                onChange={() => toggleMulti("mygreenhouse_employment_types", employmentTypes, o.value)}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ScannersPage() {
   const [config, setConfig] = useState<Record<string, string>>({});
@@ -485,7 +614,7 @@ export default function ScannersPage() {
               {s.key === "mygreenhouse" && (
                 <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: "6px", padding: "0.7rem 0.85rem", marginBottom: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                   <div style={{ fontSize: "0.7rem", color: "#92400e", lineHeight: 1.4 }}>
-                    Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, copy the <code>_session_id</code> value, and paste it below as <code>_session_id=&lt;value&gt;</code>. That one cookie is all the scanner needs — no CSRF token. The session lasts ~2 weeks; re-paste when a scan warns it expired.
+                    Sign in at <a href="https://my.greenhouse.io" target="_blank" rel="noreferrer" style={{ color: "#1d4ed8" }}>my.greenhouse.io</a>, open DevTools → Application → Cookies → my.greenhouse.io, and paste the <code>_session_id</code> value below — the bare value is fine, or the full <code>_session_id=&lt;value&gt;</code> pair. That one cookie is all the scanner needs — no CSRF / XSRF token. The session lasts ~2 weeks; re-paste when a scan warns it expired.
                   </div>
                   <div>
                     <label style={{ fontSize: "0.7rem", color: "#78350f", fontWeight: 500 }}>Session cookie</label>
@@ -499,6 +628,7 @@ export default function ScannersPage() {
                       style={inputStyle}
                     />
                   </div>
+                  <MyGreenhouseFilters config={config} setConfig={setConfig} />
                 </div>
               )}
               <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "0.75rem" }}>
@@ -562,4 +692,27 @@ const inputStyle: React.CSSProperties = {
   fontSize: "0.8rem",
   background: "white",
   boxSizing: "border-box",
+};
+
+const mghFilterLabel: React.CSSProperties = {
+  fontSize: "0.7rem",
+  color: "#78350f",
+  fontWeight: 500,
+  display: "block",
+  marginBottom: "0.2rem",
+};
+
+const mghCheckRow: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "0.65rem",
+  paddingTop: "0.2rem",
+};
+
+const mghCheckLabel: React.CSSProperties = {
+  fontSize: "0.72rem",
+  color: "#78350f",
+  display: "flex",
+  alignItems: "center",
+  gap: "0.25rem",
 };

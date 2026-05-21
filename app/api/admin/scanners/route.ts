@@ -27,12 +27,22 @@ const SCANNER_SECRET_KEYS = [
   "mygreenhouse_xsrf_token",
 ];
 
+// MyGreenhouse search-filter selections — mirror the portal's own job-search
+// facets (date posted, salary, work type, employment type).
+const MYGREENHOUSE_FILTER_KEYS = [
+  "mygreenhouse_date_posted",
+  "mygreenhouse_salary",
+  "mygreenhouse_work_types",
+  "mygreenhouse_employment_types",
+];
+
 // Standalone config keys that aren't per-scanner.
 const GLOBAL_SCANNER_KEYS = ["scanner_rescan_after_days", "analyzer_batch_size"];
 
 function isAllowedKey(key: string): boolean {
   if (GLOBAL_SCANNER_KEYS.includes(key)) return true;
   if (SCANNER_SECRET_KEYS.includes(key)) return true;
+  if (MYGREENHOUSE_FILTER_KEYS.includes(key)) return true;
   return SCANNER_KEY_PREFIXES.some((p) => SCANNER_KEY_SUFFIXES.some((s) => key === `${p}${s}`));
 }
 
@@ -40,6 +50,7 @@ export async function GET() {
   const expectedKeys = [
     ...GLOBAL_SCANNER_KEYS,
     ...SCANNER_SECRET_KEYS,
+    ...MYGREENHOUSE_FILTER_KEYS,
     ...SCANNER_KEY_PREFIXES.flatMap((p) => SCANNER_KEY_SUFFIXES.map((s) => `${p}${s}`)),
   ];
   const rows = await prisma.appConfig.findMany({

@@ -77,6 +77,16 @@ type GreenhouseApiJob = {
 // Cookie handling
 // ---------------------------------------------------------------------------
 
+// Users routinely paste only the session VALUE — DevTools → Application →
+// Cookies shows the bare value when a single cookie row is selected. A value
+// with no "=" cannot be read as a Cookie header, so wrap it as the _session_id
+// pair instead of rejecting a paste that is actually correct.
+function normalizeCookieInput(raw: string): string {
+  const s = (raw || "").trim();
+  if (!s || s.includes("=")) return s;
+  return `_session_id=${s}`;
+}
+
 // Parse "k1=v1; k2=v2" into a map. Values are kept verbatim; we send the whole
 // original string back as the Cookie header anyway.
 function parseCookieHeader(raw: string): Record<string, string> {
@@ -160,12 +170,70 @@ async function fetchWithTimeout(
 }
 
 // ---------------------------------------------------------------------------
+// Search filters
+// ---------------------------------------------------------------------------
+// The four facets my.greenhouse.io exposes in its own job-search UI. The values
+// below are the exact query tokens the portal uses; the admin Scanners page
+// renders matching dropdowns / checkboxes that write them into config.
+//   date_posted        single  →  ?date_posted=past_day
+//   salary             single  →  ?salary=more_than_100k
+//   work_type[]        multi   →  ?work_type[]=remote&work_type[]=hybrid
+//   employment_type[]  multi   →  ?employment_type[]=full_time
+
+const DATE_POSTED_VALUES = ["past_day", "past_five_days", "past_ten_days", "past_thirty_days"];
+const SALARY_VALUES = [
+  "less_than_40k", "more_than_40k", "more_than_60k", "more_than_80k", "more_than_100k",
+  "more_than_120k", "more_than_140k", "more_than_160k", "more_than_180k", "more_than_200k",
+];
+const WORK_TYPE_VALUES = ["remote", "hybrid", "in_person"];
+const EMPLOYMENT_TYPE_VALUES = ["full_time", "part_time", "contract", "temporary"];
+
+type MyGreenhouseFilters = {
+  datePosted: string;
+  salary: string;
+  workTypes: string[];
+  employmentTypes: string[];
+};
+
+// Keep only the comma-separated tokens that are real, recognized values, so a
+// stale or hand-edited config can never push a bad param at the portal.
+function parseAllowedCsv(raw: string | undefined, allowed: string[]): string[] {
+  if (!raw) return [];
+  return raw.split(",").map((s) => s.trim()).filter((s) => allowed.includes(s));
+}
+
+function parseFilters(config: Record<string, string> | undefined): MyGreenhouseFilters {
+  const c = config || {};
+  const datePosted = c.mygreenhouse_date_posted || "";
+  const salary = c.mygreenhouse_salary || "";
+  return {
+    datePosted: DATE_POSTED_VALUES.includes(datePosted) ? datePosted : "",
+    salary: SALARY_VALUES.includes(salary) ? salary : "",
+    // Never configured → remote-only, this scanner's historical behaviour.
+    // Configured but empty → no work-type filter (the user opted into all).
+    workTypes:
+      "mygreenhouse_work_types" in c
+        ? parseAllowedCsv(c.mygreenhouse_work_types, WORK_TYPE_VALUES)
+        : ["remote"],
+    employmentTypes: parseAllowedCsv(c.mygreenhouse_employment_types, EMPLOYMENT_TYPE_VALUES),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // URL building
 // ---------------------------------------------------------------------------
 
-function buildJobsUrl(extraParams: Record<string, string>, page: number): string {
+function buildJobsUrl(
+  filters: MyGreenhouseFilters,
+  extraParams: Record<string, string>,
+  page: number,
+): string {
   const u = new URL(JOBS_PATH);
-  u.searchParams.append("work_type[]", "remote");
+  for (const wt of filters.workTypes) u.searchParams.append("work_type[]", wt);
+  for (const et of filters.employmentTypes) u.searchParams.append("employment_type[]", et);
+  if (filters.datePosted) u.searchParams.set("date_posted", filters.datePosted);
+  if (filters.salary) u.searchParams.set("salary", filters.salary);
+  // Raw escape-hatch params from the search-url field win over the facets.
   for (const [k, v] of Object.entries(extraParams)) u.searchParams.set(k, v);
   u.searchParams.set("page", String(page));
   return u.toString();
@@ -358,7 +426,7 @@ export const myGreenhouseFeed: Feed = {
   key: "mygreenhouse",
   label: "MyGreenhouse (authenticated)",
   fetch: async ({ maxJobs, searchUrl, signal, config }): Promise<FeedFetchResult> => {
-    const cookie = (config?.mygreenhouse_session_cookie || "").trim();
+    const cookie = normalizeCookieInput(config?.mygreenhouse_session_cookie || "");
     if (!cookie) {
       return {
         jobs: [],
@@ -372,6 +440,7 @@ export const myGreenhouseFeed: Feed = {
     }
 
     const extraParams = parseExtraParams(searchUrl);
+    const filters = parseFilters(config);
     const baseHeaders: Record<string, string> = {
       "User-Agent": BROWSER_UA,
       "Accept-Language": "en-US,en;q=0.9",
@@ -382,7 +451,7 @@ export const myGreenhouseFeed: Feed = {
     let version: string;
     try {
       const htmlRes = await fetchWithTimeout(
-        buildJobsUrl(extraParams, 1),
+        buildJobsUrl(filters, extraParams, 1),
         {
           headers: {
             ...baseHeaders,
@@ -433,7 +502,7 @@ export const myGreenhouseFeed: Feed = {
       let body: string;
       try {
         res = await fetchWithTimeout(
-          buildJobsUrl(extraParams, page),
+          buildJobsUrl(filters, extraParams, page),
           {
             headers: {
               ...baseHeaders,
