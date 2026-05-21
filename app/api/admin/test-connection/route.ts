@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { google } from "googleapis";
 import { getConfig } from "@/lib/config";
-import { fetchOpenRouterFreeModels, callOpenRouter } from "@/lib/llmClient";
+import {
+  fetchOpenRouterFreeModels,
+  callOpenRouter,
+  generateWithGemini,
+  generateWithGroq,
+  generateWithCerebras,
+} from "@/lib/llmClient";
 
 export const dynamic = "force-dynamic";
 
@@ -128,6 +134,136 @@ export async function POST(req: NextRequest) {
     } catch (e: any) {
       return NextResponse.json({ ok: false, error: String(e?.message || e) });
     }
+  }
+
+  if (target === "groq") {
+    if (!config.groqApiKey) {
+      return NextResponse.json({ ok: false, error: "Groq API key is empty in DB" });
+    }
+    const keyPreview = config.groqApiKey.slice(0, 6) + "..." + config.groqApiKey.slice(-4);
+    try {
+      const r = await generateWithGroq(
+        "Reply with the single word: OK",
+        config.groqApiKey,
+        config.groqModel,
+      );
+      return NextResponse.json({
+        ok: true,
+        keyPreview,
+        requestedModel: config.groqModel,
+        modelUsed: r.model,
+        sample: r.text.slice(0, 200),
+      });
+    } catch (e: any) {
+      return NextResponse.json({
+        ok: false,
+        keyPreview,
+        requestedModel: config.groqModel,
+        error: String(e?.message || e),
+      });
+    }
+  }
+
+  if (target === "cerebras") {
+    if (!config.cerebrasApiKey) {
+      return NextResponse.json({ ok: false, error: "Cerebras API key is empty in DB" });
+    }
+    const keyPreview =
+      config.cerebrasApiKey.slice(0, 6) + "..." + config.cerebrasApiKey.slice(-4);
+    try {
+      const r = await generateWithCerebras(
+        "Reply with the single word: OK",
+        config.cerebrasApiKey,
+        config.cerebrasModel,
+      );
+      return NextResponse.json({
+        ok: true,
+        keyPreview,
+        requestedModel: config.cerebrasModel,
+        modelUsed: r.model,
+        sample: r.text.slice(0, 200),
+      });
+    } catch (e: any) {
+      return NextResponse.json({
+        ok: false,
+        keyPreview,
+        requestedModel: config.cerebrasModel,
+        error: String(e?.message || e),
+      });
+    }
+  }
+
+  if (target === "rotation") {
+    if (
+      !config.geminiApiKey &&
+      !config.groqApiKey &&
+      !config.cerebrasApiKey &&
+      !config.openrouterApiKey
+    ) {
+      return NextResponse.json({
+        ok: false,
+        error: "No rotation provider keys set. Add a Gemini, Groq, Cerebras or OpenRouter key.",
+      });
+    }
+    const out: Record<string, any> = {};
+    let anyOk = false;
+    const ping = "Reply with the single word: OK";
+
+    if (config.geminiApiKey) {
+      try {
+        const r = await generateWithGemini(ping, config.geminiApiKey, config.geminiModel || "gemini-2.5-flash");
+        out.gemini = `OK · ${r.model}`;
+        anyOk = true;
+      } catch (e: any) {
+        out.gemini = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
+      }
+    } else {
+      out.gemini = "no key — skipped";
+    }
+
+    if (config.groqApiKey) {
+      try {
+        const r = await generateWithGroq(ping, config.groqApiKey, config.groqModel);
+        out.groq = `OK · ${r.model}`;
+        anyOk = true;
+      } catch (e: any) {
+        out.groq = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
+      }
+    } else {
+      out.groq = "no key — skipped";
+    }
+
+    if (config.cerebrasApiKey) {
+      try {
+        const r = await generateWithCerebras(ping, config.cerebrasApiKey, config.cerebrasModel);
+        out.cerebras = `OK · ${r.model}`;
+        anyOk = true;
+      } catch (e: any) {
+        out.cerebras = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
+      }
+    } else {
+      out.cerebras = "no key — skipped";
+    }
+
+    if (config.openrouterApiKey) {
+      try {
+        const models = await fetchOpenRouterFreeModels(config.openrouterApiKey);
+        const model = models[0] || "meta-llama/llama-3.2-3b-instruct:free";
+        const res = await callOpenRouter(config.openrouterApiKey, model, ping);
+        if (res.ok) {
+          out.openrouter = `OK · ${model}`;
+          anyOk = true;
+        } else {
+          out.openrouter = `FAILED · HTTP ${res.status}`;
+        }
+      } catch (e: any) {
+        out.openrouter = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
+      }
+    } else {
+      out.openrouter = "no key — skipped";
+    }
+
+    return NextResponse.json({ ok: anyOk, ...out });
   }
 
   if (target === "sheets") {

@@ -243,7 +243,7 @@ export async function analyzeJob(jobId: number, signal?: AbortSignal): Promise<A
 
   let llmResult: { text: string; model: string; tokensUsed: number };
   try {
-    llmResult = await generateText(prompt, signal);
+    llmResult = await generateText(prompt, signal, "single");
   } catch (err: any) {
     // Rate-limit / quota errors are surfaced to the caller without marking the
     // job REJECTED — the row stays PENDING so the next batch can retry once
@@ -405,7 +405,7 @@ async function analyzeBatch(
 
   const prompt = buildBatchPrompt(needsLlm, config);
   const startTime = Date.now();
-  const llmResult = await generateText(prompt, signal);
+  const llmResult = await generateText(prompt, signal, "batch");
   const durationMs = Date.now() - startTime;
   const verdicts = parseBatchResponse(llmResult.text);
 

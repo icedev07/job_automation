@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { getConfig } from "@/lib/config";
 import { upsertScrapedJob } from "@/lib/scrapedJobs";
 import { analyzeJob } from "@/lib/jobAnalyzer";
+import { LLMRateLimitedError } from "@/lib/llmClient";
 import { syncJobToLinkedInTab } from "@/lib/googleSheetsSync";
 import { prisma } from "@/lib/prisma";
 
@@ -175,6 +176,21 @@ export async function POST(req: NextRequest) {
       { headers: corsHeaders() }
     );
   } catch (error: any) {
+    // Every AI provider is rate-limited / out of quota. The job row is still
+    // PENDING (analyzeJob re-throws before writing a verdict), so leave it for
+    // a later pass and tell the extension NOT to dismiss it on LinkedIn.
+    if (error instanceof LLMRateLimitedError) {
+      return NextResponse.json(
+        {
+          action: "error",
+          reason: `AI rate-limited — job kept pending, will retry later: ${error.message}`,
+          alreadyExists: false,
+          score: 0,
+          linkedInDismiss: false,
+        },
+        { status: 200, headers: corsHeaders() }
+      );
+    }
     return NextResponse.json(
       { error: error.message, action: "error", linkedInDismiss: false },
       { status: 500, headers: corsHeaders() }

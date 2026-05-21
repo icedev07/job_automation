@@ -8,6 +8,10 @@ export const CONFIG_KEYS = {
   GEMINI_MODEL: "gemini_model",
   OPENROUTER_API_KEY: "openrouter_api_key",
   OPENROUTER_MODEL: "openrouter_model",
+  GROQ_API_KEY: "groq_api_key",
+  GROQ_MODEL: "groq_model",
+  CEREBRAS_API_KEY: "cerebras_api_key",
+  CEREBRAS_MODEL: "cerebras_model",
   GOOGLE_SHEETS_CREDENTIALS: "google_sheets_credentials",
   GOOGLE_SHEET_ID: "google_sheet_id",
   ADMIN_PASSWORD: "admin_password",
@@ -80,13 +84,25 @@ export async function getConfig() {
     envAdmin && envAdmin.length > 0 ? envAdmin : dbAdmin || "admin";
 
   return {
-    aiProvider: (all[CONFIG_KEYS.AI_PROVIDER] || "gemini") as "openai" | "gemini" | "openrouter",
+    aiProvider: (all[CONFIG_KEYS.AI_PROVIDER] || "gemini") as
+      | "openai"
+      | "gemini"
+      | "openrouter"
+      | "groq"
+      | "cerebras"
+      | "rotation",
     openaiApiKey: all[CONFIG_KEYS.OPENAI_API_KEY] || "",
     openaiModel: all[CONFIG_KEYS.OPENAI_MODEL] || "gpt-4o-mini",
     geminiApiKey: all[CONFIG_KEYS.GEMINI_API_KEY] || "",
     geminiModel: all[CONFIG_KEYS.GEMINI_MODEL] || "gemini-2.5-flash",
     openrouterApiKey: all[CONFIG_KEYS.OPENROUTER_API_KEY] || "",
     openrouterModel: all[CONFIG_KEYS.OPENROUTER_MODEL] || "auto",
+    // Groq and Cerebras are OpenAI-compatible free tiers added for Smart
+    // Rotation. Defaults pick the highest free-tier throughput model for each.
+    groqApiKey: all[CONFIG_KEYS.GROQ_API_KEY] || "",
+    groqModel: all[CONFIG_KEYS.GROQ_MODEL] || "llama-3.1-8b-instant",
+    cerebrasApiKey: all[CONFIG_KEYS.CEREBRAS_API_KEY] || "",
+    cerebrasModel: all[CONFIG_KEYS.CEREBRAS_MODEL] || "llama-3.3-70b",
     googleSheetsCredentials: all[CONFIG_KEYS.GOOGLE_SHEETS_CREDENTIALS] || "",
     googleSheetId: all[CONFIG_KEYS.GOOGLE_SHEET_ID] || "",
     adminPassword,

@@ -41,11 +41,27 @@ const GEMINI_FALLBACK_MODELS = [
   "gemini-2.0-flash-lite",
 ];
 
-async function generateWithGemini(prompt: string, apiKey: string, model: string): Promise<LLMResult> {
+// Pull a retry hint out of a Gemini quota error. The SDK surfaces the REST
+// error body verbatim, which carries  "retryDelay":"34s"  on 429 responses.
+function parseGeminiRetryMs(msg: string): number {
+  const m = msg.match(/retryDelay["'\s:]+(\d+(?:\.\d+)?)s/i);
+  return m ? Math.round(parseFloat(m[1]) * 1000) : 0;
+}
+
+export async function generateWithGemini(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<LLMResult> {
   const order = [model, ...GEMINI_FALLBACK_MODELS.filter((m) => m !== model)];
   const attempts: string[] = [];
+  let rateLimited = false;
+  let retryMs = 0;
+  let daily = false;
 
   for (const m of order) {
+    if (signal?.aborted) throw new Error("LLM call aborted");
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
       const genModel = genAI.getGenerativeModel({ model: m });
@@ -59,9 +75,30 @@ async function generateWithGemini(prompt: string, apiKey: string, model: string)
     } catch (e: any) {
       const msg = String(e?.message || e);
       attempts.push(`${m}: ${msg}`);
+      // 429 / RESOURCE_EXHAUSTED is a back-off signal, not a model fault: every
+      // fallback model shares the same per-project quota, so stop here and
+      // surface a rate-limit error instead of letting the caller mark the job
+      // REJECTED.
+      if (/\b429\b|RESOURCE_EXHAUSTED|too many requests|quota/i.test(msg)) {
+        rateLimited = true;
+        retryMs = Math.max(retryMs, parseGeminiRetryMs(msg));
+        if (/per[- ]?day|daily|PerDay/i.test(msg)) daily = true;
+        break;
+      }
     }
   }
 
+  if (rateLimited) {
+    // A daily cap will not clear in seconds — park the provider for a good
+    // while even if the error carried a short retry hint.
+    throw new LLMRateLimitedError(
+      daily
+        ? "Gemini free daily quota reached — resets at midnight Pacific time"
+        : `Gemini rate-limited (retry in ${Math.ceil((retryMs || 60_000) / 1000)}s)`,
+      daily ? Math.max(retryMs, 60 * 60_000) : retryMs || 60_000,
+      daily,
+    );
+  }
   throw new Error(`Gemini: all model attempts failed → ${attempts.join(" | ")}`);
 }
 
@@ -295,14 +332,326 @@ async function generateWithOpenRouter(
 
 export { fetchOpenRouterFreeModels, callOpenRouter };
 
-export async function generateText(prompt: string, signal?: AbortSignal): Promise<LLMResult> {
+// ============================================================================
+// Generic OpenAI-compatible providers — Groq & Cerebras
+// ----------------------------------------------------------------------------
+// Both expose the exact OpenAI POST /chat/completions contract, so one client
+// serves both; only the base URL and model list differ. Each takes an ordered
+// model list so a renamed or retired model id self-heals to the next candidate
+// instead of breaking the provider outright.
+// ============================================================================
+
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
+
+const GROQ_FALLBACK_MODELS = [
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
+  "openai/gpt-oss-20b",
+];
+const CEREBRAS_FALLBACK_MODELS = ["llama-3.3-70b", "llama3.1-8b", "gpt-oss-120b"];
+
+// Put the configured model first, then the fallbacks (de-duplicated).
+function buildModelOrder(preferred: string, fallback: string[]): string[] {
+  const p = (preferred || "").trim();
+  if (!p) return [...fallback];
+  return [p, ...fallback.filter((m) => m !== p)];
+}
+
+async function generateWithOpenAICompatible(
+  providerLabel: string,
+  baseUrl: string,
+  apiKey: string,
+  models: string[],
+  prompt: string,
+  signal?: AbortSignal,
+): Promise<LLMResult> {
+  const attempts: string[] = [];
+
+  for (const m of models) {
+    if (signal?.aborted) throw new Error("LLM call aborted");
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: m,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          // Generous ceiling for the JSON verdict(s); the model stops earlier.
+          // Kept modest so prompt + output stay inside small free-tier windows
+          // (Cerebras' free tier caps context at ~8K tokens).
+          max_tokens: 1500,
+        }),
+        signal,
+      });
+    } catch (e: any) {
+      attempts.push(`${m}: ${String(e?.message || e)}`);
+      continue;
+    }
+
+    // 429 → provider-wide throttle. Groq/Cerebras free tiers rate-limit at the
+    // organisation level, so switching model cannot help — surface a rate-limit
+    // error so the caller (or the rotation pool) backs off cleanly.
+    if (res.status === 429) {
+      const body = await res.text();
+      const waitMs = parseRetryAfterMs(res, body) || 60_000;
+      const daily =
+        /per[- ]?day|requests per day|tokens per day|\bRPD\b|\bTPD\b|daily/i.test(body);
+      throw new LLMRateLimitedError(
+        daily
+          ? `${providerLabel} free daily quota reached`
+          : `${providerLabel} rate-limited (retry in ${Math.ceil(waitMs / 1000)}s)`,
+        // A daily cap will not clear in seconds — keep the provider parked.
+        daily ? Math.max(waitMs, 60 * 60_000) : waitMs,
+        daily,
+      );
+    }
+
+    if (!res.ok) {
+      // A bad/retired model id (400/404) just falls through to the next one.
+      const body = await res.text();
+      attempts.push(`${m}: HTTP ${res.status} ${body.slice(0, 200)}`);
+      continue;
+    }
+
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content || "";
+    if (!text) {
+      attempts.push(`${m}: empty response`);
+      continue;
+    }
+    const tokensUsed =
+      (data?.usage?.prompt_tokens || 0) + (data?.usage?.completion_tokens || 0);
+    return { text, model: m, tokensUsed };
+  }
+
+  throw new Error(
+    `${providerLabel}: all ${models.length} model attempts failed → ${attempts.join(" | ")}`,
+  );
+}
+
+export async function generateWithGroq(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<LLMResult> {
+  return generateWithOpenAICompatible(
+    "Groq",
+    GROQ_BASE_URL,
+    apiKey,
+    buildModelOrder(model, GROQ_FALLBACK_MODELS),
+    prompt,
+    signal,
+  );
+}
+
+export async function generateWithCerebras(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<LLMResult> {
+  return generateWithOpenAICompatible(
+    "Cerebras",
+    CEREBRAS_BASE_URL,
+    apiKey,
+    buildModelOrder(model, CEREBRAS_FALLBACK_MODELS),
+    prompt,
+    signal,
+  );
+}
+
+// ============================================================================
+// Smart Rotation
+// ----------------------------------------------------------------------------
+// Pools every provider that has an API key and tries them in priority order.
+// When a provider is rate-limited it is parked on a cooldown (until its
+// retry-after / daily reset) and the next provider is used. Two priority
+// orders stop the scanner and the extension from fighting over one provider:
+//   - "batch"  → big-context providers first   (Gemini, OpenRouter)
+//   - "single" → fast high-volume providers first (Cerebras, Groq)
+// Cooldowns live in module memory; on Vercel that survives for the life of a
+// warm function — exactly the span of one analyze-all-pending run.
+// ============================================================================
+
+export type LLMPurpose = "single" | "batch";
+
+type RotationConfig = Awaited<ReturnType<typeof getConfig>>;
+type RotationProviderId = "gemini" | "groq" | "cerebras" | "openrouter";
+
+type RotationProvider = {
+  id: RotationProviderId;
+  label: string;
+  // Rough upper bound (chars) on a prompt this provider's free-tier context
+  // can hold. A batched prompt that exceeds it is routed to a bigger-context
+  // provider instead of being sent on a guaranteed failure.
+  maxPromptChars: number;
+  keyOf: (c: RotationConfig) => string;
+  run: (prompt: string, c: RotationConfig, signal?: AbortSignal) => Promise<LLMResult>;
+};
+
+const ROTATION_PROVIDERS: Record<RotationProviderId, RotationProvider> = {
+  gemini: {
+    id: "gemini",
+    label: "Gemini",
+    maxPromptChars: 900_000,
+    keyOf: (c) => c.geminiApiKey,
+    run: (prompt, c, signal) =>
+      generateWithGemini(prompt, c.geminiApiKey, c.geminiModel || "gemini-2.5-flash", signal),
+  },
+  openrouter: {
+    id: "openrouter",
+    label: "OpenRouter",
+    maxPromptChars: 200_000,
+    keyOf: (c) => c.openrouterApiKey,
+    run: (prompt, c, signal) =>
+      generateWithOpenRouter(
+        prompt,
+        c.openrouterApiKey,
+        c.openrouterModel || OPENROUTER_AUTO,
+        signal,
+      ),
+  },
+  cerebras: {
+    id: "cerebras",
+    label: "Cerebras",
+    maxPromptChars: 16_000,
+    keyOf: (c) => c.cerebrasApiKey,
+    run: (prompt, c, signal) =>
+      generateWithCerebras(prompt, c.cerebrasApiKey, c.cerebrasModel, signal),
+  },
+  groq: {
+    id: "groq",
+    label: "Groq",
+    maxPromptChars: 14_000,
+    keyOf: (c) => c.groqApiKey,
+    run: (prompt, c, signal) => generateWithGroq(prompt, c.groqApiKey, c.groqModel, signal),
+  },
+};
+
+const ROTATION_ORDER: Record<LLMPurpose, RotationProviderId[]> = {
+  // One job at a time (extension): fast, high daily-volume providers first.
+  single: ["cerebras", "groq", "gemini", "openrouter"],
+  // Batched many-job prompts (scanner): big-context providers first.
+  batch: ["gemini", "openrouter", "cerebras", "groq"],
+};
+
+// A transient (non-rate-limit) failure parks the provider briefly so the next
+// call in the same run reaches a healthy provider first.
+const TRANSIENT_COOLDOWN_MS = 45_000;
+
+const providerCooldownUntil = new Map<RotationProviderId, number>();
+
+function cooldownRemainingMs(id: RotationProviderId): number {
+  return Math.max(0, (providerCooldownUntil.get(id) || 0) - Date.now());
+}
+
+async function generateWithRotation(
+  prompt: string,
+  config: RotationConfig,
+  purpose: LLMPurpose,
+  signal?: AbortSignal,
+): Promise<LLMResult> {
+  const withKey = ROTATION_ORDER[purpose]
+    .map((id) => ROTATION_PROVIDERS[id])
+    .filter((p) => p.keyOf(config).trim().length > 0);
+
+  if (withKey.length === 0) {
+    throw new Error(
+      "Smart Rotation is selected but no provider API keys are set. Add at least one key (Gemini, Groq, Cerebras or OpenRouter) in /admin/settings.",
+    );
+  }
+
+  // Drop providers whose free-tier context cannot hold this prompt.
+  const pool = withKey.filter((p) => prompt.length <= p.maxPromptChars);
+  if (pool.length === 0) {
+    throw new Error(
+      `Prompt is ${prompt.length} chars — larger than any configured rotation provider can accept. Lower the analyzer batch size in /admin/scanners.`,
+    );
+  }
+
+  const attempts: string[] = [];
+  let soonestRetryMs = Infinity;
+
+  for (const p of pool) {
+    const cd = cooldownRemainingMs(p.id);
+    if (cd > 0) {
+      soonestRetryMs = Math.min(soonestRetryMs, cd);
+      attempts.push(`${p.label}: cooling down ${Math.ceil(cd / 1000)}s`);
+      continue;
+    }
+    if (signal?.aborted) throw new Error("LLM call aborted");
+
+    try {
+      const result = await p.run(prompt, config, signal);
+      // Tag the model with its provider so AnalysisLog shows the rotation path.
+      return { ...result, model: `${p.id}:${result.model}` };
+    } catch (e: any) {
+      if (e?.message === "LLM call aborted") throw e;
+      const cooldown =
+        e instanceof LLMRateLimitedError ? e.retryAfterMs : TRANSIENT_COOLDOWN_MS;
+      providerCooldownUntil.set(p.id, Date.now() + cooldown);
+      soonestRetryMs = Math.min(soonestRetryMs, cooldown);
+      attempts.push(`${p.label}: ${String(e?.message || e)}`);
+      console.warn(
+        `[rotation] ${p.label} unavailable (cooling ${Math.ceil(cooldown / 1000)}s): ${String(
+          e?.message || e,
+        )}`,
+      );
+    }
+  }
+
+  // Every provider in the pool is unavailable. Surface a rate-limit error so
+  // the analyzer pauses cleanly and leaves the rows PENDING for a later pass,
+  // rather than a plain error that would mass-reject the batch.
+  throw new LLMRateLimitedError(
+    `All rotation providers unavailable → ${attempts.join(" | ")}`,
+    Number.isFinite(soonestRetryMs) ? soonestRetryMs : 60_000,
+    false,
+  );
+}
+
+export async function generateText(
+  prompt: string,
+  signal?: AbortSignal,
+  purpose: LLMPurpose = "single",
+): Promise<LLMResult> {
   const config = await getConfig();
+
+  if (config.aiProvider === "rotation") {
+    return generateWithRotation(prompt, config, purpose, signal);
+  }
 
   if (config.aiProvider === "gemini") {
     if (!config.geminiApiKey) {
       throw new Error("Gemini API key not configured. Go to /admin/settings to set it.");
     }
-    return generateWithGemini(prompt, config.geminiApiKey, config.geminiModel || "gemini-2.5-flash");
+    return generateWithGemini(
+      prompt,
+      config.geminiApiKey,
+      config.geminiModel || "gemini-2.5-flash",
+      signal,
+    );
+  }
+
+  if (config.aiProvider === "groq") {
+    if (!config.groqApiKey) {
+      throw new Error("Groq API key not configured. Go to /admin/settings to set it.");
+    }
+    return generateWithGroq(prompt, config.groqApiKey, config.groqModel, signal);
+  }
+
+  if (config.aiProvider === "cerebras") {
+    if (!config.cerebrasApiKey) {
+      throw new Error("Cerebras API key not configured. Go to /admin/settings to set it.");
+    }
+    return generateWithCerebras(prompt, config.cerebrasApiKey, config.cerebrasModel, signal);
   }
 
   if (config.aiProvider === "openrouter") {
