@@ -8,10 +8,13 @@
 | Supabase | PostgreSQL database | yes, free tier | no card required |
 | Google Sheets API | output approved jobs | yes, completely free | no card required |
 | Google Cloud service account | authenticates Sheets API | yes, completely free | no billing required |
-| Google Gemini API | AI job analysis (default) | **yes, free** (1500 req/day) | **no card required** |
+| Google Gemini API | AI job analysis (Smart Rotation) | **yes, free** | **no card required** |
+| Groq API | AI job analysis (Smart Rotation) | **yes, free** | **no card required** |
+| Cerebras API | AI job analysis (Smart Rotation) | **yes, free** | **no card required** |
+| OpenRouter API | AI job analysis (Smart Rotation) | **yes, free** | **no card required** |
 | OpenAI API | AI job analysis (alternative) | paid, per-token | uses your own API key |
 
-**All services are 100% free with no credit card required** when using Gemini (default). OpenAI is available as an alternative if you prefer.
+**All services are 100% free with no credit card required.** Smart Rotation pools the free AI providers (Gemini, Groq, Cerebras, OpenRouter) and automatically fails over when one hits its rate limit. OpenAI is available as a paid alternative if you prefer.
 
 ---
 
@@ -71,18 +74,40 @@ Supabase free tier pauses databases after 1 week of inactivity. The app has a `/
 
 ---
 
-## Step 3: Get your AI API key
+## Step 3: Get your AI API keys
 
-### Option A: Google Gemini (recommended, free)
+The analyzer uses **Smart Rotation** — it pools several free AI providers and automatically fails over when one hits a rate limit. Grab as many of the free keys below as you can; each is optional and the rotation uses whatever you configure. One key is enough to start, but more keys means more daily headroom and the scanner and LinkedIn extension never block each other.
+
+### Google Gemini (free, no card)
 
 1. Go to https://aistudio.google.com/apikey
 2. Sign in with your Google account
-3. Click "Create API Key"
-4. Copy and save it
+3. Click "Create API Key" and copy it
 
-Free tier limits depend on the model; use `gemini-1.5-flash` in Settings for the best compatibility with the free API. No credit card needed for AI Studio keys.
+Large context window — best for the scanner's batched analysis.
 
-### Option B: OpenAI (paid alternative)
+### Groq (free, no card)
+
+1. Go to https://console.groq.com/keys
+2. Sign in, create an API key, and copy it
+
+Very fast — great for the LinkedIn extension. Optional: skip it if signup is not available for you.
+
+### Cerebras (free, no card)
+
+1. Go to https://cloud.cerebras.ai
+2. Sign in, open the API Keys page, create a key and copy it
+
+1,000,000 tokens/day — great for the LinkedIn extension.
+
+### OpenRouter (free, no card)
+
+1. Go to https://openrouter.ai/settings/keys
+2. Create a free key and copy it
+
+Aggregator fallback across many free models.
+
+### OpenAI (paid alternative, optional)
 
 1. Go to https://platform.openai.com/api-keys
 2. Create a new API key
@@ -141,14 +166,17 @@ Go to `/admin/settings` and fill in:
 
 ### AI Provider
 
-Select your AI provider and enter the API key:
+Select **Smart Rotation** (recommended) and paste a key for every free provider you have. The rotation uses whatever is filled in — leave a field blank to exclude that provider. Click **Test All Rotation Providers** to verify.
 
-| Provider | Setting | Value |
-|----------|---------|-------|
-| Gemini (default, free) | API Key | `AIzaSy...` (from aistudio.google.com/apikey) |
-| Gemini | Model | `gemini-1.5-flash` (recommended) |
-| OpenAI (alternative) | API Key | `sk-...` (from platform.openai.com) |
-| OpenAI | Model | `gpt-4o-mini` (cheapest paid option) |
+| Provider | Key format | Where to get it |
+|----------|-----------|-----------------|
+| Gemini | `AIzaSy...` | aistudio.google.com/apikey |
+| Groq | `gsk_...` | console.groq.com/keys |
+| Cerebras | `csk-...` | cloud.cerebras.ai |
+| OpenRouter | `sk-or-v1-...` | openrouter.ai/settings/keys |
+| OpenAI (paid) | `sk-...` | platform.openai.com |
+
+You can also pick a single provider instead of rotation. The model defaults (`gemini-2.5-flash`, `llama-3.1-8b-instant`, `llama-3.3-70b`) work out of the box and are editable in Settings.
 
 ### Google Sheets
 | Setting | Value |
@@ -310,9 +338,9 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 - Log in manually in the browser that opens
 
 **"API key not configured" or 429 quota error**
-- Go to `/admin/settings` and check that you have the correct AI provider selected and an API key entered.
-- If using Gemini: get a free key at https://aistudio.google.com/apikey (no card needed).
-- If using OpenAI: make sure you have API credits at https://platform.openai.com/account/billing (separate from ChatGPT Plus).
+- Go to `/admin/settings`, select **Smart Rotation**, and add keys for several free providers — the rotation fails over automatically when one is rate-limited.
+- The more provider keys you add (Gemini, Groq, Cerebras, OpenRouter), the more daily headroom you get.
+- If every provider is rate-limited at once, the analyzer pauses and leaves jobs `PENDING` — they are retried on the next run, never wrongly rejected.
 
 **Gemini: `Error fetching from https://generativelanguage.googleapis.com`**
 - In Settings set the model to **`gemini-1.5-flash`** and save (newer model names are not always available for every key or region).
