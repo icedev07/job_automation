@@ -425,6 +425,17 @@ async function generateWithOpenAICompatible(
       );
     }
 
+    // 402 → no credits / credit limit exceeded. Account-wide and permanent
+    // until the user acts, so stop walking models and park the provider.
+    if (res.status === 402) {
+      const body = await res.text();
+      throw new LLMRateLimitedError(
+        `${providerLabel} rejected: out of credits — ${body.slice(0, 160)}`,
+        24 * 60 * 60_000,
+        true,
+      );
+    }
+
     if (!res.ok) {
       // A bad/retired model id (400/404) just falls through to the next one.
       const body = await res.text();
@@ -530,15 +541,14 @@ export async function fetchTogetherFreeModels(apiKey: string): Promise<string[]>
   for (const m of list) {
     const id = String(m?.id || "");
     if (!id) continue;
+    // Together's genuinely-free models carry an explicit "-Free" id suffix.
+    // A $0 entry in /v1/models is NOT enough: LoRA and dedicated-endpoint
+    // models also list $0 pricing yet return 402 "credit limit exceeded" or
+    // 400 "endpoint not running" on every call.
+    if (!/-free$/i.test(id)) continue;
     // Only chat/text models can return a chat completion.
     const type = String(m?.type || "").toLowerCase();
     if (type && type !== "chat" && type !== "language") continue;
-    // Keep only genuinely-free models — every price field must be zero/absent.
-    const pricing = m?.pricing || {};
-    const paid = ["input", "output", "hourly", "base"].some(
-      (k) => Number(pricing[k] ?? 0) > 0,
-    );
-    if (paid) continue;
     free.push({ id, ctx: Number(m?.context_length || 0) });
   }
 
@@ -566,7 +576,7 @@ export async function generateWithTogether(
   const useAuto = !model || model === "auto";
   if (useAuto && free.length === 0) {
     throw new Error(
-      "Together AI has no free ($0) models for this account — set a specific Together model or untick it in /admin/settings.",
+      "Together AI returned no free (-Free) models — its free tier appears unavailable for this account. Untick Together in /admin/settings, or set a specific free model id.",
     );
   }
   const order = useAuto ? free : [model, ...free.filter((m) => m !== model)];
