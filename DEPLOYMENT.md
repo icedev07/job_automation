@@ -12,11 +12,9 @@
 | Groq API | AI job analysis (rotation provider) | **yes, free** | **no card required** |
 | Cerebras API | AI job analysis (rotation provider) | **yes, free** | **no card required** |
 | OpenRouter API | AI job analysis (rotation provider) | **yes, free** | **no card required** |
-| Together AI API | AI job analysis (rotation provider) | **yes, free models** | **no card required** |
 | Cloudflare Workers AI | AI job analysis (rotation provider) | **yes, free** (10k Neurons/day) | **no card required** |
-| OpenAI API | AI job analysis (alternative) | paid, per-token | uses your own API key |
 
-**All free services need no credit card.** In Settings you tick one or more AI providers; the analyzer rotates across the ticked set and automatically fails over when one hits its rate limit. OpenAI is available as a paid alternative if you prefer.
+**Every service is 100% free and needs no credit card.** In Settings you tick one or more AI providers; the analyzer rotates across the ticked set and automatically fails over when one hits its rate limit.
 
 ---
 
@@ -109,14 +107,6 @@ Very fast — great for the LinkedIn extension. Optional: skip it if signup is n
 
 Aggregator fallback across many free models.
 
-### Together AI (free models, no card)
-
-1. Go to https://api.together.ai and sign up (no credit card required)
-2. Open **Settings > API Keys**, create a key (`tgp_v1_...`) and copy it
-
-The analyzer only ever calls Together's $0-priced models — leave the model set to
-`auto` so it discovers them live. Large context — good for the scanner's batches.
-
 ### Cloudflare Workers AI (free, no card)
 
 1. Go to https://dash.cloudflare.com and sign up (no credit card required)
@@ -126,13 +116,6 @@ The analyzer only ever calls Together's $0-priced models — leave the model set
 4. Save both the Account ID and the token — the analyzer needs both
 
 Free allocation is 10,000 Neurons/day (several thousand analyses).
-
-### OpenAI (paid alternative, optional)
-
-1. Go to https://platform.openai.com/api-keys
-2. Create a new API key
-3. Add API credits at https://platform.openai.com/account/billing (minimum $5)
-4. Copy and save the key
 
 ---
 
@@ -194,11 +177,9 @@ Tick the providers you want in the **AI Providers** checklist and paste a key fo
 | Groq | `gsk_...` | console.groq.com/keys |
 | Cerebras | `csk-...` | cloud.cerebras.ai |
 | OpenRouter | `sk-or-v1-...` | openrouter.ai/settings/keys |
-| Together AI | `tgp_v1_...` | api.together.ai |
 | Cloudflare | Account ID + API token | dash.cloudflare.com |
-| OpenAI (paid) | `sk-...` | platform.openai.com |
 
-The model defaults (`gemini-2.5-flash`, `llama-3.1-8b-instant`, `llama-3.3-70b`, Together `auto`, Cloudflare `@cf/meta/llama-3.1-8b-instruct`) work out of the box and are editable in Settings.
+The model defaults (`gemini-2.5-flash`, `llama-3.1-8b-instant`, `llama-3.3-70b`, Cloudflare `@cf/meta/llama-3.1-8b-instruct`) work out of the box and are editable in Settings.
 
 ### Google Sheets
 | Setting | Value |
@@ -348,8 +329,8 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 
 **Vercel function timeout**
 - Free tier has a 10-second limit on serverless functions.
-- AI analysis with Gemini or `gpt-4o-mini` usually takes 2-6 seconds, so it should work fine.
-- If timeouts occur with OpenAI, switch to Gemini (faster response times).
+- AI analysis usually takes 2-6 seconds, so it should work fine.
+- If timeouts occur, prefer the fast providers (Cerebras, Groq) in the rotation.
 
 **Supabase database is paused**
 - Supabase pauses free databases after 1 week of inactivity.
@@ -361,7 +342,7 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 
 **"API key not configured" or 429 quota error**
 - Go to `/admin/settings`, tick several providers in the **AI Providers** checklist, and add a key for each — the rotation fails over automatically when one is rate-limited.
-- The more providers you tick and key (Gemini, Groq, Cerebras, OpenRouter, Together AI, Cloudflare), the more daily headroom you get.
+- The more providers you tick and key (Gemini, Groq, Cerebras, OpenRouter, Cloudflare), the more daily headroom you get.
 - If every provider is rate-limited at once, the analyzer pauses and leaves jobs `PENDING` — they are retried on the next run, never wrongly rejected.
 
 **Gemini: `Error fetching from https://generativelanguage.googleapis.com`**

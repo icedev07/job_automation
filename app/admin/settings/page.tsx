@@ -5,25 +5,21 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 type TestResult = { ok: boolean; [k: string]: any } | null;
 type TestTarget =
   | "gemini"
-  | "openai"
   | "openrouter"
   | "groq"
   | "cerebras"
-  | "together"
   | "cloudflare"
   | "rotation"
   | "sheets";
 
-// Every provider the analyzer can rotate across, in display order. `paid`
-// flags OpenAI so the checklist can mark it apart from the free tiers.
-const PROVIDERS: { id: string; label: string; note: string; paid?: boolean }[] = [
+// Every provider the analyzer can rotate across, in display order. All are
+// 100% free with no credit card.
+const PROVIDERS: { id: string; label: string; note: string }[] = [
   { id: "gemini", label: "Gemini", note: "free, no card" },
   { id: "groq", label: "Groq", note: "free, no card" },
   { id: "cerebras", label: "Cerebras", note: "free, no card" },
   { id: "openrouter", label: "OpenRouter", note: "free, no card" },
-  { id: "together", label: "Together AI", note: "free models, no card" },
   { id: "cloudflare", label: "Cloudflare", note: "free, no card" },
-  { id: "openai", label: "OpenAI", note: "paid", paid: true },
 ];
 
 const inputStyle: CSSProperties = {
@@ -81,7 +77,6 @@ const helpStyle: CSSProperties = {
 };
 const linkStyle: CSSProperties = { color: "#1d4ed8" };
 const greenTag: CSSProperties = { color: "#16a34a", fontSize: "0.75rem" };
-const grayTag: CSSProperties = { color: "#6b7280", fontSize: "0.75rem" };
 const providerBlockStyle: CSSProperties = {
   borderTop: "1px solid #e5e7eb",
   paddingTop: "1rem",
@@ -134,8 +129,6 @@ function KeyRow({
 
 export default function SettingsPage() {
   const [selectedProviders, setSelectedProviders] = useState<string[]>(["gemini"]);
-  const [openaiKey, setOpenaiKey] = useState("");
-  const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
   const [geminiKey, setGeminiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash");
   const [openrouterKey, setOpenrouterKey] = useState("");
@@ -144,8 +137,6 @@ export default function SettingsPage() {
   const [groqModel, setGroqModel] = useState("llama-3.1-8b-instant");
   const [cerebrasKey, setCerebrasKey] = useState("");
   const [cerebrasModel, setCerebrasModel] = useState("llama-3.3-70b");
-  const [togetherKey, setTogetherKey] = useState("");
-  const [togetherModel, setTogetherModel] = useState("auto");
   const [cloudflareAccountId, setCloudflareAccountId] = useState("");
   const [cloudflareKey, setCloudflareKey] = useState("");
   const [cloudflareModel, setCloudflareModel] = useState("@cf/meta/llama-3.1-8b-instruct");
@@ -162,20 +153,16 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("");
 
   const [showGeminiKey, setShowGeminiKey] = useState(true);
-  const [showOpenAIKey, setShowOpenAIKey] = useState(true);
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(true);
   const [showGroqKey, setShowGroqKey] = useState(true);
   const [showCerebrasKey, setShowCerebrasKey] = useState(true);
-  const [showTogetherKey, setShowTogetherKey] = useState(true);
   const [showCloudflareKey, setShowCloudflareKey] = useState(true);
   const [showExtensionKey, setShowExtensionKey] = useState(true);
 
   const [geminiTest, setGeminiTest] = useState<TestResult>(null);
-  const [openaiTest, setOpenaiTest] = useState<TestResult>(null);
   const [openrouterTest, setOpenrouterTest] = useState<TestResult>(null);
   const [groqTest, setGroqTest] = useState<TestResult>(null);
   const [cerebrasTest, setCerebrasTest] = useState<TestResult>(null);
-  const [togetherTest, setTogetherTest] = useState<TestResult>(null);
   const [cloudflareTest, setCloudflareTest] = useState<TestResult>(null);
   const [rotationTest, setRotationTest] = useState<TestResult>(null);
   const [sheetsTest, setSheetsTest] = useState<TestResult>(null);
@@ -193,8 +180,6 @@ export default function SettingsPage() {
     } catch {
       setSelectedProviders([]);
     }
-    setOpenaiKey(data.openai_api_key || "");
-    setOpenaiModel(data.openai_model || "gpt-4o-mini");
     setGeminiKey(data.gemini_api_key || "");
     setGeminiModel(data.gemini_model || "gemini-2.5-flash");
     setOpenrouterKey(data.openrouter_api_key || "");
@@ -203,8 +188,6 @@ export default function SettingsPage() {
     setGroqModel(data.groq_model || "llama-3.1-8b-instant");
     setCerebrasKey(data.cerebras_api_key || "");
     setCerebrasModel(data.cerebras_model || "llama-3.3-70b");
-    setTogetherKey(data.together_api_key || "");
-    setTogetherModel(data.together_model || "auto");
     setCloudflareAccountId(data.cloudflare_account_id || "");
     setCloudflareKey(data.cloudflare_api_key || "");
     setCloudflareModel(data.cloudflare_model || "@cf/meta/llama-3.1-8b-instruct");
@@ -223,8 +206,6 @@ export default function SettingsPage() {
     setMessage("");
     const updates: Record<string, string> = {
       ai_providers: JSON.stringify(selectedProviders),
-      openai_api_key: openaiKey,
-      openai_model: openaiModel,
       gemini_api_key: geminiKey,
       gemini_model: geminiModel,
       openrouter_api_key: openrouterKey,
@@ -233,8 +214,6 @@ export default function SettingsPage() {
       groq_model: groqModel,
       cerebras_api_key: cerebrasKey,
       cerebras_model: cerebrasModel,
-      together_api_key: togetherKey,
-      together_model: togetherModel,
       cloudflare_account_id: cloudflareAccountId,
       cloudflare_api_key: cloudflareKey,
       cloudflare_model: cloudflareModel,
@@ -265,11 +244,9 @@ export default function SettingsPage() {
   async function runTest(target: TestTarget) {
     setTesting(target);
     if (target === "gemini") setGeminiTest(null);
-    if (target === "openai") setOpenaiTest(null);
     if (target === "openrouter") setOpenrouterTest(null);
     if (target === "groq") setGroqTest(null);
     if (target === "cerebras") setCerebrasTest(null);
-    if (target === "together") setTogetherTest(null);
     if (target === "cloudflare") setCloudflareTest(null);
     if (target === "rotation") setRotationTest(null);
     if (target === "sheets") setSheetsTest(null);
@@ -282,22 +259,18 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (target === "gemini") setGeminiTest(data);
-      if (target === "openai") setOpenaiTest(data);
       if (target === "openrouter") setOpenrouterTest(data);
       if (target === "groq") setGroqTest(data);
       if (target === "cerebras") setCerebrasTest(data);
-      if (target === "together") setTogetherTest(data);
       if (target === "cloudflare") setCloudflareTest(data);
       if (target === "rotation") setRotationTest(data);
       if (target === "sheets") setSheetsTest(data);
     } catch (e: any) {
       const fail = { ok: false, error: String(e?.message || e) };
       if (target === "gemini") setGeminiTest(fail);
-      if (target === "openai") setOpenaiTest(fail);
       if (target === "openrouter") setOpenrouterTest(fail);
       if (target === "groq") setGroqTest(fail);
       if (target === "cerebras") setCerebrasTest(fail);
-      if (target === "together") setTogetherTest(fail);
       if (target === "cloudflare") setCloudflareTest(fail);
       if (target === "rotation") setRotationTest(fail);
       if (target === "sheets") setSheetsTest(fail);
@@ -458,41 +431,6 @@ export default function SettingsPage() {
     </>
   );
 
-  const togetherFields = () => (
-    <>
-      <label style={labelStyle}>Together AI API Key</label>
-      <KeyRow
-        value={togetherKey}
-        onChange={setTogetherKey}
-        show={showTogetherKey}
-        onToggle={() => setShowTogetherKey((v) => !v)}
-        placeholder="tgp_v1_..."
-      />
-      <p style={helpStyle}>
-        Free models, no credit card — get a key at{" "}
-        <a href="https://api.together.ai/settings/api-keys" target="_blank" rel="noopener noreferrer" style={linkStyle}>
-          api.together.ai
-        </a>
-        . Only $0-priced models are used, so analysis stays free.
-      </p>
-      <label style={labelStyle}>Model</label>
-      <input
-        value={togetherModel}
-        onChange={(e) => setTogetherModel(e.target.value)}
-        placeholder="auto"
-        style={{ ...inputStyle, fontFamily: "monospace" }}
-      />
-      <p style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: "-0.75rem", marginBottom: "1rem" }}>
-        &quot;auto&quot; discovers the account&apos;s free models live; or paste a specific free model id.
-      </p>
-      <button type="button" onClick={() => runTest("together")} disabled={testing === "together"} style={testBtn}>
-        {testing === "together" ? "Testing..." : "Test Together AI"}
-      </button>
-      {savedNote}
-      {renderTest(togetherTest)}
-    </>
-  );
-
   const cloudflareFields = () => (
     <>
       <label style={labelStyle}>Cloudflare Account ID</label>
@@ -532,31 +470,6 @@ export default function SettingsPage() {
     </>
   );
 
-  const openaiFields = () => (
-    <>
-      <label style={labelStyle}>OpenAI API Key</label>
-      <KeyRow
-        value={openaiKey}
-        onChange={setOpenaiKey}
-        show={showOpenAIKey}
-        onToggle={() => setShowOpenAIKey((v) => !v)}
-        placeholder="sk-..."
-      />
-      <label style={labelStyle}>Model</label>
-      <select value={openaiModel} onChange={(e) => setOpenaiModel(e.target.value)} style={inputStyle}>
-        <option value="gpt-4o-mini">gpt-4o-mini (cheapest)</option>
-        <option value="gpt-4o">gpt-4o</option>
-        <option value="gpt-4-turbo">gpt-4-turbo</option>
-        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-      </select>
-      <button type="button" onClick={() => runTest("openai")} disabled={testing === "openai"} style={testBtn}>
-        {testing === "openai" ? "Testing..." : "Test OpenAI"}
-      </button>
-      {savedNote}
-      {renderTest(openaiTest)}
-    </>
-  );
-
   // Map a provider id to its credential block, so the checklist can render
   // exactly the ticked providers' fields.
   const providerFields: Record<string, () => ReactNode> = {
@@ -564,9 +477,7 @@ export default function SettingsPage() {
     groq: groqFields,
     cerebras: cerebrasFields,
     openrouter: openrouterFields,
-    together: togetherFields,
     cloudflare: cloudflareFields,
-    openai: openaiFields,
   };
 
   function toggleProvider(id: string) {
@@ -606,7 +517,7 @@ export default function SettingsPage() {
               />
               <span>
                 <strong>{p.label}</strong>{" "}
-                <span style={p.paid ? grayTag : greenTag}>({p.note})</span>
+                <span style={greenTag}>({p.note})</span>
               </span>
             </label>
           ))}

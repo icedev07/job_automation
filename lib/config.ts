@@ -6,8 +6,6 @@ export const CONFIG_KEYS = {
   AI_PROVIDER: "ai_provider",
   // JSON array of provider ids the analyzer rotates across.
   AI_PROVIDERS: "ai_providers",
-  OPENAI_API_KEY: "openai_api_key",
-  OPENAI_MODEL: "openai_model",
   GEMINI_API_KEY: "gemini_api_key",
   GEMINI_MODEL: "gemini_model",
   OPENROUTER_API_KEY: "openrouter_api_key",
@@ -16,8 +14,6 @@ export const CONFIG_KEYS = {
   GROQ_MODEL: "groq_model",
   CEREBRAS_API_KEY: "cerebras_api_key",
   CEREBRAS_MODEL: "cerebras_model",
-  TOGETHER_API_KEY: "together_api_key",
-  TOGETHER_MODEL: "together_model",
   CLOUDFLARE_ACCOUNT_ID: "cloudflare_account_id",
   CLOUDFLARE_API_KEY: "cloudflare_api_key",
   CLOUDFLARE_MODEL: "cloudflare_model",
@@ -85,16 +81,15 @@ export async function getAllConfig(): Promise<Record<string, string>> {
   return inflightConfig;
 }
 
-// Every provider id the analyzer knows how to call. Used both to validate the
-// stored AI_PROVIDERS list and to migrate the legacy single-value AI_PROVIDER.
+// Every provider id the analyzer knows how to call. All are 100% free with no
+// credit card. Used both to validate the stored AI_PROVIDERS list and to
+// migrate the legacy single-value AI_PROVIDER.
 export const KNOWN_AI_PROVIDERS = [
   "gemini",
   "groq",
   "cerebras",
   "openrouter",
-  "together",
   "cloudflare",
-  "openai",
 ] as const;
 
 // Resolve the ordered provider list. Once AI_PROVIDERS has been written it is
@@ -136,22 +131,16 @@ export async function getConfig() {
       all[CONFIG_KEYS.AI_PROVIDERS],
       all[CONFIG_KEYS.AI_PROVIDER],
     ),
-    openaiApiKey: all[CONFIG_KEYS.OPENAI_API_KEY] || "",
-    openaiModel: all[CONFIG_KEYS.OPENAI_MODEL] || "gpt-4o-mini",
     geminiApiKey: all[CONFIG_KEYS.GEMINI_API_KEY] || "",
     geminiModel: all[CONFIG_KEYS.GEMINI_MODEL] || "gemini-2.5-flash",
     openrouterApiKey: all[CONFIG_KEYS.OPENROUTER_API_KEY] || "",
     openrouterModel: all[CONFIG_KEYS.OPENROUTER_MODEL] || "auto",
-    // Groq and Cerebras are OpenAI-compatible free tiers added for Smart
-    // Rotation. Defaults pick the highest free-tier throughput model for each.
+    // Groq and Cerebras are OpenAI-compatible free tiers. Defaults pick the
+    // highest free-tier throughput model for each.
     groqApiKey: all[CONFIG_KEYS.GROQ_API_KEY] || "",
     groqModel: all[CONFIG_KEYS.GROQ_MODEL] || "llama-3.1-8b-instant",
     cerebrasApiKey: all[CONFIG_KEYS.CEREBRAS_API_KEY] || "",
     cerebrasModel: all[CONFIG_KEYS.CEREBRAS_MODEL] || "llama-3.3-70b",
-    // Together AI — OpenAI-compatible free tier. "auto" discovers the account's
-    // zero-priced models live so the rotation never lands on a paid model.
-    togetherApiKey: all[CONFIG_KEYS.TOGETHER_API_KEY] || "",
-    togetherModel: all[CONFIG_KEYS.TOGETHER_MODEL] || "auto",
     // Cloudflare Workers AI — OpenAI-compatible, 10k free Neurons/day. Needs both
     // the account id (it goes in the request URL) and an API token.
     cloudflareAccountId: all[CONFIG_KEYS.CLOUDFLARE_ACCOUNT_ID] || "",

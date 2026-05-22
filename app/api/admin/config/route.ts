@@ -9,8 +9,6 @@ export async function GET() {
   return NextResponse.json({
     // Resolved provider list (handles migration from the legacy ai_provider).
     ai_providers: JSON.stringify(config.aiProviders),
-    openai_api_key: all.openai_api_key || "",
-    openai_model: all.openai_model || "gpt-4o-mini",
     gemini_api_key: all.gemini_api_key || "",
     gemini_model: all.gemini_model || "gemini-2.5-flash",
     openrouter_api_key: all.openrouter_api_key || "",
@@ -19,8 +17,6 @@ export async function GET() {
     groq_model: all.groq_model || "llama-3.1-8b-instant",
     cerebras_api_key: all.cerebras_api_key || "",
     cerebras_model: all.cerebras_model || "llama-3.3-70b",
-    together_api_key: all.together_api_key || "",
-    together_model: all.together_model || "auto",
     cloudflare_account_id: all.cloudflare_account_id || "",
     cloudflare_api_key: all.cloudflare_api_key || "",
     cloudflare_model: all.cloudflare_model || "@cf/meta/llama-3.1-8b-instruct",

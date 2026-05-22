@@ -74,10 +74,8 @@ async function seedDefaults() {
     // one at a time. ai_provider is kept for backward compatibility only.
     ai_provider: "gemini",
     ai_providers: '["gemini","groq","cerebras","openrouter"]',
-    openai_model: "gpt-4o-mini",
     gemini_model: "gemini-2.5-flash",
     openrouter_model: "auto",
-    together_model: "auto",
     cloudflare_model: "@cf/meta/llama-3.1-8b-instruct",
     target_market: "Europe, Eastern Europe, Remote worldwide",
     current_location: "Armenia",

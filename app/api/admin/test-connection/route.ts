@@ -8,7 +8,6 @@ import {
   generateWithGemini,
   generateWithGroq,
   generateWithCerebras,
-  generateWithTogether,
   generateWithCloudflare,
 } from "@/lib/llmClient";
 
@@ -153,27 +152,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  if (target === "openai") {
-    if (!config.openaiApiKey) {
-      return NextResponse.json({ ok: false, error: "OpenAI API key is empty in DB" });
-    }
-    try {
-      const res = await fetch("https://api.openai.com/v1/models", {
-        headers: { Authorization: `Bearer ${config.openaiApiKey}` },
-      });
-      if (!res.ok) {
-        const body = await res.text();
-        return NextResponse.json({ ok: false, error: `OpenAI ${res.status}: ${body.slice(0, 300)}` });
-      }
-      return NextResponse.json({
-        ok: true,
-        keyPreview: config.openaiApiKey.slice(0, 7) + "..." + config.openaiApiKey.slice(-4),
-      });
-    } catch (e: any) {
-      return NextResponse.json({ ok: false, error: String(e?.message || e) });
-    }
-  }
-
   if (target === "groq") {
     if (!config.groqApiKey) {
       return NextResponse.json({ ok: false, error: "Groq API key is empty in DB" });
@@ -226,36 +204,6 @@ export async function POST(req: NextRequest) {
         ok: false,
         keyPreview,
         requestedModel: config.cerebrasModel,
-        error: String(e?.message || e),
-      });
-    }
-  }
-
-  if (target === "together") {
-    if (!config.togetherApiKey) {
-      return NextResponse.json({ ok: false, error: "Together AI API key is empty in DB" });
-    }
-    const keyPreview =
-      config.togetherApiKey.slice(0, 8) + "..." + config.togetherApiKey.slice(-4);
-    const requested = config.togetherModel || "auto";
-    try {
-      const r = await generateWithTogether(
-        "Reply with the single word: OK",
-        config.togetherApiKey,
-        requested,
-      );
-      return NextResponse.json({
-        ok: true,
-        keyPreview,
-        requestedModel: requested,
-        modelUsed: r.model,
-        sample: r.text.slice(0, 200),
-      });
-    } catch (e: any) {
-      return NextResponse.json({
-        ok: false,
-        keyPreview,
-        requestedModel: requested,
         error: String(e?.message || e),
       });
     }
@@ -349,18 +297,6 @@ export async function POST(req: NextRequest) {
           const res = await callOpenRouter(config.openrouterApiKey, model, ping);
           out.openrouter = res.ok ? `OK · ${model}` : `FAILED · HTTP ${res.status}`;
           if (res.ok) anyOk = true;
-        } else if (id === "together") {
-          if (!config.togetherApiKey) {
-            out.together = "no key — skipped";
-            continue;
-          }
-          const r = await generateWithTogether(
-            ping,
-            config.togetherApiKey,
-            config.togetherModel || "auto",
-          );
-          out.together = `OK · ${r.model}`;
-          anyOk = true;
         } else if (id === "cloudflare") {
           if (!config.cloudflareAccountId || !config.cloudflareApiKey) {
             out.cloudflare = "no account id / token — skipped";
@@ -374,16 +310,6 @@ export async function POST(req: NextRequest) {
           );
           out.cloudflare = `OK · ${r.model}`;
           anyOk = true;
-        } else if (id === "openai") {
-          if (!config.openaiApiKey) {
-            out.openai = "no key — skipped";
-            continue;
-          }
-          const res = await fetch("https://api.openai.com/v1/models", {
-            headers: { Authorization: `Bearer ${config.openaiApiKey}` },
-          });
-          out.openai = res.ok ? "OK · key valid" : `FAILED · HTTP ${res.status}`;
-          if (res.ok) anyOk = true;
         }
       } catch (e: any) {
         out[id] = `FAILED · ${String(e?.message || e).slice(0, 160)}`;

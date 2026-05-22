@@ -85,9 +85,7 @@ Admin Panel (/admin)
 | Groq API | AI job analysis (rotation provider) | Free, no card |
 | Cerebras API | AI job analysis (rotation provider) | Free, no card |
 | OpenRouter API | AI job analysis (rotation provider) | Free, no card |
-| Together AI API | AI job analysis (rotation provider) | Free models, no card |
 | Cloudflare Workers AI | AI job analysis (rotation provider) | Free, no card (10k Neurons/day) |
-| OpenAI API | AI job analysis (alternative) | Paid (user key) |
 
 ## Quick start
 
@@ -137,7 +135,7 @@ Important: use port `5432` (session pooler), not `6543` (transaction pooler).
 | Page | Purpose |
 |------|---------|
 | Dashboard | Stats overview, sync to Google Sheets |
-| Settings | AI providers (tick one or more of Gemini / Groq / Cerebras / OpenRouter / Together AI / Cloudflare / OpenAI to rotate across), API keys, Google Sheets, target market, location, AI prompt, columns |
+| Settings | AI providers (tick one or more of Gemini / Groq / Cerebras / OpenRouter / Cloudflare to rotate across), API keys, Google Sheets, target market, location, AI prompt, columns |
 | Scanners | Enable/disable platforms, set search URLs, run scans, analyze pending jobs |
 | Skip Rules | Block jobs by company, title keyword, or URL pattern |
 | Logs | View scan history, AI analysis logs, extension logs, bulk delete, date filtering |
@@ -202,9 +200,7 @@ Default column config JSON:
 | Gemini Model | `gemini-2.5-flash` |
 | Groq Model | `llama-3.1-8b-instant` |
 | Cerebras Model | `llama-3.3-70b` |
-| Together AI Model | `auto` (discovers free models) |
 | Cloudflare Model | `@cf/meta/llama-3.1-8b-instruct` |
-| OpenAI Model | `gpt-4o-mini` |
 | Target Market | `Europe, Eastern Europe, Remote worldwide` |
 | Current Location | `Armenia` |
 | LinkedIn Sheet Tab | `LinkedIn` |

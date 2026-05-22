@@ -1,37 +1,11 @@
-import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getConfig } from "./config";
-
-let cachedOpenAI: OpenAI | null = null;
-let cachedOpenAIKey = "";
-
-function getOpenAIClient(apiKey: string): OpenAI {
-  if (cachedOpenAI && cachedOpenAIKey === apiKey) return cachedOpenAI;
-  cachedOpenAI = new OpenAI({ apiKey });
-  cachedOpenAIKey = apiKey;
-  return cachedOpenAI;
-}
 
 export type LLMResult = {
   text: string;
   model: string;
   tokensUsed: number;
 };
-
-async function generateWithOpenAI(prompt: string, apiKey: string, model: string): Promise<LLMResult> {
-  const client = getOpenAIClient(apiKey);
-  const response = await client.chat.completions.create({
-    model,
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.3,
-  });
-
-  const text = response.choices[0]?.message?.content || "";
-  const tokensUsed =
-    (response.usage?.prompt_tokens || 0) + (response.usage?.completion_tokens || 0);
-
-  return { text, model, tokensUsed };
-}
 
 const GEMINI_FALLBACK_MODELS = [
   "gemini-2.5-flash",
@@ -492,106 +466,6 @@ export async function generateWithCerebras(
 }
 
 // ============================================================================
-// Together AI — OpenAI-compatible, free-model discovery
-// ----------------------------------------------------------------------------
-// Together no longer has a blanket free tier; instead its /v1/models feed marks
-// individual models as $0. So, like OpenRouter, we discover the genuinely-free
-// models live and only ever send requests to those — keeping the analyzer on
-// fully-free inference. "auto" uses the discovered list; an explicit model id is
-// tried first, then the discovered ones as fallback.
-// ============================================================================
-
-const TOGETHER_BASE_URL = "https://api.together.ai/v1";
-
-// Used only if /v1/models itself is unreachable (network error, not an empty
-// result). These carry Together's historical "-Free" free-tier marker.
-const TOGETHER_STATIC_FALLBACK = [
-  "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-  "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-Free",
-];
-
-// Cap attempts per call so a quota-blocked account cannot walk the whole free
-// list and burn the function's wall-clock — same reasoning as OpenRouter.
-const TOGETHER_MAX_MODEL_ATTEMPTS = 4;
-
-let cachedTogetherFreeModels: { ids: string[]; ts: number } | null = null;
-
-export async function fetchTogetherFreeModels(apiKey: string): Promise<string[]> {
-  if (cachedTogetherFreeModels && Date.now() - cachedTogetherFreeModels.ts < MODELS_TTL_MS) {
-    return cachedTogetherFreeModels.ids;
-  }
-
-  const res = await fetch(`${TOGETHER_BASE_URL}/models`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-  if (!res.ok) {
-    throw new Error(
-      `Together /models HTTP ${res.status}: ${await res.text().then((s) => s.slice(0, 200))}`,
-    );
-  }
-  const data = await res.json();
-  // Together returns a bare array; tolerate a { data: [...] } envelope too.
-  const list: any[] = Array.isArray(data)
-    ? data
-    : Array.isArray(data?.data)
-      ? data.data
-      : [];
-
-  const free: { id: string; ctx: number }[] = [];
-  for (const m of list) {
-    const id = String(m?.id || "");
-    if (!id) continue;
-    // Together's genuinely-free models carry an explicit "-Free" id suffix.
-    // A $0 entry in /v1/models is NOT enough: LoRA and dedicated-endpoint
-    // models also list $0 pricing yet return 402 "credit limit exceeded" or
-    // 400 "endpoint not running" on every call.
-    if (!/-free$/i.test(id)) continue;
-    // Only chat/text models can return a chat completion.
-    const type = String(m?.type || "").toLowerCase();
-    if (type && type !== "chat" && type !== "language") continue;
-    free.push({ id, ctx: Number(m?.context_length || 0) });
-  }
-
-  // Larger context first — better for the scanner's batched prompts.
-  free.sort((a, b) => b.ctx - a.ctx);
-  const ids = free.map((m) => m.id);
-
-  cachedTogetherFreeModels = { ids, ts: Date.now() };
-  return ids;
-}
-
-export async function generateWithTogether(
-  prompt: string,
-  apiKey: string,
-  model: string,
-  signal?: AbortSignal,
-): Promise<LLMResult> {
-  let free: string[] = [];
-  try {
-    free = await fetchTogetherFreeModels(apiKey);
-  } catch {
-    free = TOGETHER_STATIC_FALLBACK;
-  }
-
-  const useAuto = !model || model === "auto";
-  if (useAuto && free.length === 0) {
-    throw new Error(
-      "Together AI returned no free (-Free) models — its free tier appears unavailable for this account. Untick Together in /admin/settings, or set a specific free model id.",
-    );
-  }
-  const order = useAuto ? free : [model, ...free.filter((m) => m !== model)];
-
-  return generateWithOpenAICompatible(
-    "Together AI",
-    TOGETHER_BASE_URL,
-    apiKey,
-    order.slice(0, TOGETHER_MAX_MODEL_ATTEMPTS),
-    prompt,
-    signal,
-  );
-}
-
-// ============================================================================
 // Cloudflare Workers AI — OpenAI-compatible, 10k free Neurons/day
 // ----------------------------------------------------------------------------
 // The account id is part of the request URL, so a working Cloudflare provider
@@ -642,14 +516,7 @@ export async function generateWithCloudflare(
 export type LLMPurpose = "single" | "batch";
 
 type RotationConfig = Awaited<ReturnType<typeof getConfig>>;
-type RotationProviderId =
-  | "gemini"
-  | "groq"
-  | "cerebras"
-  | "openrouter"
-  | "together"
-  | "cloudflare"
-  | "openai";
+type RotationProviderId = "gemini" | "groq" | "cerebras" | "openrouter" | "cloudflare";
 
 type RotationProvider = {
   id: RotationProviderId;
@@ -699,14 +566,6 @@ const ROTATION_PROVIDERS: Record<RotationProviderId, RotationProvider> = {
     keyOf: (c) => c.groqApiKey,
     run: (prompt, c, signal) => generateWithGroq(prompt, c.groqApiKey, c.groqModel, signal),
   },
-  together: {
-    id: "together",
-    label: "Together AI",
-    maxPromptChars: 120_000,
-    keyOf: (c) => c.togetherApiKey,
-    run: (prompt, c, signal) =>
-      generateWithTogether(prompt, c.togetherApiKey, c.togetherModel || "auto", signal),
-  },
   cloudflare: {
     id: "cloudflare",
     label: "Cloudflare",
@@ -725,22 +584,15 @@ const ROTATION_PROVIDERS: Record<RotationProviderId, RotationProvider> = {
         signal,
       ),
   },
-  openai: {
-    id: "openai",
-    label: "OpenAI",
-    maxPromptChars: 120_000,
-    keyOf: (c) => c.openaiApiKey,
-    run: (prompt, c) => generateWithOpenAI(prompt, c.openaiApiKey, c.openaiModel || "gpt-4o-mini"),
-  },
 };
 
 // Per-purpose ranking of every known provider. The live pool is this list
 // intersected with the user's ticked providers, so unticked ones never run.
 const ROTATION_ORDER: Record<LLMPurpose, RotationProviderId[]> = {
   // One job at a time (extension): fast, high daily-volume providers first.
-  single: ["cerebras", "groq", "cloudflare", "gemini", "together", "openrouter", "openai"],
+  single: ["cerebras", "groq", "cloudflare", "gemini", "openrouter"],
   // Batched many-job prompts (scanner): big-context providers first.
-  batch: ["gemini", "openrouter", "together", "cerebras", "groq", "cloudflare", "openai"],
+  batch: ["gemini", "openrouter", "cerebras", "groq", "cloudflare"],
 };
 
 // A transient (non-rate-limit) failure parks the provider briefly so the next
