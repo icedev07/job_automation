@@ -4,9 +4,8 @@ import { google } from "googleapis";
 import { getConfig } from "@/lib/config";
 import {
   fetchOpenRouterFreeModels,
-  callOpenRouter,
-  isOpenRouterAccountCredit402,
   generateWithGemini,
+  generateWithOpenRouter,
   generateWithGroq,
   generateWithCerebras,
   generateWithCloudflare,
@@ -82,11 +81,15 @@ export async function POST(req: NextRequest) {
       }
       const keyPreview = apiKey.slice(0, 8) + "..." + apiKey.slice(-4);
       const requested = config.openrouterModel || "auto";
-      // One shared deadline covers the model lookup and every ping below; once
-      // it fires, in-flight and future fetches abort and the loop falls through
-      // to its JSON return instead of running the function out of time.
+      // One shared deadline covers the model lookup and the test call; once it
+      // fires, in-flight fetches abort and the handler returns its JSON instead
+      // of running the function out of time.
       const signal = AbortSignal.timeout(TEST_DEADLINE_MS);
 
+      // List the live :free models purely for diagnostics. The actual test
+      // call below goes through generateWithOpenRouter, so it exercises the
+      // exact path the analyzer uses — :free models first, cheap paid fallback
+      // only when every free model is busy.
       let liveFreeModels: string[] = [];
       try {
         liveFreeModels = await fetchOpenRouterFreeModels(apiKey, signal);
@@ -99,117 +102,50 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (liveFreeModels.length === 0) {
+      // A configured :free model missing from the live list has been retired.
+      const requestedModelDead =
+        requested !== "auto" && !liveFreeModels.includes(requested);
+      const retiredWarning =
+        `Saved model "${requested}" is retired (no endpoints on OpenRouter). ` +
+        `Analysis still works — it auto-falls back to live free models — but set ` +
+        `OpenRouter Model to "auto" to clear this warning.`;
+
+      try {
+        const r = await generateWithOpenRouter(
+          "Reply with the single word: OK",
+          apiKey,
+          requested,
+          signal,
+        );
+        // generateWithOpenRouter only ever returns a paid model id (no ":free"
+        // suffix) when every free model was busy and the paid fallback ran.
+        const usedPaidFallback = !r.model.endsWith(":free");
+        return NextResponse.json({
+          ok: true,
+          keyPreview,
+          requestedModel: requested,
+          modelUsed: r.model,
+          freeModelsAvailable: liveFreeModels.length,
+          firstFreeModels: liveFreeModels.slice(0, 8),
+          ...(requestedModelDead && { warning: retiredWarning }),
+          ...(usedPaidFallback && {
+            note:
+              `Every :free model was busy, so the cheap paid fallback "${r.model}" ` +
+              `answered (~$0.0002 per 8-job batch). Free models are always tried first.`,
+          }),
+          sample: r.text.trim().slice(0, 200),
+        });
+      } catch (e: any) {
         return NextResponse.json({
           ok: false,
           keyPreview,
           requestedModel: requested,
-          error: "No free models returned by /v1/models for this account",
+          freeModelsAvailable: liveFreeModels.length,
+          firstFreeModels: liveFreeModels.slice(0, 8),
+          ...(requestedModelDead && { warning: retiredWarning }),
+          error: String(e?.message || e),
         });
       }
-
-      const order =
-        requested === "auto"
-          ? liveFreeModels
-          : [requested, ...liveFreeModels.filter((m) => m !== requested)];
-
-      // Walking all ~29 free models on a quota-blocked account just burns the
-      // day's remaining free requests for no new information — a few is enough.
-      const MAX_TEST_ATTEMPTS = 5;
-      const attempts: string[] = [];
-      let quotaBlocked = false;
-      let requestedModelDead = false;
-
-      for (const m of order.slice(0, MAX_TEST_ATTEMPTS)) {
-        try {
-          const res = await callOpenRouter(apiKey, m, "Reply with the single word: OK", signal);
-          const body = await res.text();
-
-          // 429 (free-models-per-day) is account-wide — no other free model
-          // will behave differently, so stop walking here.
-          if (res.status === 429) {
-            quotaBlocked = true;
-            attempts.push(`${m}: HTTP 429 ${body.slice(0, 160)}`);
-            break;
-          }
-          // 402 is account-wide only when it is a genuine OpenRouter credit
-          // failure. A 402 relayed from one model's upstream provider
-          // ("Provider returned error") is model-specific — keep walking to a
-          // healthy free model instead of falsely reporting the whole account
-          // as out of quota.
-          if (res.status === 402) {
-            if (isOpenRouterAccountCredit402(body)) {
-              quotaBlocked = true;
-              attempts.push(`${m}: HTTP 402 ${body.slice(0, 160)}`);
-              break;
-            }
-            attempts.push(
-              `${m}: HTTP 402 (model provider out of capacity) ${body.slice(0, 140)}`,
-            );
-            continue;
-          }
-          if (!res.ok) {
-            if (res.status === 404 && m === requested && requested !== "auto") {
-              requestedModelDead = true;
-            }
-            attempts.push(`${m}: HTTP ${res.status} ${body.slice(0, 160)}`);
-            continue;
-          }
-          const data = JSON.parse(body);
-          const sample = (data?.choices?.[0]?.message?.content || "").trim();
-          if (!sample) {
-            attempts.push(`${m}: empty response`);
-            continue;
-          }
-          return NextResponse.json({
-            ok: true,
-            keyPreview,
-            requestedModel: requested,
-            modelUsed: m,
-            freeModelsAvailable: liveFreeModels.length,
-            firstFreeModels: liveFreeModels.slice(0, 8),
-            // The configured model 404'd but a live free model answered — the
-            // test passes, yet the saved setting still points at a dead model.
-            ...(requestedModelDead && {
-              warning:
-                `Saved model "${requested}" is retired (404 — no endpoints). Analysis ` +
-                `still works because it auto-falls back to live free models, but set ` +
-                `OpenRouter Model to "auto" to clear this warning.`,
-            }),
-            sample: sample.slice(0, 200),
-          });
-        } catch (e: any) {
-          attempts.push(`${m}: ${String(e?.message || e)}`);
-        }
-      }
-
-      const hints: string[] = [];
-      if (requestedModelDead) {
-        hints.push(
-          `Configured model "${requested}" no longer has any endpoints on OpenRouter — ` +
-            `set OpenRouter Model back to "auto" or pick a live :free model.`,
-        );
-      }
-      if (quotaBlocked) {
-        hints.push(
-          "OpenRouter free-tier quota is exhausted for this account. :free models are " +
-            "capped at ~50 requests/day until the account makes a one-time 10-credit " +
-            "purchase (which unlocks 1000/day) — see https://openrouter.ai/settings/credits. " +
-            "Smart Rotation (Gemini/Groq/Cerebras) keeps analysis running in the meantime.",
-        );
-      }
-
-      return NextResponse.json({
-        ok: false,
-        keyPreview,
-        requestedModel: requested,
-        freeModelsAvailable: liveFreeModels.length,
-        firstFreeModels: liveFreeModels.slice(0, 8),
-        error:
-          (hints.length ? hints.join(" ") + " " : "") +
-          `(${attempts.length} attempt${attempts.length === 1 ? "" : "s"} failed: ` +
-          `${attempts.slice(0, 5).join(" | ")})`,
-      });
     }
 
     if (target === "groq") {
@@ -369,12 +305,17 @@ export async function POST(req: NextRequest) {
               out.openrouter = "no key — skipped";
               continue;
             }
-            const orSignal = AbortSignal.timeout(remaining());
-            const models = await fetchOpenRouterFreeModels(config.openrouterApiKey, orSignal);
-            const model = models[0] || "meta-llama/llama-3.2-3b-instruct:free";
-            const res = await callOpenRouter(config.openrouterApiKey, model, ping, orSignal);
-            out.openrouter = res.ok ? `OK · ${model}` : `FAILED · HTTP ${res.status}`;
-            if (res.ok) anyOk = true;
+            // Use the real analyzer path: it walks several free models and
+            // skips ones whose upstream host is momentarily full, so one busy
+            // model no longer fails the whole provider with a bare HTTP 402.
+            const r = await generateWithOpenRouter(
+              ping,
+              config.openrouterApiKey,
+              config.openrouterModel || "auto",
+              AbortSignal.timeout(remaining()),
+            );
+            out.openrouter = `OK · ${r.model}`;
+            anyOk = true;
           } else if (id === "cloudflare") {
             if (!config.cloudflareAccountId || !config.cloudflareApiKey) {
               out.cloudflare = "no account id / token — skipped";

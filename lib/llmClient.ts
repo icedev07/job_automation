@@ -179,12 +179,13 @@ export class LLMRateLimitedError extends Error {
   }
 }
 
-// Free-tier safety: cap how many models we try per single LLM call. OpenRouter
-// shares the per-minute budget across every free model, so cycling through 30+
-// of them on a 429 just wastes the function's wall-clock without ever
-// succeeding. Three tries is plenty for true model-specific failures (model
-// went offline, invalid prompt schema, etc.).
-const OPENROUTER_MAX_MODEL_ATTEMPTS = 3;
+// Free-tier safety: cap how many models we try per single LLM call. A genuine
+// account-wide 429/402 stops the loop immediately, so this cap only governs how
+// many per-model failures (retired-model 404, upstream-busy 402/429) we walk
+// past before giving up. Five is a balance: enough to step over a couple of
+// momentarily-full free models, few enough to stay well inside the function
+// budget.
+const OPENROUTER_MAX_MODEL_ATTEMPTS = 5;
 // Hard cap on how long we'll wait inside a single LLM call before giving up
 // and surfacing a rate-limit error to the caller.
 const OPENROUTER_MAX_WAIT_MS = 4_000;
@@ -212,46 +213,80 @@ function parseRetryAfterMs(res: Response, body: string): number {
   return 0;
 }
 
-// OpenRouter answers HTTP 402 in two very different situations, and treating
-// them the same is what makes a fully-funded account look "out of credits":
+// OpenRouter relays a downstream model host's own error verbatim, wrapping it
+// as {"error":{"message":"Provider returned error","metadata":{"raw":...}}}.
+// Such an error — whatever its HTTP status — is that ONE :free model's upstream
+// host talking, never a statement about the user's OpenRouter account. Other
+// models still work, so the caller must move on to the next model rather than
+// parking the whole provider.
 //
-//   1. Account credit failure — the OpenRouter balance cannot cover the
-//      request. OpenRouter raises this itself and the body says so plainly
-//      ("requires more credits", "can only afford", "negative balance"). This
-//      is account-wide: every model fails until the user tops up.
+// This generalises the 402 distinction. OpenRouter answers HTTP 402/429 in two
+// very different situations, and treating them the same is what makes a
+// fully-funded account look "out of credits":
 //
-//   2. Provider passthrough — one specific :free model's upstream host hit
-//      *its own* quota, and OpenRouter relays that verbatim, wrapped as
-//      {"error":{"message":"Provider returned error","metadata":{"raw":...}}}.
-//      The inner error ("insufficient_quota" etc.) is the provider's, NOT a
-//      statement about the user's OpenRouter balance. Other free models still
-//      work, so this is just a per-model failure.
+//   1. Account-level failure — the OpenRouter balance cannot cover the request,
+//      or the account's :free daily allowance is spent. OpenRouter raises this
+//      itself; the body carries its own wording ("requires more credits",
+//      "negative balance", "free-models-per-day"). Account-wide.
 //
-// Only case 1 should park the whole OpenRouter provider; case 2 must fall
-// through to the next free model.
+//   2. Provider passthrough — one specific model's upstream host hit *its own*
+//      quota / rate limit, relayed verbatim inside the wrapper above. The inner
+//      error is the provider's, NOT a statement about the user's account. Other
+//      models still work, so this is just a per-model failure to skip past.
+//
+// isOpenRouterUpstreamRelayError detects case 2.
+export function isOpenRouterUpstreamRelayError(body: string): boolean {
+  return /provider returned error/i.test(body) || /"metadata"\s*:/.test(body);
+}
+
 export function isOpenRouterAccountCredit402(body: string): boolean {
   // A relayed downstream error is never about the OpenRouter account balance.
-  if (/provider returned error/i.test(body) || /"metadata"\s*:/.test(body)) {
-    return false;
-  }
+  if (isOpenRouterUpstreamRelayError(body)) return false;
   // OpenRouter's own account-credit wording.
   return /requires more credits|can only afford|negative balance|insufficient credits|add (more )?credits|payment required/i.test(
     body,
   );
 }
 
-async function generateWithOpenRouter(
+// Cheap, reliable paid models, tried ONLY as a last resort — when every :free
+// model is upstream-busy or the account's :free daily allowance is spent. Both
+// are confirmed working and cost ~$0.0002 per 8-job analyzer batch, so a $10
+// OpenRouter balance covers tens of thousands of batches. Free models are
+// always exhausted first; these run only when free has nothing left to give.
+const OPENROUTER_PAID_FALLBACK_MODELS = [
+  "meta-llama/llama-3.1-8b-instruct", // $0.02 / $0.05 per 1M tokens
+  "mistralai/mistral-nemo", //          $0.02 / $0.03 per 1M tokens
+];
+
+// What the free-model stage concluded. Only "exhausted" warrants paying for a
+// fallback model; the other terminal outcomes mean a paid model cannot help.
+type FreeStageOutcome =
+  | { kind: "ok"; result: LLMResult }
+  // OpenRouter balance genuinely cannot cover a request — a paid model fails
+  // the same way, so do not fall through to the paid stage.
+  | { kind: "account-credit"; message: string }
+  // OpenRouter's own per-key throttle — it limits paid calls on this key too,
+  // so the paid stage cannot help either.
+  | { kind: "throttled"; message: string; retryAfterMs: number }
+  // Every free model attempted was busy, or the :free daily cap is spent. Paid
+  // models have separate, far higher limits, so the paid stage is worth a try.
+  | { kind: "exhausted"; attempts: string[] };
+
+// Stage 1 — walk the :free models. Never throws a rate-limit error; it reports
+// its conclusion as data so the caller can decide whether the paid stage is
+// worth attempting.
+async function tryOpenRouterFreeModels(
   prompt: string,
   apiKey: string,
   model: string,
   signal?: AbortSignal,
-): Promise<LLMResult> {
+): Promise<FreeStageOutcome> {
   const useAuto = !model || model === OPENROUTER_AUTO;
   let order: string[];
 
   if (useAuto) {
     try {
-      order = await fetchOpenRouterFreeModels(apiKey);
+      order = await fetchOpenRouterFreeModels(apiKey, signal);
       if (order.length === 0) order = OPENROUTER_STATIC_FALLBACK;
     } catch {
       order = OPENROUTER_STATIC_FALLBACK;
@@ -260,7 +295,7 @@ async function generateWithOpenRouter(
     let dynamic: string[] = [];
     let listLive = false;
     try {
-      dynamic = await fetchOpenRouterFreeModels(apiKey);
+      dynamic = await fetchOpenRouterFreeModels(apiKey, signal);
       listLive = true;
     } catch {
       dynamic = OPENROUTER_STATIC_FALLBACK;
@@ -290,18 +325,30 @@ async function generateWithOpenRouter(
 
       if (res.status === 429) {
         const body = await res.text();
+        // A 429 relayed from one :free model's upstream host ("Provider
+        // returned error" / "temporarily rate-limited upstream") means that
+        // single model is momentarily full — NOT an OpenRouter free-models-
+        // per-day cap. Skip to the next free model.
+        if (isOpenRouterUpstreamRelayError(body)) {
+          attempts.push(`${m}: HTTP 429 (model upstream busy) ${body.slice(0, 120)}`);
+          continue;
+        }
         const waitMs = parseRetryAfterMs(res, body);
         const daily = /per[- ]?day|daily|free-models-per-day|free_models_per_day/i.test(body);
-        // Stop the batch immediately for daily-cap or long waits; let the
-        // caller surface the message and the user can retry later.
-        if (daily || waitMs === 0 || waitMs > OPENROUTER_MAX_WAIT_MS) {
-          throw new LLMRateLimitedError(
-            daily
-              ? "OpenRouter free daily quota reached — wait until tomorrow or add credits"
-              : `OpenRouter rate-limited (retry in ${Math.ceil((waitMs || 60_000) / 1000)}s)`,
-            waitMs || 60_000,
-            daily,
-          );
+        if (daily) {
+          // The account's :free daily allowance is spent. Paid models bill
+          // against a separate, far higher limit — hand off to the paid stage.
+          attempts.push(`${m}: HTTP 429 free-models-per-day cap reached`);
+          return { kind: "exhausted", attempts };
+        }
+        if (waitMs === 0 || waitMs > OPENROUTER_MAX_WAIT_MS) {
+          // OpenRouter's own per-key throttle — it caps paid calls on this key
+          // too, so a paid fallback would just hit the same wall.
+          return {
+            kind: "throttled",
+            message: `OpenRouter rate-limited (retry in ${Math.ceil((waitMs || 60_000) / 1000)}s)`,
+            retryAfterMs: waitMs || 60_000,
+          };
         }
         // Short wait — sleep then retry the SAME model (don't move on, since
         // every free model shares the same budget anyway).
@@ -310,11 +357,11 @@ async function generateWithOpenRouter(
         if (retryRes.status === 429) {
           const retryBody = await retryRes.text();
           const retryWait = parseRetryAfterMs(retryRes, retryBody) || 60_000;
-          throw new LLMRateLimitedError(
-            `OpenRouter still rate-limited after backoff (retry in ${Math.ceil(retryWait / 1000)}s)`,
-            retryWait,
-            false,
-          );
+          return {
+            kind: "throttled",
+            message: `OpenRouter still rate-limited after backoff (retry in ${Math.ceil(retryWait / 1000)}s)`,
+            retryAfterMs: retryWait,
+          };
         }
         if (!retryRes.ok) {
           attempts.push(`${m}: HTTP ${retryRes.status} after retry`);
@@ -327,22 +374,21 @@ async function generateWithOpenRouter(
           continue;
         }
         const tokensUsed = (data?.usage?.prompt_tokens || 0) + (data?.usage?.completion_tokens || 0);
-        return { text, model: m, tokensUsed };
+        return { kind: "ok", result: { text, model: m, tokensUsed } };
       }
 
       if (res.status === 402) {
         const body = await res.text();
         if (isOpenRouterAccountCredit402(body)) {
-          // Genuine account-credit failure — every free model fails the same
-          // way, so park the whole provider.
-          throw new LLMRateLimitedError(
-            `OpenRouter rejected: insufficient account credits (${body.slice(0, 160)})`,
-            24 * 60 * 60_000,
-            true,
-          );
+          // Genuine account-credit failure — every model, free or paid, fails
+          // the same way until the user tops up.
+          return {
+            kind: "account-credit",
+            message: `OpenRouter rejected: insufficient account credits (${body.slice(0, 160)})`,
+          };
         }
         // 402 relayed from this one :free model's upstream host — that model
-        // is out of capacity, but the account and other free models are fine.
+        // is out of capacity, but the account and other models are fine.
         attempts.push(`${m}: HTTP 402 (model provider out of capacity) ${body.slice(0, 120)}`);
         continue;
       }
@@ -360,14 +406,93 @@ async function generateWithOpenRouter(
         continue;
       }
       const tokensUsed = (data?.usage?.prompt_tokens || 0) + (data?.usage?.completion_tokens || 0);
-      return { text, model: m, tokensUsed };
+      return { kind: "ok", result: { text, model: m, tokensUsed } };
     } catch (e: any) {
-      if (e instanceof LLMRateLimitedError) throw e;
       attempts.push(`${m}: ${String(e?.message || e)}`);
     }
   }
 
-  throw new Error(`OpenRouter: all ${order.length} free model attempts failed → ${attempts.join(" | ")}`);
+  return { kind: "exhausted", attempts };
+}
+
+// Stage 2 — the cheap paid fallback. Reached only when the free stage is
+// "exhausted". Returns null if every paid model also fails (so the caller can
+// raise one combined error); throws only on a genuine account-credit failure.
+async function tryOpenRouterPaidFallback(
+  prompt: string,
+  apiKey: string,
+  attempts: string[],
+  signal?: AbortSignal,
+): Promise<LLMResult | null> {
+  for (const m of OPENROUTER_PAID_FALLBACK_MODELS) {
+    if (signal?.aborted) throw new Error("LLM call aborted");
+    try {
+      const res = await callOpenRouter(apiKey, m, prompt, signal);
+
+      if (res.status === 402) {
+        const body = await res.text();
+        if (isOpenRouterAccountCredit402(body)) {
+          // Out of money — the next paid model fails identically, so stop.
+          throw new LLMRateLimitedError(
+            `OpenRouter rejected: insufficient account credits (${body.slice(0, 160)})`,
+            24 * 60 * 60_000,
+            true,
+          );
+        }
+        attempts.push(`${m} (paid): HTTP 402 ${body.slice(0, 120)}`);
+        continue;
+      }
+      if (!res.ok) {
+        const body = await res.text();
+        attempts.push(`${m} (paid): HTTP ${res.status} ${body.slice(0, 160)}`);
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content || "";
+      if (!text) {
+        attempts.push(`${m} (paid): empty response`);
+        continue;
+      }
+      const tokensUsed = (data?.usage?.prompt_tokens || 0) + (data?.usage?.completion_tokens || 0);
+      return { text, model: m, tokensUsed };
+    } catch (e: any) {
+      if (e instanceof LLMRateLimitedError) throw e;
+      attempts.push(`${m} (paid): ${String(e?.message || e)}`);
+    }
+  }
+  return null;
+}
+
+// Free-first, cheap-paid-fallback. :free models are always tried first; a
+// paid model runs only when every free model is busy or the :free daily cap is
+// spent — see OPENROUTER_PAID_FALLBACK_MODELS. A paid model used here shows up
+// in AnalysisLog as openrouter:<paid-model-id> (no ":free" suffix).
+export async function generateWithOpenRouter(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<LLMResult> {
+  const free = await tryOpenRouterFreeModels(prompt, apiKey, model, signal);
+  if (free.kind === "ok") return free.result;
+  if (free.kind === "account-credit") {
+    // Account out of money — a paid model fails the same way. Park the provider.
+    throw new LLMRateLimitedError(free.message, 24 * 60 * 60_000, true);
+  }
+  if (free.kind === "throttled") {
+    // Per-key throttle caps paid calls too — back off rather than pay to retry.
+    throw new LLMRateLimitedError(free.message, free.retryAfterMs, false);
+  }
+
+  // free.kind === "exhausted" — free models had nothing left. Pay for one.
+  const attempts = [...free.attempts];
+  const paid = await tryOpenRouterPaidFallback(prompt, apiKey, attempts, signal);
+  if (paid) return paid;
+
+  throw new Error(
+    `OpenRouter: every free model and paid fallback failed → ${attempts.join(" | ")}`,
+  );
 }
 
 export { fetchOpenRouterFreeModels, callOpenRouter };
