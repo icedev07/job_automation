@@ -212,6 +212,34 @@ function parseRetryAfterMs(res: Response, body: string): number {
   return 0;
 }
 
+// OpenRouter answers HTTP 402 in two very different situations, and treating
+// them the same is what makes a fully-funded account look "out of credits":
+//
+//   1. Account credit failure — the OpenRouter balance cannot cover the
+//      request. OpenRouter raises this itself and the body says so plainly
+//      ("requires more credits", "can only afford", "negative balance"). This
+//      is account-wide: every model fails until the user tops up.
+//
+//   2. Provider passthrough — one specific :free model's upstream host hit
+//      *its own* quota, and OpenRouter relays that verbatim, wrapped as
+//      {"error":{"message":"Provider returned error","metadata":{"raw":...}}}.
+//      The inner error ("insufficient_quota" etc.) is the provider's, NOT a
+//      statement about the user's OpenRouter balance. Other free models still
+//      work, so this is just a per-model failure.
+//
+// Only case 1 should park the whole OpenRouter provider; case 2 must fall
+// through to the next free model.
+export function isOpenRouterAccountCredit402(body: string): boolean {
+  // A relayed downstream error is never about the OpenRouter account balance.
+  if (/provider returned error/i.test(body) || /"metadata"\s*:/.test(body)) {
+    return false;
+  }
+  // OpenRouter's own account-credit wording.
+  return /requires more credits|can only afford|negative balance|insufficient credits|add (more )?credits|payment required/i.test(
+    body,
+  );
+}
+
 async function generateWithOpenRouter(
   prompt: string,
   apiKey: string,
@@ -230,12 +258,23 @@ async function generateWithOpenRouter(
     }
   } else {
     let dynamic: string[] = [];
+    let listLive = false;
     try {
       dynamic = await fetchOpenRouterFreeModels(apiKey);
+      listLive = true;
     } catch {
       dynamic = OPENROUTER_STATIC_FALLBACK;
     }
-    order = [model, ...dynamic.filter((m) => m !== model)];
+    // A configured model that no longer appears in the live free-model list
+    // has been retired — OpenRouter answers it with a 404 "no endpoints
+    // found". Trying it first just burns one of the OPENROUTER_MAX_MODEL_
+    // ATTEMPTS tries on a guaranteed failure, so drop it and let live
+    // discovery drive instead. (If the list lookup failed we cannot tell, so
+    // keep the configured model.)
+    const configuredIsLive = !listLive || dynamic.includes(model);
+    order = configuredIsLive
+      ? [model, ...dynamic.filter((m) => m !== model)]
+      : [...dynamic];
   }
 
   // Trim to the small attempt cap so a single LLM call cannot eat the 60s
@@ -293,11 +332,19 @@ async function generateWithOpenRouter(
 
       if (res.status === 402) {
         const body = await res.text();
-        throw new LLMRateLimitedError(
-          `OpenRouter rejected: insufficient credits (${body.slice(0, 160)})`,
-          24 * 60 * 60_000,
-          true,
-        );
+        if (isOpenRouterAccountCredit402(body)) {
+          // Genuine account-credit failure — every free model fails the same
+          // way, so park the whole provider.
+          throw new LLMRateLimitedError(
+            `OpenRouter rejected: insufficient account credits (${body.slice(0, 160)})`,
+            24 * 60 * 60_000,
+            true,
+          );
+        }
+        // 402 relayed from this one :free model's upstream host — that model
+        // is out of capacity, but the account and other free models are fine.
+        attempts.push(`${m}: HTTP 402 (model provider out of capacity) ${body.slice(0, 120)}`);
+        continue;
       }
 
       if (!res.ok) {

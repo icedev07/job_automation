@@ -22,6 +22,20 @@ const PROVIDERS: { id: string; label: string; note: string }[] = [
   { id: "cloudflare", label: "Cloudflare", note: "free, no card" },
 ];
 
+// Preset model ids shown in the OpenRouter Model dropdown. OpenRouter retires
+// :free models often, so these are only a convenience — "auto" (live discovery)
+// is the robust choice. Used to detect a saved value that is no longer a preset.
+const OPENROUTER_PRESET_MODELS = [
+  "auto",
+  "deepseek/deepseek-r1:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemini-2.0-flash-exp:free",
+  "qwen/qwen-2.5-72b-instruct:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "google/gemma-2-9b-it:free",
+  "mistralai/mistral-7b-instruct:free",
+];
+
 const inputStyle: CSSProperties = {
   width: "100%",
   padding: "0.5rem",
@@ -442,7 +456,16 @@ export default function SettingsPage() {
         <option value="meta-llama/llama-3.2-3b-instruct:free">meta-llama/llama-3.2-3b-instruct</option>
         <option value="google/gemma-2-9b-it:free">google/gemma-2-9b-it</option>
         <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct</option>
+        {openrouterModel && !OPENROUTER_PRESET_MODELS.includes(openrouterModel) && (
+          <option value={openrouterModel}>
+            {openrouterModel} (saved value — likely retired, switch to auto)
+          </option>
+        )}
       </select>
+      <p style={helpStyle}>
+        Leave on <strong>auto</strong> unless you have a reason not to — OpenRouter
+        retires free models often, and a pinned model that goes away causes errors.
+      </p>
       <button type="button" onClick={() => runTest("openrouter")} disabled={testing === "openrouter"} style={testBtn}>
         {testing === "openrouter" ? "Testing..." : "Test OpenRouter"}
       </button>

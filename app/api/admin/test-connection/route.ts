@@ -5,6 +5,7 @@ import { getConfig } from "@/lib/config";
 import {
   fetchOpenRouterFreeModels,
   callOpenRouter,
+  isOpenRouterAccountCredit402,
   generateWithGemini,
   generateWithGroq,
   generateWithCerebras,
@@ -124,12 +125,28 @@ export async function POST(req: NextRequest) {
           const res = await callOpenRouter(apiKey, m, "Reply with the single word: OK", signal);
           const body = await res.text();
 
-          // 429 (free-models-per-day) and 402 (no credits) are account-wide:
-          // no other free model will behave differently, so stop walking here.
-          if (res.status === 429 || res.status === 402) {
+          // 429 (free-models-per-day) is account-wide — no other free model
+          // will behave differently, so stop walking here.
+          if (res.status === 429) {
             quotaBlocked = true;
-            attempts.push(`${m}: HTTP ${res.status} ${body.slice(0, 160)}`);
+            attempts.push(`${m}: HTTP 429 ${body.slice(0, 160)}`);
             break;
+          }
+          // 402 is account-wide only when it is a genuine OpenRouter credit
+          // failure. A 402 relayed from one model's upstream provider
+          // ("Provider returned error") is model-specific — keep walking to a
+          // healthy free model instead of falsely reporting the whole account
+          // as out of quota.
+          if (res.status === 402) {
+            if (isOpenRouterAccountCredit402(body)) {
+              quotaBlocked = true;
+              attempts.push(`${m}: HTTP 402 ${body.slice(0, 160)}`);
+              break;
+            }
+            attempts.push(
+              `${m}: HTTP 402 (model provider out of capacity) ${body.slice(0, 140)}`,
+            );
+            continue;
           }
           if (!res.ok) {
             if (res.status === 404 && m === requested && requested !== "auto") {
@@ -151,6 +168,14 @@ export async function POST(req: NextRequest) {
             modelUsed: m,
             freeModelsAvailable: liveFreeModels.length,
             firstFreeModels: liveFreeModels.slice(0, 8),
+            // The configured model 404'd but a live free model answered — the
+            // test passes, yet the saved setting still points at a dead model.
+            ...(requestedModelDead && {
+              warning:
+                `Saved model "${requested}" is retired (404 — no endpoints). Analysis ` +
+                `still works because it auto-falls back to live free models, but set ` +
+                `OpenRouter Model to "auto" to clear this warning.`,
+            }),
             sample: sample.slice(0, 200),
           });
         } catch (e: any) {
