@@ -257,7 +257,27 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target }),
       });
-      const data = await res.json();
+      // Read the body as text first. A timed-out or crashed serverless function
+      // sends an empty (or non-JSON) body, and res.json() on that throws the
+      // opaque "Unexpected end of JSON input" — which hides the real failure.
+      // Parse defensively so the HTTP status and any server text reach the user.
+      const raw = await res.text();
+      let data: TestResult;
+      if (!raw.trim()) {
+        data = {
+          ok: false,
+          error: `Server returned an empty response (HTTP ${res.status}). The test likely timed out or the function crashed — check the deployment logs for /api/admin/test-connection.`,
+        };
+      } else {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          data = {
+            ok: false,
+            error: `Server returned a non-JSON response (HTTP ${res.status}): ${raw.slice(0, 300)}`,
+          };
+        }
+      }
       if (target === "gemini") setGeminiTest(data);
       if (target === "openrouter") setOpenrouterTest(data);
       if (target === "groq") setGroqTest(data);

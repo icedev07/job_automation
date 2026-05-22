@@ -89,13 +89,19 @@ const OPENROUTER_STATIC_FALLBACK = [
 let cachedFreeModels: { ids: string[]; ts: number } | null = null;
 const MODELS_TTL_MS = 10 * 60 * 1000;
 
-async function fetchOpenRouterFreeModels(apiKey: string): Promise<string[]> {
+async function fetchOpenRouterFreeModels(
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
   if (cachedFreeModels && Date.now() - cachedFreeModels.ts < MODELS_TTL_MS) {
     return cachedFreeModels.ids;
   }
 
   const res = await fetch("https://openrouter.ai/api/v1/models", {
     headers: { Authorization: `Bearer ${apiKey}` },
+    // A hung model lookup must not eat the whole serverless budget. Honour the
+    // caller's deadline when given one, otherwise fall back to a self-timeout.
+    signal: signal ?? AbortSignal.timeout(20_000),
   });
   if (!res.ok) {
     throw new Error(`OpenRouter /models HTTP ${res.status}: ${await res.text().then((s) => s.slice(0, 200))}`);
