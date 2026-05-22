@@ -267,9 +267,7 @@ npm run simplify:scan
 
 ### After scanning
 
-1. Go to `/admin/scanners` in the web UI
-2. Click **Analyze Pending Jobs**
-3. The AI analyzes each job and automatically syncs approved ones to Google Sheets
+Nothing extra to do. Each scan checks every job with AI inline, stores only the suitable / not-suitable results, and syncs approved ones to Google Sheets in the same run. The **Analyze Pending Jobs** button is only a fallback for clearing leftovers (a rescan reset, or a pre-upgrade backlog) and normally shows `0`.
 
 ---
 
@@ -280,7 +278,7 @@ npm run simplify:scan
 | URL dedup | same job URL scraped twice | normalized URL check before saving |
 | Title+company dedup | same job on same platform | exact match before saving |
 | Cross-platform dedup | same job on Dice AND LinkedIn | normalized title+company match across all platforms |
-| Analysis dedup | analyzing a job already analyzed | only PENDING jobs are analyzed, atomic status check |
+| Analysis dedup | analyzing a job already analyzed | a feed scan looks each job up first and analyzes only genuinely new ones |
 | Sheet sync dedup | syncing same job to sheet twice | `sheetSynced` flag |
 | Skip rules | unwanted companies/titles/URLs | checked before saving, configurable from admin |
 
@@ -343,12 +341,12 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 **"API key not configured" or 429 quota error**
 - Go to `/admin/settings`, tick several providers in the **AI Providers** checklist, and add a key for each — the rotation fails over automatically when one is rate-limited.
 - The more providers you tick and key (Gemini, Groq, Cerebras, OpenRouter, Cloudflare), the more daily headroom you get.
-- If every provider is rate-limited at once, the analyzer pauses and leaves jobs `PENDING` — they are retried on the next run, never wrongly rejected.
+- If every provider is rate-limited at once, the scan stops checking jobs — unchecked jobs are simply not stored and are re-fetched and retried on the next scan, never wrongly rejected.
 
 **Gemini: `Error fetching from https://generativelanguage.googleapis.com`**
 - In Settings set the model to **`gemini-1.5-flash`** and save (newer model names are not always available for every key or region).
 - Create a fresh key at https://aistudio.google.com/apikey and paste it again.
-- After fixing, use **Scanners** tab **Analyze Pending Jobs** to clear old PENDING rows, or scan again on LinkedIn.
+- After fixing, just run the scanners again — each scan re-fetches and checks any jobs missed earlier.
 
 **Duplicate lines in the extension activity log**
 - Reload the extension after update: `chrome://extensions` then reload "LinkedIn Job Scanner" (background relay was removed).

@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { FEED_KEYS, getFeed, runFeedScan } from "@/lib/scrapers";
 import { analyzeAllPending } from "@/lib/jobAnalyzer";
+import { syncApprovedJobsToSheet } from "@/lib/googleSheetsSync";
 import { getAllConfig } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
+
+// Vercel caps this route at 60s. Keep the working window under that.
+const FUNCTION_BUDGET_MS = 55_000;
+// A single board scan now scrapes AND analyzes inline, so it needs a real
+// working window — but leave headroom for the response + sheet sync.
+const SINGLE_BOARD_BUDGET_MS = 48_000;
+// A board needs at least this much wall-clock to scrape + run one AI batch.
+const MIN_BOARD_BUDGET_MS = 24_000;
+// Don't start the (optional) Google Sheets sync once we're this deep into the
+// function — a slow sync must never push the request past the 60s cap.
+const SYNC_CUTOFF_MS = 50_000;
 
 type RunOutcome = {
   board: string;
@@ -12,10 +24,27 @@ type RunOutcome = {
   jobsSaved: number;
   jobsRefreshed: number;
   jobsRescanned: number;
+  approved: number;
+  rejected: number;
+  unanalyzed: number;
   durationMs: number;
   error?: string;
   warning?: string;
 };
+
+function blankOutcome(board: string, durationMs: number): RunOutcome {
+  return {
+    board,
+    jobsFound: 0,
+    jobsSaved: 0,
+    jobsRefreshed: 0,
+    jobsRescanned: 0,
+    approved: 0,
+    rejected: 0,
+    unanalyzed: 0,
+    durationMs,
+  };
+}
 
 async function runOne(
   board: string,
@@ -23,7 +52,7 @@ async function runOne(
   timeBudgetMs?: number,
 ): Promise<RunOutcome> {
   const startedAt = Date.now();
-  let outcome: RunOutcome = { board, jobsFound: 0, jobsSaved: 0, jobsRefreshed: 0, jobsRescanned: 0, durationMs: 0 };
+  let outcome: RunOutcome = blankOutcome(board, 0);
   try {
     if (!getFeed(board)) {
       throw new Error(
@@ -38,17 +67,15 @@ async function runOne(
       jobsSaved: result.saved,
       jobsRefreshed: result.refreshed,
       jobsRescanned: result.rescanned,
+      approved: result.approved,
+      rejected: result.rejected,
+      unanalyzed: result.unanalyzed,
       durationMs: Date.now() - startedAt,
       warning: result.warning,
     };
   } catch (err) {
     outcome = {
-      board,
-      jobsFound: 0,
-      jobsSaved: 0,
-      jobsRefreshed: 0,
-      jobsRescanned: 0,
-      durationMs: Date.now() - startedAt,
+      ...blankOutcome(board, Date.now() - startedAt),
       error: (err as Error).message || String(err),
     };
   }
@@ -57,8 +84,8 @@ async function runOne(
     data: {
       board: outcome.board,
       jobsFound: outcome.jobsFound,
-      // Persist saved + rescanned in jobsSaved column so dashboards keep their meaning
-      // (rescanned rows go back into PENDING and need fresh analysis, just like new ones).
+      // saved + rescanned in jobsSaved so dashboards keep their meaning — both
+      // are jobs that received a fresh AI verdict this run.
       jobsSaved: outcome.jobsSaved + outcome.jobsRescanned,
       errors: outcome.error || outcome.warning || null,
       durationMs: outcome.durationMs,
@@ -68,7 +95,68 @@ async function runOne(
   return outcome;
 }
 
+// Scrape + analyze feeds in sequence, giving each board a real working window.
+// Boards not reached before the function budget runs out are simply processed
+// on the next run — nothing is left half-stored, and no PENDING rows are
+// created, so re-running is always safe.
+async function runAllSequential(
+  sharedConfig: Record<string, string>,
+  functionStartedAt: number,
+): Promise<RunOutcome[]> {
+  const outcomes: RunOutcome[] = [];
+  for (const key of FEED_KEYS) {
+    const remaining = FUNCTION_BUDGET_MS - (Date.now() - functionStartedAt);
+    if (remaining < MIN_BOARD_BUDGET_MS) break;
+    // Cap each board so several boards get touched per run instead of one board
+    // eating the whole budget.
+    const budget = Math.min(30_000, remaining - 4_000);
+    outcomes.push(await runOne(key, sharedConfig, budget));
+  }
+  return outcomes;
+}
+
+// Push freshly-approved jobs to Google Sheets — but only when there is enough
+// of the 60s function budget left to finish safely. When skipped, the next
+// scan run (or the analyze route) picks the rows up.
+async function maybeSheetSync(functionStartedAt: number): Promise<number> {
+  if (Date.now() - functionStartedAt > SYNC_CUTOFF_MS) return 0;
+  try {
+    const r = await syncApprovedJobsToSheet();
+    return r.synced;
+  } catch {
+    // Sheets sync is optional — never block a scan on it.
+    return 0;
+  }
+}
+
+function sumOutcomes(outcomes: RunOutcome[]) {
+  return {
+    jobsFound: outcomes.reduce((s, o) => s + o.jobsFound, 0),
+    jobsSaved: outcomes.reduce((s, o) => s + o.jobsSaved, 0),
+    jobsRefreshed: outcomes.reduce((s, o) => s + o.jobsRefreshed, 0),
+    jobsRescanned: outcomes.reduce((s, o) => s + o.jobsRescanned, 0),
+    approved: outcomes.reduce((s, o) => s + o.approved, 0),
+    rejected: outcomes.reduce((s, o) => s + o.rejected, 0),
+    unanalyzed: outcomes.reduce((s, o) => s + o.unanalyzed, 0),
+  };
+}
+
+function outcomeBody(o: RunOutcome) {
+  return {
+    jobsFound: o.jobsFound,
+    jobsSaved: o.jobsSaved,
+    jobsRefreshed: o.jobsRefreshed,
+    jobsRescanned: o.jobsRescanned,
+    approved: o.approved,
+    rejected: o.rejected,
+    unanalyzed: o.unanalyzed,
+    durationMs: o.durationMs,
+    warning: o.warning,
+  };
+}
+
 export async function POST(req: NextRequest) {
+  const functionStartedAt = Date.now();
   let body: { board?: string } = {};
   try {
     body = await req.json();
@@ -83,43 +171,27 @@ export async function POST(req: NextRequest) {
 
   if (board === "all") {
     const sharedConfig = await getAllConfig();
-    const outcomes: RunOutcome[] = [];
-    // Reserve ~5s headroom for the response + analysis chain. Spread the rest
-    // evenly so one slow board cannot eat the budget for every later board.
-    const allStartedAt = Date.now();
-    for (const key of FEED_KEYS) {
-      const elapsed = Date.now() - allStartedAt;
-      const remaining = Math.max(5_000, 55_000 - elapsed);
-      const stillToRun = Math.max(1, FEED_KEYS.length - outcomes.length);
-      const budget = Math.max(3_000, Math.floor(remaining / stillToRun));
-      outcomes.push(await runOne(key, sharedConfig, budget));
-    }
-    const totalSaved = outcomes.reduce((s, o) => s + o.jobsSaved, 0);
-    const totalFound = outcomes.reduce((s, o) => s + o.jobsFound, 0);
+    const outcomes = await runAllSequential(sharedConfig, functionStartedAt);
+    const sheetsSynced = await maybeSheetSync(functionStartedAt);
     const errors = outcomes.filter((o) => o.error).map((o) => `${o.board}: ${o.error}`);
     return NextResponse.json({
       success: errors.length === 0,
-      jobsFound: totalFound,
-      jobsSaved: totalSaved,
+      ...sumOutcomes(outcomes),
+      sheetsSynced,
       outcomes,
       ...(errors.length ? { error: errors.join("; ") } : {}),
     });
   }
 
-  const outcome = await runOne(board);
+  const outcome = await runOne(board, undefined, SINGLE_BOARD_BUDGET_MS);
+  const sheetsSynced = await maybeSheetSync(functionStartedAt);
   if (outcome.error) {
     return NextResponse.json(
-      { success: false, error: outcome.error, ...outcome },
+      { success: false, error: outcome.error, ...outcomeBody(outcome), sheetsSynced },
       { status: 500 },
     );
   }
-  return NextResponse.json({
-    success: true,
-    jobsFound: outcome.jobsFound,
-    jobsSaved: outcome.jobsSaved,
-    durationMs: outcome.durationMs,
-    warning: outcome.warning,
-  });
+  return NextResponse.json({ success: true, ...outcomeBody(outcome), sheetsSynced });
 }
 
 export async function GET(req: NextRequest) {
@@ -131,44 +203,38 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
   }
-  // Anchor the budget to wall-clock since the function actually started, not
-  // to the sum of scrape durations (which omits config load + JSON parsing
-  // + response time). This keeps us safely under the 60s function cap.
+
   const functionStartedAt = Date.now();
   const sharedConfig = await getAllConfig();
-  const outcomes: RunOutcome[] = [];
-  for (const key of FEED_KEYS) {
-    const elapsed = Date.now() - functionStartedAt;
-    // Keep ~10s in reserve for the analysis chain + response.
-    const remaining = Math.max(5_000, 50_000 - elapsed);
-    const stillToRun = Math.max(1, FEED_KEYS.length - outcomes.length);
-    const budget = Math.max(3_000, Math.floor(remaining / stillToRun));
-    outcomes.push(await runOne(key, sharedConfig, budget));
-  }
-  const totalSaved = outcomes.reduce((s, o) => s + o.jobsSaved, 0);
-  const totalFound = outcomes.reduce((s, o) => s + o.jobsFound, 0);
+  // Each board scrapes AND analyzes inline, so a single 60s run only covers a
+  // few boards. The remaining boards are picked up on the next cron tick — and
+  // because unanalyzed jobs are never stored, re-running is free of side
+  // effects. Run the cron more frequently (or use "Scrape all sources" in the
+  // admin UI, which loops every board client-side) for full coverage.
+  const outcomes = await runAllSequential(sharedConfig, functionStartedAt);
 
-  // Chain analysis on the cron path so freshly-scraped jobs are filtered in
-  // the same run. The cron has the same 60s budget as the manual route — give
-  // analyze whatever wall-clock remains, with a 5s floor so it can finish a
-  // partial batch and write its scan log. The next cron tick picks up the
-  // remaining pending rows.
-  const elapsedMs = Date.now() - functionStartedAt;
-  const remainingBudget = Math.max(5_000, 55_000 - elapsedMs);
+  // Drain any leftover PENDING rows (e.g. from a rescan reset or a pre-upgrade
+  // backlog) with whatever budget is left.
+  const remaining = FUNCTION_BUDGET_MS - (Date.now() - functionStartedAt);
   let analyzed:
     | { analyzed: number; approved: number; rejected: number; skipped: number; remaining: number; timedOut: boolean }
-    | { error: string } = { analyzed: 0, approved: 0, rejected: 0, skipped: 0, remaining: 0, timedOut: false };
-  try {
-    analyzed = await analyzeAllPending({ timeBudgetMs: remainingBudget });
-  } catch (err) {
-    analyzed = { error: (err as Error).message };
+    | { error: string }
+    | { skipped: true } = { skipped: true };
+  if (remaining > 8_000) {
+    try {
+      analyzed = await analyzeAllPending({ timeBudgetMs: remaining });
+    } catch (err) {
+      analyzed = { error: (err as Error).message };
+    }
   }
+
+  const sheetsSynced = await maybeSheetSync(functionStartedAt);
 
   return NextResponse.json({
     success: true,
-    jobsFound: totalFound,
-    jobsSaved: totalSaved,
+    ...sumOutcomes(outcomes),
     outcomes,
     analyzed,
+    sheetsSynced,
   });
 }

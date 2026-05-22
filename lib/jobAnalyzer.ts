@@ -556,3 +556,149 @@ export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Prom
     ...(batchError ? { batchError } : {}),
   };
 }
+
+// ----------------------------------------------------------------------------
+// Inline analysis for feed scans. Feed scanners call this on the jobs they
+// just scraped, BEFORE anything is written to the database, so only checked
+// (APPROVED / REJECTED) jobs are ever stored — never a raw PENDING list. Jobs
+// the model could not classify in this run (rate limit, time budget spent, a
+// dropped id) are simply absent from the returned map; the scanner does not
+// store them and they are re-fetched on the next scan.
+// ----------------------------------------------------------------------------
+
+export type ScrapedJobInput = {
+  title: string;
+  company: string;
+  location: string | null;
+  description: string | null;
+};
+
+export type InlineVerdict = AnalysisResult & {
+  model: string;
+  tokensUsed: number;
+  durationMs: number;
+};
+
+export type AnalyzeScrapedResult = {
+  /** Verdicts keyed by the index of the job in the input array. */
+  verdicts: Map<number, InlineVerdict>;
+  rateLimited: boolean;
+  timedOut: boolean;
+  error?: string;
+};
+
+export async function analyzeScrapedJobs(
+  jobs: ScrapedJobInput[],
+  options: {
+    batchSize?: number;
+    timeBudgetMs?: number;
+    requestDelayMs?: number;
+    signal?: AbortSignal;
+  } = {},
+): Promise<AnalyzeScrapedResult> {
+  const verdicts = new Map<number, InlineVerdict>();
+  if (jobs.length === 0) return { verdicts, rateLimited: false, timedOut: false };
+
+  const config = await getConfig();
+  const batchSize = Math.min(12, Math.max(1, options.batchSize ?? config.analyzerBatchSize));
+  const requestDelayMs = Math.max(0, options.requestDelayMs ?? config.analyzerRequestDelayMs);
+  const budgetMs = options.timeBudgetMs;
+  const signal = options.signal;
+  const startedAt = Date.now();
+
+  // No-description jobs never reach the LLM — rejected locally, the same rule
+  // the single-job and DB-batched paths use.
+  const needsLlm: { index: number; row: PendingJobRow }[] = [];
+  jobs.forEach((job, index) => {
+    if (!job.description || job.description.trim().length < 50) {
+      verdicts.set(index, {
+        approved: false,
+        score: 0,
+        reason: "No description available for analysis",
+        techStack: [],
+        model: "skipped",
+        tokensUsed: 0,
+        durationMs: 0,
+      });
+    } else {
+      needsLlm.push({
+        index,
+        row: {
+          id: index,
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          description: job.description,
+        },
+      });
+    }
+  });
+
+  let rateLimited = false;
+  let timedOut = false;
+  let error: string | undefined;
+
+  for (let i = 0; i < needsLlm.length; i += batchSize) {
+    if (signal?.aborted) {
+      timedOut = true;
+      break;
+    }
+    if (budgetMs != null && budgetMs - (Date.now() - startedAt) < MIN_BATCH_BUDGET_MS) {
+      timedOut = true;
+      break;
+    }
+
+    const chunk = needsLlm.slice(i, i + batchSize);
+    const prompt = buildBatchPrompt(
+      chunk.map((c) => c.row),
+      config,
+    );
+    const t0 = Date.now();
+    let llmResult: { text: string; model: string; tokensUsed: number };
+    try {
+      llmResult = await generateText(prompt, signal, "batch");
+    } catch (err: any) {
+      if (err instanceof LLMRateLimitedError) {
+        rateLimited = true;
+        break;
+      }
+      error = String(err?.message || err).slice(0, 300);
+      break;
+    }
+
+    const durationMs = Date.now() - t0;
+    // parseBatchResponse keys verdicts by the synthetic id we set above == index.
+    const parsed = parseBatchResponse(llmResult.text);
+    const perJobDuration = Math.round(durationMs / chunk.length);
+    const perJobTokens = Math.round((llmResult.tokensUsed || 0) / chunk.length);
+
+    let resolved = 0;
+    for (const c of chunk) {
+      const v = parsed.get(c.index);
+      if (!v) continue; // model dropped this id — left unstored for the next scan
+      verdicts.set(c.index, {
+        ...v,
+        model: llmResult.model,
+        tokensUsed: perJobTokens,
+        durationMs: perJobDuration,
+      });
+      resolved++;
+    }
+    // A chunk that resolved nothing means the model failed outright — retrying
+    // identical content would just fail again.
+    if (resolved === 0) {
+      error = "AI returned no usable verdicts for this batch";
+      break;
+    }
+
+    if (i + batchSize < needsLlm.length && requestDelayMs > 0) {
+      if (budgetMs != null && budgetMs - (Date.now() - startedAt) < MIN_BATCH_BUDGET_MS) {
+        timedOut = true;
+        break;
+      }
+      await delay(requestDelayMs, signal);
+    }
+  }
+
+  return { verdicts, rateLimited, timedOut, error };
+}

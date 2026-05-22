@@ -27,13 +27,15 @@ const SCANNER_SECRET_KEYS = [
   "mygreenhouse_xsrf_token",
 ];
 
-// MyGreenhouse search-filter selections — mirror the portal's own job-search
-// facets (date posted, salary, work type, employment type).
+// MyGreenhouse search-filter selections — the portal's own job-search facets
+// (date posted, salary, work type, employment type) plus our post-fetch
+// location filter (Europe / selected locations).
 const MYGREENHOUSE_FILTER_KEYS = [
   "mygreenhouse_date_posted",
   "mygreenhouse_salary",
   "mygreenhouse_work_types",
   "mygreenhouse_employment_types",
+  "mygreenhouse_locations",
 ];
 
 // Standalone config keys that aren't per-scanner.

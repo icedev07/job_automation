@@ -266,6 +266,44 @@ function MyGreenhouseFilters({
           ))}
         </div>
       </div>
+      <div style={{ gridColumn: "1 / -1" }}>
+        <label style={mghFilterLabel}>Locations</label>
+        <div style={{ display: "flex", gap: "0.4rem" }}>
+          <input
+            value={config.mygreenhouse_locations ?? ""}
+            onChange={(e) => setConfig({ ...config, mygreenhouse_locations: e.target.value })}
+            onBlur={() =>
+              fetch("/api/admin/scanners", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(config),
+              })
+            }
+            placeholder="e.g. Europe, Germany, Remote — blank = all locations"
+            style={inputStyle}
+          />
+          <button
+            type="button"
+            onClick={() => persist({ ...config, mygreenhouse_locations: "Europe" })}
+            style={{
+              whiteSpace: "nowrap",
+              padding: "0.4rem 0.7rem",
+              fontSize: "0.72rem",
+              background: "#fde68a",
+              border: "1px solid #fcd34d",
+              borderRadius: "4px",
+              cursor: "pointer",
+              color: "#78350f",
+            }}
+          >
+            Europe
+          </button>
+        </div>
+        <div style={{ fontSize: "0.66rem", color: "#92400e", marginTop: "0.25rem" }}>
+          Comma-separated. The keyword <code>Europe</code> matches every EU/EEA country plus
+          remote roles. Jobs whose location does not match are dropped before AI analysis.
+        </div>
+      </div>
     </div>
   );
 }
@@ -446,26 +484,55 @@ export default function ScannersPage() {
     refreshStats();
   }
 
-  async function runScanAndAnalyze() {
+  // Scrape + analyze every enabled source, one request per board so each board
+  // gets a full server-side budget (scrape + inline AI analysis). Looping
+  // client-side sidesteps the 60s function cap that limits the server "all"
+  // path. Each board only stores its CHECKED results — nothing is left pending.
+  async function runAllBoards() {
     setRunning("all");
-    setResults((prev) => ({ ...prev, all: "Scraping all sources..." }));
-    try {
-      const scanRes = await fetch("/api/admin/scanners/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ board: "all" }),
-      });
-      const scanData = await scanRes.json();
-      setResults((prev) => ({ ...prev, all: `Scrape: ${scanData.jobsSaved} new. Analyzing...` }));
-      // Re-use the chunked, looping analyze pipeline.
-      setRunning(null);
-      await runAnalysis();
-      setResults((prev) => ({ ...prev, all: `Done: ${scanData.jobsSaved} scraped, see analyze line above for results.` }));
-    } catch (err: any) {
-      setResults((prev) => ({ ...prev, all: `Error: ${err.message}` }));
-      setRunning(null);
+    const enabled = SCANNERS.filter((s) => config[`${s.key}_enabled`] !== "false");
+    let found = 0;
+    let saved = 0;
+    let approved = 0;
+    let rejected = 0;
+    let unanalyzed = 0;
+    const errs: string[] = [];
+    for (let idx = 0; idx < enabled.length; idx++) {
+      const s = enabled[idx];
+      setResults((prev) => ({ ...prev, all: `Scanning ${s.label} (${idx + 1}/${enabled.length})…` }));
+      try {
+        const res = await fetch("/api/admin/scanners/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ board: s.key }),
+        });
+        const data = await res.json();
+        found += Number(data.jobsFound || 0);
+        saved += Number(data.jobsSaved || 0);
+        approved += Number(data.approved || 0);
+        rejected += Number(data.rejected || 0);
+        unanalyzed += Number(data.unanalyzed || 0);
+        if (data.error) errs.push(`${s.key}: ${data.error}`);
+      } catch (err: any) {
+        errs.push(`${s.key}: ${err.message}`);
+      }
     }
+    setResults((prev) => ({
+      ...prev,
+      all:
+        `Done: ${saved} stored — ${approved} suitable, ${rejected} not suitable, from ${found} found` +
+        (unanalyzed > 0 ? `; ${unanalyzed} not yet checked (run again to continue)` : "") +
+        (errs.length ? `; errors: ${errs.join("; ")}` : ""),
+    }));
+    setRunning(null);
     refreshStats();
+  }
+
+  async function runScanAndAnalyze() {
+    await runAllBoards();
+    // Inline analysis already ran inside the scan above; this pass only drains
+    // any leftover PENDING rows (a rescan reset, or a pre-upgrade backlog).
+    await runAnalysis();
   }
 
   return (
@@ -474,8 +541,8 @@ export default function ScannersPage() {
 
       <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: "8px", padding: "1rem", marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
         <div>
-          <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{pendingCount} jobs pending AI analysis</div>
-          <div style={{ fontSize: "0.75rem", color: "#92400e" }}>Runs every pending row through batched AI calls until none are left, then syncs approved ones to Google Sheets. Auto-waits through transient rate limits.</div>
+          <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{pendingCount} jobs still pending AI analysis</div>
+          <div style={{ fontSize: "0.75rem", color: "#92400e" }}>Scans now check every job inline and store only the result, so this stays at 0 in normal use. It clears any leftovers — a rescan reset, or a pre-upgrade backlog — and syncs approved jobs to Google Sheets. Auto-waits through transient rate limits.</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
           <label style={{ fontSize: "0.72rem", color: "#92400e", display: "flex", alignItems: "center", gap: "0.35rem" }}>
@@ -511,12 +578,12 @@ export default function ScannersPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
           <div>
             <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1e3a8a" }}>One-click pipeline</div>
-            <div style={{ fontSize: "0.72rem", color: "#1d4ed8" }}>Scrapes every enabled source, then runs analysis on the new pending rows.</div>
+            <div style={{ fontSize: "0.72rem", color: "#1d4ed8" }}>Scrapes every enabled source and checks each job with AI inline — only the checked result (suitable / not suitable) is stored, never a raw pending list.</div>
           </div>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             <button
-              onClick={() => runScan("all")}
-              disabled={running !== null}
+              onClick={runAllBoards}
+              disabled={running !== null || analyzing}
               style={{ padding: "0.4rem 1rem", background: running === "all" ? "#6b7280" : "#1d4ed8", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 500 }}
             >
               {running === "all" ? "Running..." : "Scrape all sources"}

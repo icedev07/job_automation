@@ -193,6 +193,10 @@ type MyGreenhouseFilters = {
   salary: string;
   workTypes: string[];
   employmentTypes: string[];
+  // Location keywords (e.g. Europe / selected countries). Applied by us to the
+  // scraped results — my.greenhouse.io's job search has no public location
+  // facet, so this is a post-fetch filter rather than a portal query param.
+  locations: string[];
 };
 
 // Keep only the comma-separated tokens that are real, recognized values, so a
@@ -200,6 +204,47 @@ type MyGreenhouseFilters = {
 function parseAllowedCsv(raw: string | undefined, allowed: string[]): string[] {
   if (!raw) return [];
   return raw.split(",").map((s) => s.trim()).filter((s) => allowed.includes(s));
+}
+
+// Region keyword expansion for the location facet. The token "europe" (or
+// "eu") fans out to a broad EU/EEA keyword set plus remote terms, so a single
+// token covers the whole continent and remote-friendly roles. Any other token
+// is matched literally as a case-insensitive substring of the job location.
+const EUROPE_LOCATION_KEYWORDS = [
+  "europe", "european", "emea",
+  "remote", "anywhere", "worldwide", "global", "distributed",
+  "united kingdom", "great britain", "england", "scotland", "wales",
+  "northern ireland", "ireland", "germany", "deutschland", "france", "spain",
+  "españa", "portugal", "italy", "italia", "netherlands", "holland",
+  "belgium", "luxembourg", "austria", "switzerland", "poland", "polska",
+  "czech", "czechia", "slovakia", "slovenia", "hungary", "romania",
+  "bulgaria", "greece", "croatia", "serbia", "denmark", "sweden", "norway",
+  "finland", "iceland", "estonia", "latvia", "lithuania", "ukraine",
+  "cyprus", "malta",
+];
+
+// Parse the mygreenhouse_locations config into a lower-cased keyword set.
+function parseLocationFilter(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const out = new Set<string>();
+  for (const piece of raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)) {
+    if (piece === "europe" || piece === "eu" || piece === "europe (all)") {
+      for (const k of EUROPE_LOCATION_KEYWORDS) out.add(k);
+    } else {
+      out.add(piece);
+    }
+  }
+  return [...out];
+}
+
+// A job is kept when its location text contains one of the filter keywords. An
+// unknown (empty) location is kept too — the pre-filter only drops a CONFIRMED
+// geographic mismatch; the AI analyzer judges the rest.
+function locationMatches(loc: string | null | undefined, keywords: string[]): boolean {
+  if (keywords.length === 0) return true;
+  const text = (loc || "").trim().toLowerCase();
+  if (!text) return true;
+  return keywords.some((k) => text.includes(k));
 }
 
 function parseFilters(config: Record<string, string> | undefined): MyGreenhouseFilters {
@@ -216,6 +261,7 @@ function parseFilters(config: Record<string, string> | undefined): MyGreenhouseF
         ? parseAllowedCsv(c.mygreenhouse_work_types, WORK_TYPE_VALUES)
         : ["remote"],
     employmentTypes: parseAllowedCsv(c.mygreenhouse_employment_types, EMPLOYMENT_TYPE_VALUES),
+    locations: parseLocationFilter(c.mygreenhouse_locations),
   };
 }
 
@@ -581,17 +627,36 @@ export const myGreenhouseFeed: Feed = {
       if (list.length === 0) break;
     }
 
+    // --- Location filter (Europe / selected locations) ---
+    // A confirmed geographic mismatch is dropped before enrichment and AI
+    // analysis — both to honour the user's location choice and to save free-
+    // tier AI tokens. A job whose location is unknown is kept; the AI analyzer
+    // makes the final call.
+    let droppedByLocation = 0;
+    const located =
+      filters.locations.length > 0
+        ? targets.filter((t) => {
+            const ok = locationMatches(t.job.location, filters.locations);
+            if (!ok) droppedByLocation++;
+            return ok;
+          })
+        : targets;
+    if (droppedByLocation > 0) {
+      const note = `${droppedByLocation} dropped by location filter`;
+      warning = warning ? `${warning}; ${note}` : note;
+    }
+
     // --- Step B: enrich descriptions (Greenhouse boards API, else page fetch) ---
-    if (targets.length > 0 && !signal?.aborted) {
+    if (located.length > 0 && !signal?.aborted) {
       await mapWithConcurrency(
-        targets,
+        located,
         (t) => enrichOne(t, signal),
         ENRICH_CONCURRENCY,
         () => !!signal?.aborted,
       );
     }
 
-    const jobs = targets.map((t) => t.job);
+    const jobs = located.map((t) => t.job);
     const enriched = jobs.filter(
       (j) => j.description != null && !j.description.includes("Aggregated MyGreenhouse listing"),
     ).length;

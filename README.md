@@ -7,8 +7,8 @@ Scrapes jobs from multiple platforms, uses AI to filter for suitability, and pus
 ## How it works
 
 1. **Scrape** - Server-side feeds collect jobs from public job-board APIs / RSS / SSR payloads, plus an authenticated aggregator (MyGreenhouse). The Chrome extension separately scans LinkedIn search results.
-2. **Analyze** - Each job is sent to AI for suitability analysis (remote-friendly? accessible from Armenia? etc.). Pick one or more free AI providers in Settings; the analyzer rotates across them and fails over automatically when one is rate-limited.
-3. **Approve/Reject** - Jobs that pass the AI filter get status `APPROVED`, others get `REJECTED`
+2. **Analyze inline** - Every scraped job is checked by AI for suitability *during the scan itself* (remote-friendly? accessible from Armenia? etc.). Pick one or more free AI providers in Settings; the analyzer rotates across them and fails over automatically when one is rate-limited.
+3. **Store only the checked result** - A scan saves a job only after it has a verdict: `APPROVED` (suitable) or `REJECTED` (not suitable). It never stores a raw, unanalyzed "pending" job list. Jobs that could not be checked within the run's time/quota budget are skipped and retried on the next scan. (The LinkedIn extension already analyzes each job as it scans, so it is unaffected.)
 4. **Sync** - Approved jobs are pushed to Google Sheets
 5. **Hide** - On LinkedIn, rejected and Easy Apply jobs are automatically hidden
 
@@ -42,6 +42,10 @@ MyGreenhouse is a passwordless candidate portal aggregating every employer who o
 5. (Optional) Paste just the `MYGREENHOUSE-XSRF-TOKEN` value into the X-CSRF-Token field — only needed if scans start failing with 403.
 
 The cookie lives ~14 days (Greenhouse sets `_session_id` with a 14-day Expires). When the scanner reports `session expired`, repeat steps 1–4.
+
+### MyGreenhouse location filter
+
+The MyGreenhouse tile has a **Locations** field. Leave it blank to search every location, or list comma-separated places to keep (e.g. `Germany, Netherlands, Remote`). The one-click **Europe** button matches every EU/EEA country plus remote roles. Jobs whose location is a confirmed mismatch are dropped before AI analysis, which also saves free-tier AI quota.
 
 ### Bulk Greenhouse coverage without auth
 
@@ -136,7 +140,7 @@ Important: use port `5432` (session pooler), not `6543` (transaction pooler).
 |------|---------|
 | Dashboard | Stats overview, sync to Google Sheets |
 | Settings | AI providers (tick one or more of Gemini / Groq / Cerebras / OpenRouter / Cloudflare to rotate across), API keys, Google Sheets, target market, location, AI prompt, columns |
-| Scanners | Enable/disable platforms, set search URLs, run scans, analyze pending jobs |
+| Scanners | Enable/disable platforms, set search URLs and MyGreenhouse location filters, run scans (each scan analyzes inline and stores only checked jobs) |
 | Skip Rules | Block jobs by company, title keyword, or URL pattern |
 | Logs | View scan history, AI analysis logs, extension logs, bulk delete, date filtering |
 
@@ -159,7 +163,7 @@ The `extension/` folder contains a Manifest V3 Chrome extension that scans Linke
 
 ## Running scanners
 
-All feeds run server-side from `/admin/scanners` (or `POST /api/admin/scanners/run`). Use the **Scrape all sources** button for a full pass, or **Run Now** on a single tile. After scanning, click **Analyze Pending Jobs** to filter rows through the AI and push approved ones to Google Sheets.
+All feeds run server-side from `/admin/scanners` (or `POST /api/admin/scanners/run`). Use the **Scrape all sources** button for a full pass, or **Run Now** on a single tile. Each scan checks every job with AI as it runs and stores only the suitable / not-suitable results, then syncs approved ones to Google Sheets — there is no separate analyze step. **Analyze Pending Jobs** stays available only to clear leftovers (a rescan reset, or a pre-upgrade backlog) and normally shows `0`.
 
 ## Google Sheet output
 
@@ -240,7 +244,7 @@ Available placeholders: `{{JOB_TITLE}}`, `{{COMPANY}}`, `{{LOCATION}}`, `{{DESCR
 
 ## Database schema
 
-- **ScrapedJob** - every job found by scanners or extension (pending/approved/rejected)
+- **ScrapedJob** - every stored job (approved/rejected); feed scans store only checked jobs, the LinkedIn extension may briefly hold a job pending while it analyzes
 - **AppConfig** - key/value settings store
 - **SkipRule** - company/title/url block rules
 - **ScanLog** - scan history
