@@ -7,7 +7,7 @@ Scrapes jobs from multiple platforms, uses AI to filter for suitability, and pus
 ## How it works
 
 1. **Scrape** - Server-side feeds collect jobs from public job-board APIs / RSS / SSR payloads, plus an authenticated aggregator (MyGreenhouse). The Chrome extension separately scans LinkedIn search results.
-2. **Analyze** - Each job is sent to AI for suitability analysis (remote-friendly? accessible from Armenia? etc.). Smart Rotation pools several free AI providers and fails over automatically when one is rate-limited.
+2. **Analyze** - Each job is sent to AI for suitability analysis (remote-friendly? accessible from Armenia? etc.). Pick one or more free AI providers in Settings; the analyzer rotates across them and fails over automatically when one is rate-limited.
 3. **Approve/Reject** - Jobs that pass the AI filter get status `APPROVED`, others get `REJECTED`
 4. **Sync** - Approved jobs are pushed to Google Sheets
 5. **Hide** - On LinkedIn, rejected and Easy Apply jobs are automatically hidden
@@ -81,10 +81,12 @@ Admin Panel (/admin)
 | Vercel | Host the Next.js web app | Free |
 | Supabase | PostgreSQL database | Free |
 | Google Sheets API | Output approved jobs | Free |
-| Google Gemini API | AI job analysis (Smart Rotation) | Free, no card |
-| Groq API | AI job analysis (Smart Rotation) | Free, no card |
-| Cerebras API | AI job analysis (Smart Rotation) | Free, no card |
-| OpenRouter API | AI job analysis (Smart Rotation) | Free, no card |
+| Google Gemini API | AI job analysis (rotation provider) | Free, no card |
+| Groq API | AI job analysis (rotation provider) | Free, no card |
+| Cerebras API | AI job analysis (rotation provider) | Free, no card |
+| OpenRouter API | AI job analysis (rotation provider) | Free, no card |
+| Together AI API | AI job analysis (rotation provider) | Free models, no card |
+| Cloudflare Workers AI | AI job analysis (rotation provider) | Free, no card (10k Neurons/day) |
 | OpenAI API | AI job analysis (alternative) | Paid (user key) |
 
 ## Quick start
@@ -106,7 +108,7 @@ npm run dev
 
 # 5. Open http://localhost:3000/admin
 # Default password: admin
-# Configure: AI provider keys (Smart Rotation), Google Sheets, target market, etc.
+# Configure: AI provider keys, Google Sheets, target market, etc.
 ```
 
 ## Deploy to Vercel
@@ -135,7 +137,7 @@ Important: use port `5432` (session pooler), not `6543` (transaction pooler).
 | Page | Purpose |
 |------|---------|
 | Dashboard | Stats overview, sync to Google Sheets |
-| Settings | AI provider (Smart Rotation / Gemini / Groq / Cerebras / OpenRouter / OpenAI), API keys, Google Sheets, target market, location, AI prompt, columns |
+| Settings | AI providers (tick one or more of Gemini / Groq / Cerebras / OpenRouter / Together AI / Cloudflare / OpenAI to rotate across), API keys, Google Sheets, target market, location, AI prompt, columns |
 | Scanners | Enable/disable platforms, set search URLs, run scans, analyze pending jobs |
 | Skip Rules | Block jobs by company, title keyword, or URL pattern |
 | Logs | View scan history, AI analysis logs, extension logs, bulk delete, date filtering |
@@ -196,10 +198,12 @@ Default column config JSON:
 | Setting | Default value |
 |---------|--------------|
 | Admin Password | `admin` |
-| AI Provider | `gemini` (switch to `rotation` in Settings for multi-provider failover) |
+| AI Providers | `gemini, groq, cerebras, openrouter` (tick/untick any in Settings) |
 | Gemini Model | `gemini-2.5-flash` |
 | Groq Model | `llama-3.1-8b-instant` |
 | Cerebras Model | `llama-3.3-70b` |
+| Together AI Model | `auto` (discovers free models) |
+| Cloudflare Model | `@cf/meta/llama-3.1-8b-instruct` |
 | OpenAI Model | `gpt-4o-mini` |
 | Target Market | `Europe, Eastern Europe, Remote worldwide` |
 | Current Location | `Armenia` |

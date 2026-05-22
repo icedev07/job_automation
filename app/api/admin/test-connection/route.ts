@@ -8,6 +8,8 @@ import {
   generateWithGemini,
   generateWithGroq,
   generateWithCerebras,
+  generateWithTogether,
+  generateWithCloudflare,
 } from "@/lib/llmClient";
 
 export const dynamic = "force-dynamic";
@@ -229,74 +231,163 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (target === "rotation") {
-    if (
-      !config.geminiApiKey &&
-      !config.groqApiKey &&
-      !config.cerebrasApiKey &&
-      !config.openrouterApiKey
-    ) {
+  if (target === "together") {
+    if (!config.togetherApiKey) {
+      return NextResponse.json({ ok: false, error: "Together AI API key is empty in DB" });
+    }
+    const keyPreview =
+      config.togetherApiKey.slice(0, 8) + "..." + config.togetherApiKey.slice(-4);
+    const requested = config.togetherModel || "auto";
+    try {
+      const r = await generateWithTogether(
+        "Reply with the single word: OK",
+        config.togetherApiKey,
+        requested,
+      );
+      return NextResponse.json({
+        ok: true,
+        keyPreview,
+        requestedModel: requested,
+        modelUsed: r.model,
+        sample: r.text.slice(0, 200),
+      });
+    } catch (e: any) {
       return NextResponse.json({
         ok: false,
-        error: "No rotation provider keys set. Add a Gemini, Groq, Cerebras or OpenRouter key.",
+        keyPreview,
+        requestedModel: requested,
+        error: String(e?.message || e),
+      });
+    }
+  }
+
+  if (target === "cloudflare") {
+    if (!config.cloudflareAccountId) {
+      return NextResponse.json({ ok: false, error: "Cloudflare account id is empty in DB" });
+    }
+    if (!config.cloudflareApiKey) {
+      return NextResponse.json({ ok: false, error: "Cloudflare API token is empty in DB" });
+    }
+    const keyPreview =
+      config.cloudflareApiKey.slice(0, 6) + "..." + config.cloudflareApiKey.slice(-4);
+    const requested = config.cloudflareModel || "@cf/meta/llama-3.1-8b-instruct";
+    try {
+      const r = await generateWithCloudflare(
+        "Reply with the single word: OK",
+        config.cloudflareAccountId,
+        config.cloudflareApiKey,
+        requested,
+      );
+      return NextResponse.json({
+        ok: true,
+        keyPreview,
+        accountId: config.cloudflareAccountId.slice(0, 6) + "...",
+        requestedModel: requested,
+        modelUsed: r.model,
+        sample: r.text.slice(0, 200),
+      });
+    } catch (e: any) {
+      return NextResponse.json({
+        ok: false,
+        keyPreview,
+        requestedModel: requested,
+        error: String(e?.message || e),
+      });
+    }
+  }
+
+  if (target === "rotation") {
+    // Test exactly the providers the user has ticked in Settings.
+    const selected = config.aiProviders;
+    if (selected.length === 0) {
+      return NextResponse.json({
+        ok: false,
+        error: "No providers selected. Tick at least one provider in Settings.",
       });
     }
     const out: Record<string, any> = {};
     let anyOk = false;
     const ping = "Reply with the single word: OK";
 
-    if (config.geminiApiKey) {
+    for (const id of selected) {
       try {
-        const r = await generateWithGemini(ping, config.geminiApiKey, config.geminiModel || "gemini-2.5-flash");
-        out.gemini = `OK · ${r.model}`;
-        anyOk = true;
-      } catch (e: any) {
-        out.gemini = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
-      }
-    } else {
-      out.gemini = "no key — skipped";
-    }
-
-    if (config.groqApiKey) {
-      try {
-        const r = await generateWithGroq(ping, config.groqApiKey, config.groqModel);
-        out.groq = `OK · ${r.model}`;
-        anyOk = true;
-      } catch (e: any) {
-        out.groq = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
-      }
-    } else {
-      out.groq = "no key — skipped";
-    }
-
-    if (config.cerebrasApiKey) {
-      try {
-        const r = await generateWithCerebras(ping, config.cerebrasApiKey, config.cerebrasModel);
-        out.cerebras = `OK · ${r.model}`;
-        anyOk = true;
-      } catch (e: any) {
-        out.cerebras = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
-      }
-    } else {
-      out.cerebras = "no key — skipped";
-    }
-
-    if (config.openrouterApiKey) {
-      try {
-        const models = await fetchOpenRouterFreeModels(config.openrouterApiKey);
-        const model = models[0] || "meta-llama/llama-3.2-3b-instruct:free";
-        const res = await callOpenRouter(config.openrouterApiKey, model, ping);
-        if (res.ok) {
-          out.openrouter = `OK · ${model}`;
+        if (id === "gemini") {
+          if (!config.geminiApiKey) {
+            out.gemini = "no key — skipped";
+            continue;
+          }
+          const r = await generateWithGemini(
+            ping,
+            config.geminiApiKey,
+            config.geminiModel || "gemini-2.5-flash",
+          );
+          out.gemini = `OK · ${r.model}`;
           anyOk = true;
-        } else {
-          out.openrouter = `FAILED · HTTP ${res.status}`;
+        } else if (id === "groq") {
+          if (!config.groqApiKey) {
+            out.groq = "no key — skipped";
+            continue;
+          }
+          const r = await generateWithGroq(ping, config.groqApiKey, config.groqModel);
+          out.groq = `OK · ${r.model}`;
+          anyOk = true;
+        } else if (id === "cerebras") {
+          if (!config.cerebrasApiKey) {
+            out.cerebras = "no key — skipped";
+            continue;
+          }
+          const r = await generateWithCerebras(ping, config.cerebrasApiKey, config.cerebrasModel);
+          out.cerebras = `OK · ${r.model}`;
+          anyOk = true;
+        } else if (id === "openrouter") {
+          if (!config.openrouterApiKey) {
+            out.openrouter = "no key — skipped";
+            continue;
+          }
+          const models = await fetchOpenRouterFreeModels(config.openrouterApiKey);
+          const model = models[0] || "meta-llama/llama-3.2-3b-instruct:free";
+          const res = await callOpenRouter(config.openrouterApiKey, model, ping);
+          out.openrouter = res.ok ? `OK · ${model}` : `FAILED · HTTP ${res.status}`;
+          if (res.ok) anyOk = true;
+        } else if (id === "together") {
+          if (!config.togetherApiKey) {
+            out.together = "no key — skipped";
+            continue;
+          }
+          const r = await generateWithTogether(
+            ping,
+            config.togetherApiKey,
+            config.togetherModel || "auto",
+          );
+          out.together = `OK · ${r.model}`;
+          anyOk = true;
+        } else if (id === "cloudflare") {
+          if (!config.cloudflareAccountId || !config.cloudflareApiKey) {
+            out.cloudflare = "no account id / token — skipped";
+            continue;
+          }
+          const r = await generateWithCloudflare(
+            ping,
+            config.cloudflareAccountId,
+            config.cloudflareApiKey,
+            config.cloudflareModel || "@cf/meta/llama-3.1-8b-instruct",
+          );
+          out.cloudflare = `OK · ${r.model}`;
+          anyOk = true;
+        } else if (id === "openai") {
+          if (!config.openaiApiKey) {
+            out.openai = "no key — skipped";
+            continue;
+          }
+          const res = await fetch("https://api.openai.com/v1/models", {
+            headers: { Authorization: `Bearer ${config.openaiApiKey}` },
+          });
+          out.openai = res.ok ? "OK · key valid" : `FAILED · HTTP ${res.status}`;
+          if (res.ok) anyOk = true;
         }
       } catch (e: any) {
-        out.openrouter = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
+        out[id] = `FAILED · ${String(e?.message || e).slice(0, 160)}`;
       }
-    } else {
-      out.openrouter = "no key — skipped";
     }
 
     return NextResponse.json({ ok: anyOk, ...out });

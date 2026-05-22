@@ -8,13 +8,15 @@
 | Supabase | PostgreSQL database | yes, free tier | no card required |
 | Google Sheets API | output approved jobs | yes, completely free | no card required |
 | Google Cloud service account | authenticates Sheets API | yes, completely free | no billing required |
-| Google Gemini API | AI job analysis (Smart Rotation) | **yes, free** | **no card required** |
-| Groq API | AI job analysis (Smart Rotation) | **yes, free** | **no card required** |
-| Cerebras API | AI job analysis (Smart Rotation) | **yes, free** | **no card required** |
-| OpenRouter API | AI job analysis (Smart Rotation) | **yes, free** | **no card required** |
+| Google Gemini API | AI job analysis (rotation provider) | **yes, free** | **no card required** |
+| Groq API | AI job analysis (rotation provider) | **yes, free** | **no card required** |
+| Cerebras API | AI job analysis (rotation provider) | **yes, free** | **no card required** |
+| OpenRouter API | AI job analysis (rotation provider) | **yes, free** | **no card required** |
+| Together AI API | AI job analysis (rotation provider) | **yes, free models** | **no card required** |
+| Cloudflare Workers AI | AI job analysis (rotation provider) | **yes, free** (10k Neurons/day) | **no card required** |
 | OpenAI API | AI job analysis (alternative) | paid, per-token | uses your own API key |
 
-**All services are 100% free with no credit card required.** Smart Rotation pools the free AI providers (Gemini, Groq, Cerebras, OpenRouter) and automatically fails over when one hits its rate limit. OpenAI is available as a paid alternative if you prefer.
+**All free services need no credit card.** In Settings you tick one or more AI providers; the analyzer rotates across the ticked set and automatically fails over when one hits its rate limit. OpenAI is available as a paid alternative if you prefer.
 
 ---
 
@@ -76,7 +78,7 @@ Supabase free tier pauses databases after 1 week of inactivity. The app has a `/
 
 ## Step 3: Get your AI API keys
 
-The analyzer uses **Smart Rotation** — it pools several free AI providers and automatically fails over when one hits a rate limit. Grab as many of the free keys below as you can; each is optional and the rotation uses whatever you configure. One key is enough to start, but more keys means more daily headroom and the scanner and LinkedIn extension never block each other.
+In Settings you tick the AI providers the analyzer may use; it rotates across the ticked set and automatically fails over when one hits a rate limit. Grab as many of the free keys below as you can; each is optional and the rotation uses whatever you configure. One key is enough to start, but more keys means more daily headroom and the scanner and LinkedIn extension never block each other.
 
 ### Google Gemini (free, no card)
 
@@ -106,6 +108,24 @@ Very fast — great for the LinkedIn extension. Optional: skip it if signup is n
 2. Create a free key and copy it
 
 Aggregator fallback across many free models.
+
+### Together AI (free models, no card)
+
+1. Go to https://api.together.ai and sign up (no credit card required)
+2. Open **Settings > API Keys**, create a key (`tgp_v1_...`) and copy it
+
+The analyzer only ever calls Together's $0-priced models — leave the model set to
+`auto` so it discovers them live. Large context — good for the scanner's batches.
+
+### Cloudflare Workers AI (free, no card)
+
+1. Go to https://dash.cloudflare.com and sign up (no credit card required)
+2. Copy your **Account ID** — it is in the URL after `dash.cloudflare.com/` and on
+   the Workers & Pages overview page
+3. Go to **AI > Workers AI**, click **Use REST API**, and create an API token
+4. Save both the Account ID and the token — the analyzer needs both
+
+Free allocation is 10,000 Neurons/day (several thousand analyses).
 
 ### OpenAI (paid alternative, optional)
 
@@ -164,19 +184,21 @@ Go to `/admin/settings` and fill in:
 | Target Market | `Europe, Eastern Europe, Remote worldwide` |
 | Current Location | `Armenia` |
 
-### AI Provider
+### AI Providers
 
-Select **Smart Rotation** (recommended) and paste a key for every free provider you have. The rotation uses whatever is filled in — leave a field blank to exclude that provider. Click **Test All Rotation Providers** to verify.
+Tick the providers you want in the **AI Providers** checklist and paste a key for each. Tick **one** for single-provider mode, or **several** to rotate across them — the analyzer fails over automatically when one is rate-limited. A ticked provider with no key is simply skipped. Click **Test All Selected Providers** to verify.
 
-| Provider | Key format | Where to get it |
-|----------|-----------|-----------------|
+| Provider | Credentials | Where to get it |
+|----------|-------------|-----------------|
 | Gemini | `AIzaSy...` | aistudio.google.com/apikey |
 | Groq | `gsk_...` | console.groq.com/keys |
 | Cerebras | `csk-...` | cloud.cerebras.ai |
 | OpenRouter | `sk-or-v1-...` | openrouter.ai/settings/keys |
+| Together AI | `tgp_v1_...` | api.together.ai |
+| Cloudflare | Account ID + API token | dash.cloudflare.com |
 | OpenAI (paid) | `sk-...` | platform.openai.com |
 
-You can also pick a single provider instead of rotation. The model defaults (`gemini-2.5-flash`, `llama-3.1-8b-instant`, `llama-3.3-70b`) work out of the box and are editable in Settings.
+The model defaults (`gemini-2.5-flash`, `llama-3.1-8b-instant`, `llama-3.3-70b`, Together `auto`, Cloudflare `@cf/meta/llama-3.1-8b-instruct`) work out of the box and are editable in Settings.
 
 ### Google Sheets
 | Setting | Value |
@@ -338,8 +360,8 @@ Once a job is analyzed (approved or rejected), it **never gets analyzed again** 
 - Log in manually in the browser that opens
 
 **"API key not configured" or 429 quota error**
-- Go to `/admin/settings`, select **Smart Rotation**, and add keys for several free providers — the rotation fails over automatically when one is rate-limited.
-- The more provider keys you add (Gemini, Groq, Cerebras, OpenRouter), the more daily headroom you get.
+- Go to `/admin/settings`, tick several providers in the **AI Providers** checklist, and add a key for each — the rotation fails over automatically when one is rate-limited.
+- The more providers you tick and key (Gemini, Groq, Cerebras, OpenRouter, Together AI, Cloudflare), the more daily headroom you get.
 - If every provider is rate-limited at once, the analyzer pauses and leaves jobs `PENDING` — they are retried on the next run, never wrongly rejected.
 
 **Gemini: `Error fetching from https://generativelanguage.googleapis.com`**

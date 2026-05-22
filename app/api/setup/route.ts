@@ -70,10 +70,15 @@ Now analyze the job above and output ONLY the JSON object.`;
 async function seedDefaults() {
   const defaults: Record<string, string> = {
     admin_password: "admin",
+    // Default to rotating across the four free providers; keys can be filled in
+    // one at a time. ai_provider is kept for backward compatibility only.
     ai_provider: "gemini",
+    ai_providers: '["gemini","groq","cerebras","openrouter"]',
     openai_model: "gpt-4o-mini",
     gemini_model: "gemini-2.5-flash",
     openrouter_model: "auto",
+    together_model: "auto",
+    cloudflare_model: "@cf/meta/llama-3.1-8b-instruct",
     target_market: "Europe, Eastern Europe, Remote worldwide",
     current_location: "Armenia",
     job_analysis_prompt: DEFAULT_ANALYSIS_PROMPT,

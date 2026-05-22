@@ -1,7 +1,11 @@
 import { prisma } from "./prisma";
 
 export const CONFIG_KEYS = {
+  // Legacy single-provider key — still read for backward-compatible migration
+  // into AI_PROVIDERS, no longer written by the settings page.
   AI_PROVIDER: "ai_provider",
+  // JSON array of provider ids the analyzer rotates across.
+  AI_PROVIDERS: "ai_providers",
   OPENAI_API_KEY: "openai_api_key",
   OPENAI_MODEL: "openai_model",
   GEMINI_API_KEY: "gemini_api_key",
@@ -12,6 +16,11 @@ export const CONFIG_KEYS = {
   GROQ_MODEL: "groq_model",
   CEREBRAS_API_KEY: "cerebras_api_key",
   CEREBRAS_MODEL: "cerebras_model",
+  TOGETHER_API_KEY: "together_api_key",
+  TOGETHER_MODEL: "together_model",
+  CLOUDFLARE_ACCOUNT_ID: "cloudflare_account_id",
+  CLOUDFLARE_API_KEY: "cloudflare_api_key",
+  CLOUDFLARE_MODEL: "cloudflare_model",
   GOOGLE_SHEETS_CREDENTIALS: "google_sheets_credentials",
   GOOGLE_SHEET_ID: "google_sheet_id",
   ADMIN_PASSWORD: "admin_password",
@@ -76,6 +85,43 @@ export async function getAllConfig(): Promise<Record<string, string>> {
   return inflightConfig;
 }
 
+// Every provider id the analyzer knows how to call. Used both to validate the
+// stored AI_PROVIDERS list and to migrate the legacy single-value AI_PROVIDER.
+export const KNOWN_AI_PROVIDERS = [
+  "gemini",
+  "groq",
+  "cerebras",
+  "openrouter",
+  "together",
+  "cloudflare",
+  "openai",
+] as const;
+
+// Resolve the ordered provider list. Once AI_PROVIDERS has been written it is
+// authoritative — even an empty list is honoured (the user unticked everything,
+// which surfaces a clear error rather than silently analyzing). Only when the
+// key was never written (a deployment from before multi-select) does it migrate
+// the legacy AI_PROVIDER: "rotation" → the four free providers, any single
+// value → just that one, nothing set → Gemini.
+function resolveAiProviders(rawList: string | undefined, legacy: string | undefined): string[] {
+  if (rawList) {
+    try {
+      const parsed = JSON.parse(rawList);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (p): p is string =>
+            typeof p === "string" && (KNOWN_AI_PROVIDERS as readonly string[]).includes(p),
+        );
+      }
+    } catch {
+      // unparseable — fall through to legacy migration
+    }
+  }
+  if (legacy === "rotation") return ["gemini", "groq", "cerebras", "openrouter"];
+  if (legacy && (KNOWN_AI_PROVIDERS as readonly string[]).includes(legacy)) return [legacy];
+  return ["gemini"];
+}
+
 export async function getConfig() {
   const all = await getAllConfig();
   const envAdmin = process.env.ADMIN_PASSWORD?.trim();
@@ -84,13 +130,12 @@ export async function getConfig() {
     envAdmin && envAdmin.length > 0 ? envAdmin : dbAdmin || "admin";
 
   return {
-    aiProvider: (all[CONFIG_KEYS.AI_PROVIDER] || "gemini") as
-      | "openai"
-      | "gemini"
-      | "openrouter"
-      | "groq"
-      | "cerebras"
-      | "rotation",
+    // Ordered list of providers the analyzer rotates across. One id → single-
+    // provider mode; several ids → rotation with failover.
+    aiProviders: resolveAiProviders(
+      all[CONFIG_KEYS.AI_PROVIDERS],
+      all[CONFIG_KEYS.AI_PROVIDER],
+    ),
     openaiApiKey: all[CONFIG_KEYS.OPENAI_API_KEY] || "",
     openaiModel: all[CONFIG_KEYS.OPENAI_MODEL] || "gpt-4o-mini",
     geminiApiKey: all[CONFIG_KEYS.GEMINI_API_KEY] || "",
@@ -103,6 +148,15 @@ export async function getConfig() {
     groqModel: all[CONFIG_KEYS.GROQ_MODEL] || "llama-3.1-8b-instant",
     cerebrasApiKey: all[CONFIG_KEYS.CEREBRAS_API_KEY] || "",
     cerebrasModel: all[CONFIG_KEYS.CEREBRAS_MODEL] || "llama-3.3-70b",
+    // Together AI — OpenAI-compatible free tier. "auto" discovers the account's
+    // zero-priced models live so the rotation never lands on a paid model.
+    togetherApiKey: all[CONFIG_KEYS.TOGETHER_API_KEY] || "",
+    togetherModel: all[CONFIG_KEYS.TOGETHER_MODEL] || "auto",
+    // Cloudflare Workers AI — OpenAI-compatible, 10k free Neurons/day. Needs both
+    // the account id (it goes in the request URL) and an API token.
+    cloudflareAccountId: all[CONFIG_KEYS.CLOUDFLARE_ACCOUNT_ID] || "",
+    cloudflareApiKey: all[CONFIG_KEYS.CLOUDFLARE_API_KEY] || "",
+    cloudflareModel: all[CONFIG_KEYS.CLOUDFLARE_MODEL] || "@cf/meta/llama-3.1-8b-instruct",
     googleSheetsCredentials: all[CONFIG_KEYS.GOOGLE_SHEETS_CREDENTIALS] || "",
     googleSheetId: all[CONFIG_KEYS.GOOGLE_SHEET_ID] || "",
     adminPassword,

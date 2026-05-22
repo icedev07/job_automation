@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllConfig, setConfigValue } from "@/lib/config";
+import { getAllConfig, getConfig, setConfigValue } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const all = await getAllConfig();
+  const config = await getConfig();
   return NextResponse.json({
-    ai_provider: all.ai_provider || "gemini",
+    // Resolved provider list (handles migration from the legacy ai_provider).
+    ai_providers: JSON.stringify(config.aiProviders),
     openai_api_key: all.openai_api_key || "",
     openai_model: all.openai_model || "gpt-4o-mini",
     gemini_api_key: all.gemini_api_key || "",
@@ -17,6 +19,11 @@ export async function GET() {
     groq_model: all.groq_model || "llama-3.1-8b-instant",
     cerebras_api_key: all.cerebras_api_key || "",
     cerebras_model: all.cerebras_model || "llama-3.3-70b",
+    together_api_key: all.together_api_key || "",
+    together_model: all.together_model || "auto",
+    cloudflare_account_id: all.cloudflare_account_id || "",
+    cloudflare_api_key: all.cloudflare_api_key || "",
+    cloudflare_model: all.cloudflare_model || "@cf/meta/llama-3.1-8b-instruct",
     google_sheet_id: all.google_sheet_id || "",
     google_sheets_credentials: all.google_sheets_credentials || "",
     target_market: all.target_market || "",

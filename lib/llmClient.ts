@@ -481,6 +481,142 @@ export async function generateWithCerebras(
 }
 
 // ============================================================================
+// Together AI — OpenAI-compatible, free-model discovery
+// ----------------------------------------------------------------------------
+// Together no longer has a blanket free tier; instead its /v1/models feed marks
+// individual models as $0. So, like OpenRouter, we discover the genuinely-free
+// models live and only ever send requests to those — keeping the analyzer on
+// fully-free inference. "auto" uses the discovered list; an explicit model id is
+// tried first, then the discovered ones as fallback.
+// ============================================================================
+
+const TOGETHER_BASE_URL = "https://api.together.ai/v1";
+
+// Used only if /v1/models itself is unreachable (network error, not an empty
+// result). These carry Together's historical "-Free" free-tier marker.
+const TOGETHER_STATIC_FALLBACK = [
+  "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+  "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-Free",
+];
+
+// Cap attempts per call so a quota-blocked account cannot walk the whole free
+// list and burn the function's wall-clock — same reasoning as OpenRouter.
+const TOGETHER_MAX_MODEL_ATTEMPTS = 4;
+
+let cachedTogetherFreeModels: { ids: string[]; ts: number } | null = null;
+
+export async function fetchTogetherFreeModels(apiKey: string): Promise<string[]> {
+  if (cachedTogetherFreeModels && Date.now() - cachedTogetherFreeModels.ts < MODELS_TTL_MS) {
+    return cachedTogetherFreeModels.ids;
+  }
+
+  const res = await fetch(`${TOGETHER_BASE_URL}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    throw new Error(
+      `Together /models HTTP ${res.status}: ${await res.text().then((s) => s.slice(0, 200))}`,
+    );
+  }
+  const data = await res.json();
+  // Together returns a bare array; tolerate a { data: [...] } envelope too.
+  const list: any[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : [];
+
+  const free: { id: string; ctx: number }[] = [];
+  for (const m of list) {
+    const id = String(m?.id || "");
+    if (!id) continue;
+    // Only chat/text models can return a chat completion.
+    const type = String(m?.type || "").toLowerCase();
+    if (type && type !== "chat" && type !== "language") continue;
+    // Keep only genuinely-free models — every price field must be zero/absent.
+    const pricing = m?.pricing || {};
+    const paid = ["input", "output", "hourly", "base"].some(
+      (k) => Number(pricing[k] ?? 0) > 0,
+    );
+    if (paid) continue;
+    free.push({ id, ctx: Number(m?.context_length || 0) });
+  }
+
+  // Larger context first — better for the scanner's batched prompts.
+  free.sort((a, b) => b.ctx - a.ctx);
+  const ids = free.map((m) => m.id);
+
+  cachedTogetherFreeModels = { ids, ts: Date.now() };
+  return ids;
+}
+
+export async function generateWithTogether(
+  prompt: string,
+  apiKey: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<LLMResult> {
+  let free: string[] = [];
+  try {
+    free = await fetchTogetherFreeModels(apiKey);
+  } catch {
+    free = TOGETHER_STATIC_FALLBACK;
+  }
+
+  const useAuto = !model || model === "auto";
+  if (useAuto && free.length === 0) {
+    throw new Error(
+      "Together AI has no free ($0) models for this account — set a specific Together model or untick it in /admin/settings.",
+    );
+  }
+  const order = useAuto ? free : [model, ...free.filter((m) => m !== model)];
+
+  return generateWithOpenAICompatible(
+    "Together AI",
+    TOGETHER_BASE_URL,
+    apiKey,
+    order.slice(0, TOGETHER_MAX_MODEL_ATTEMPTS),
+    prompt,
+    signal,
+  );
+}
+
+// ============================================================================
+// Cloudflare Workers AI — OpenAI-compatible, 10k free Neurons/day
+// ----------------------------------------------------------------------------
+// The account id is part of the request URL, so a working Cloudflare provider
+// needs both the account id and an API token.
+// ============================================================================
+
+const CLOUDFLARE_FALLBACK_MODELS = [
+  "@cf/meta/llama-3.1-8b-instruct",
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+  "@cf/openai/gpt-oss-120b",
+];
+
+export async function generateWithCloudflare(
+  prompt: string,
+  accountId: string,
+  apiKey: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<LLMResult> {
+  const id = (accountId || "").trim();
+  if (!id) {
+    throw new Error("Cloudflare account id is not set — add it in /admin/settings.");
+  }
+  const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${id}/ai/v1`;
+  return generateWithOpenAICompatible(
+    "Cloudflare",
+    baseUrl,
+    apiKey,
+    buildModelOrder(model, CLOUDFLARE_FALLBACK_MODELS),
+    prompt,
+    signal,
+  );
+}
+
+// ============================================================================
 // Smart Rotation
 // ----------------------------------------------------------------------------
 // Pools every provider that has an API key and tries them in priority order.
@@ -496,7 +632,14 @@ export async function generateWithCerebras(
 export type LLMPurpose = "single" | "batch";
 
 type RotationConfig = Awaited<ReturnType<typeof getConfig>>;
-type RotationProviderId = "gemini" | "groq" | "cerebras" | "openrouter";
+type RotationProviderId =
+  | "gemini"
+  | "groq"
+  | "cerebras"
+  | "openrouter"
+  | "together"
+  | "cloudflare"
+  | "openai";
 
 type RotationProvider = {
   id: RotationProviderId;
@@ -546,13 +689,48 @@ const ROTATION_PROVIDERS: Record<RotationProviderId, RotationProvider> = {
     keyOf: (c) => c.groqApiKey,
     run: (prompt, c, signal) => generateWithGroq(prompt, c.groqApiKey, c.groqModel, signal),
   },
+  together: {
+    id: "together",
+    label: "Together AI",
+    maxPromptChars: 120_000,
+    keyOf: (c) => c.togetherApiKey,
+    run: (prompt, c, signal) =>
+      generateWithTogether(prompt, c.togetherApiKey, c.togetherModel || "auto", signal),
+  },
+  cloudflare: {
+    id: "cloudflare",
+    label: "Cloudflare",
+    // Conservative — the default 8B model has a small context window.
+    maxPromptChars: 12_000,
+    // Cloudflare needs both the account id (in the URL) and a token; treat the
+    // provider as unconfigured unless both are present.
+    keyOf: (c) =>
+      c.cloudflareAccountId.trim() && c.cloudflareApiKey.trim() ? c.cloudflareApiKey : "",
+    run: (prompt, c, signal) =>
+      generateWithCloudflare(
+        prompt,
+        c.cloudflareAccountId,
+        c.cloudflareApiKey,
+        c.cloudflareModel || "@cf/meta/llama-3.1-8b-instruct",
+        signal,
+      ),
+  },
+  openai: {
+    id: "openai",
+    label: "OpenAI",
+    maxPromptChars: 120_000,
+    keyOf: (c) => c.openaiApiKey,
+    run: (prompt, c) => generateWithOpenAI(prompt, c.openaiApiKey, c.openaiModel || "gpt-4o-mini"),
+  },
 };
 
+// Per-purpose ranking of every known provider. The live pool is this list
+// intersected with the user's ticked providers, so unticked ones never run.
 const ROTATION_ORDER: Record<LLMPurpose, RotationProviderId[]> = {
   // One job at a time (extension): fast, high daily-volume providers first.
-  single: ["cerebras", "groq", "gemini", "openrouter"],
+  single: ["cerebras", "groq", "cloudflare", "gemini", "together", "openrouter", "openai"],
   // Batched many-job prompts (scanner): big-context providers first.
-  batch: ["gemini", "openrouter", "cerebras", "groq"],
+  batch: ["gemini", "openrouter", "together", "cerebras", "groq", "cloudflare", "openai"],
 };
 
 // A transient (non-rate-limit) failure parks the provider briefly so the next
@@ -568,16 +746,28 @@ function cooldownRemainingMs(id: RotationProviderId): number {
 async function generateWithRotation(
   prompt: string,
   config: RotationConfig,
+  selected: string[],
   purpose: LLMPurpose,
   signal?: AbortSignal,
 ): Promise<LLMResult> {
-  const withKey = ROTATION_ORDER[purpose]
-    .map((id) => ROTATION_PROVIDERS[id])
-    .filter((p) => p.keyOf(config).trim().length > 0);
+  // Pool = the user's ticked providers, ranked for this purpose. A single
+  // ticked provider just runs alone; several rotate with failover.
+  const ranked = ROTATION_ORDER[purpose]
+    .filter((id) => selected.includes(id))
+    .map((id) => ROTATION_PROVIDERS[id]);
 
+  if (ranked.length === 0) {
+    throw new Error(
+      "No AI provider is selected. Go to /admin/settings and tick at least one provider.",
+    );
+  }
+
+  const withKey = ranked.filter((p) => p.keyOf(config).trim().length > 0);
   if (withKey.length === 0) {
     throw new Error(
-      "Smart Rotation is selected but no provider API keys are set. Add at least one key (Gemini, Groq, Cerebras or OpenRouter) in /admin/settings.",
+      `No API key is set for the selected provider(s): ${ranked
+        .map((p) => p.label)
+        .join(", ")}. Add a key in /admin/settings.`,
     );
   }
 
@@ -630,57 +820,14 @@ async function generateWithRotation(
   );
 }
 
+// Single entry point for the analyzer. Every call goes through the rotation
+// engine: with one selected provider it behaves as plain single-provider mode,
+// with several it rotates and fails over on rate limits / errors.
 export async function generateText(
   prompt: string,
   signal?: AbortSignal,
   purpose: LLMPurpose = "single",
 ): Promise<LLMResult> {
   const config = await getConfig();
-
-  if (config.aiProvider === "rotation") {
-    return generateWithRotation(prompt, config, purpose, signal);
-  }
-
-  if (config.aiProvider === "gemini") {
-    if (!config.geminiApiKey) {
-      throw new Error("Gemini API key not configured. Go to /admin/settings to set it.");
-    }
-    return generateWithGemini(
-      prompt,
-      config.geminiApiKey,
-      config.geminiModel || "gemini-2.5-flash",
-      signal,
-    );
-  }
-
-  if (config.aiProvider === "groq") {
-    if (!config.groqApiKey) {
-      throw new Error("Groq API key not configured. Go to /admin/settings to set it.");
-    }
-    return generateWithGroq(prompt, config.groqApiKey, config.groqModel, signal);
-  }
-
-  if (config.aiProvider === "cerebras") {
-    if (!config.cerebrasApiKey) {
-      throw new Error("Cerebras API key not configured. Go to /admin/settings to set it.");
-    }
-    return generateWithCerebras(prompt, config.cerebrasApiKey, config.cerebrasModel, signal);
-  }
-
-  if (config.aiProvider === "openrouter") {
-    if (!config.openrouterApiKey) {
-      throw new Error("OpenRouter API key not configured. Go to /admin/settings to set it.");
-    }
-    return generateWithOpenRouter(
-      prompt,
-      config.openrouterApiKey,
-      config.openrouterModel || OPENROUTER_AUTO,
-      signal,
-    );
-  }
-
-  if (!config.openaiApiKey) {
-    throw new Error("OpenAI API key not configured. Go to /admin/settings to set it.");
-  }
-  return generateWithOpenAI(prompt, config.openaiApiKey, config.openaiModel || "gpt-4o-mini");
+  return generateWithRotation(prompt, config, config.aiProviders, purpose, signal);
 }
