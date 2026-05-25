@@ -10,6 +10,15 @@ export const CONFIG_KEYS = {
   GEMINI_MODEL: "gemini_model",
   OPENROUTER_API_KEY: "openrouter_api_key",
   OPENROUTER_MODEL: "openrouter_model",
+  // Routing tier: "free" (only :free models, no paid fallback), "nitro" (paid
+  // models routed via provider.sort=throughput for fastest response), or
+  // "auto" (the original behavior — try :free first, fall back to a cheap
+  // paid model on exhaustion).
+  OPENROUTER_TIER: "openrouter_tier",
+  // Model id used when tier="nitro". Sent with provider.sort="throughput" so
+  // OpenRouter picks the fastest upstream host (equivalent to the :nitro
+  // suffix shortcut). Default is a cheap, fast 8B instruct model.
+  OPENROUTER_PAID_MODEL: "openrouter_paid_model",
   GROQ_API_KEY: "groq_api_key",
   GROQ_MODEL: "groq_model",
   CEREBRAS_API_KEY: "cerebras_api_key",
@@ -117,6 +126,16 @@ function resolveAiProviders(rawList: string | undefined, legacy: string | undefi
   return ["gemini"];
 }
 
+export type OpenrouterTier = "free" | "nitro" | "auto";
+const OPENROUTER_TIERS: readonly OpenrouterTier[] = ["free", "nitro", "auto"];
+
+function resolveOpenrouterTier(raw: string | undefined): OpenrouterTier {
+  if (raw && (OPENROUTER_TIERS as readonly string[]).includes(raw)) {
+    return raw as OpenrouterTier;
+  }
+  return "auto";
+}
+
 export async function getConfig() {
   const all = await getAllConfig();
   const envAdmin = process.env.ADMIN_PASSWORD?.trim();
@@ -135,6 +154,9 @@ export async function getConfig() {
     geminiModel: all[CONFIG_KEYS.GEMINI_MODEL] || "gemini-2.5-flash",
     openrouterApiKey: all[CONFIG_KEYS.OPENROUTER_API_KEY] || "",
     openrouterModel: all[CONFIG_KEYS.OPENROUTER_MODEL] || "auto",
+    openrouterTier: resolveOpenrouterTier(all[CONFIG_KEYS.OPENROUTER_TIER]),
+    openrouterPaidModel:
+      all[CONFIG_KEYS.OPENROUTER_PAID_MODEL] || "meta-llama/llama-3.1-8b-instruct",
     // Groq and Cerebras are OpenAI-compatible free tiers. Defaults pick the
     // highest free-tier throughput model for each.
     groqApiKey: all[CONFIG_KEYS.GROQ_API_KEY] || "",
@@ -155,21 +177,22 @@ export async function getConfig() {
     sheetColumns: all[CONFIG_KEYS.SHEET_COLUMNS] || "",
     linkedinSheetTab: all[CONFIG_KEYS.LINKEDIN_SHEET_TAB] || "LinkedIn",
     extensionApiKey: all[CONFIG_KEYS.EXTENSION_API_KEY] || "",
-    // Inter-request pacing for the LLM. Default 2500ms keeps OpenRouter free
-    // tier (20 req/min) safely under the per-minute cap with margin for the
-    // network round-trip. Set to 0 to disable when using a paid model.
+    // Inter-request pacing for the LLM. 500ms is well under any free-tier
+    // per-minute cap (OpenRouter free is 20 req/min ≈ one request every 3s,
+    // and batching already cuts request count ~5×). Set higher only if you see
+    // 429s; set 0 to disable pacing entirely on a paid plan.
     analyzerRequestDelayMs: Math.max(
       0,
-      Number(all[CONFIG_KEYS.ANALYZER_REQUEST_DELAY_MS]) || 2_500,
+      Number(all[CONFIG_KEYS.ANALYZER_REQUEST_DELAY_MS]) || 500,
     ),
-    // How many jobs to pack into a single LLM call. Batching is the main lever
-    // for the OpenRouter free tier: at 8 jobs/request an 80-job backlog becomes
-    // ~10 requests instead of 80, which keeps a full run well under the
-    // ~20 req/min and ~50 req/day free caps. Clamped 1–12 so the prompt always
-    // fits a free model's context window.
+    // How many jobs to pack into a single LLM call. 5 jobs × 3000-char desc =
+    // ~18k char prompt — small enough that a fast free model returns in under
+    // the analyzer's abort deadline, large enough that an 80-job backlog
+    // becomes ~16 calls. Clamped 1–12 so the prompt always fits a free model's
+    // context window even at the upper end.
     analyzerBatchSize: Math.min(
       12,
-      Math.max(1, Number(all[CONFIG_KEYS.ANALYZER_BATCH_SIZE]) || 8),
+      Math.max(1, Number(all[CONFIG_KEYS.ANALYZER_BATCH_SIZE]) || 5),
     ),
   };
 }

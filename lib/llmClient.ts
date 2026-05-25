@@ -86,6 +86,22 @@ const OPENROUTER_STATIC_FALLBACK = [
   "mistralai/mistral-7b-instruct:free",
 ];
 
+// Known-fast free models, tried in this order before any auto-discovered ones.
+// Picked for low end-to-end latency on a short structured-output prompt: small
+// parameter counts, mature instruct tunes, and providers that don't queue free
+// traffic behind paid. Sorting auto-discovered free models by context window
+// (the previous default) buried these behind 70B+ models that take 30–60s per
+// call and trigger the analyzer's hard abort. Anything not in this list is
+// appended after, still sorted by context window for the rare batched prompt
+// that genuinely needs a huge window.
+const OPENROUTER_FAST_FREE_PRIORITY = [
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "google/gemma-2-9b-it:free",
+  "mistralai/mistral-7b-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "qwen/qwen-2.5-7b-instruct:free",
+];
+
 let cachedFreeModels: { ids: string[]; ts: number } | null = null;
 const MODELS_TTL_MS = 10 * 60 * 1000;
 
@@ -133,20 +149,48 @@ async function fetchOpenRouterFreeModels(
     free.push({ id, ctx: Number(m?.context_length || 0) });
   }
 
-  // Prefer larger context windows first (better job description handling).
-  free.sort((a, b) => b.ctx - a.ctx);
-  const ids = free.map((m) => m.id);
+  // Fast-known models first (in their hand-curated order), then everything
+  // else sorted by context window. Latency dominates on a 60s function budget,
+  // and our batched prompt is already trimmed to fit comfortably in any modern
+  // free model, so context size is a tiebreaker, not the primary key.
+  const liveIds = new Set(free.map((m) => m.id));
+  const fastFirst = OPENROUTER_FAST_FREE_PRIORITY.filter((id) => liveIds.has(id));
+  const rest = free
+    .filter((m) => !OPENROUTER_FAST_FREE_PRIORITY.includes(m.id))
+    .sort((a, b) => b.ctx - a.ctx)
+    .map((m) => m.id);
+  const ids = [...fastFirst, ...rest];
 
   cachedFreeModels = { ids, ts: Date.now() };
   return ids;
 }
+
+// `provider` lets the caller force a routing strategy via OpenRouter's
+// provider-selection API (https://openrouter.ai/docs/guides/routing/provider-selection).
+// We pass { sort: "throughput" } for the "nitro" tier to get the fastest
+// upstream host for the chosen model — exactly what the :nitro suffix
+// shortcut does, just expressed explicitly so it appears in our request log.
+type OpenRouterProviderRouting = {
+  sort?: "throughput" | "price" | "latency";
+  allow_fallbacks?: boolean;
+  order?: string[];
+};
 
 async function callOpenRouter(
   apiKey: string,
   model: string,
   prompt: string,
   signal?: AbortSignal,
+  provider?: OpenRouterProviderRouting,
 ) {
+  const body: Record<string, unknown> = {
+    model,
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.3,
+  };
+  if (provider && Object.keys(provider).length > 0) {
+    body.provider = provider;
+  }
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -155,11 +199,7 @@ async function callOpenRouter(
       "HTTP-Referer": "https://job-automation-ten.vercel.app",
       "X-Title": "Job Finder",
     },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-    }),
+    body: JSON.stringify(body),
     signal,
   });
   return res;
@@ -187,8 +227,11 @@ export class LLMRateLimitedError extends Error {
 // budget.
 const OPENROUTER_MAX_MODEL_ATTEMPTS = 5;
 // Hard cap on how long we'll wait inside a single LLM call before giving up
-// and surfacing a rate-limit error to the caller.
-const OPENROUTER_MAX_WAIT_MS = 4_000;
+// and surfacing a rate-limit error to the caller. 1.5s keeps us moving — a
+// 4s sleep on a busy model usually only finds the same model still busy, so
+// hopping to the next free model (or, eventually, the paid fallback) returns
+// a verdict sooner on average.
+const OPENROUTER_MAX_WAIT_MS = 1_500;
 
 function parseRetryAfterMs(res: Response, body: string): number {
   const retryAfter = res.headers.get("retry-after");
@@ -415,19 +458,26 @@ async function tryOpenRouterFreeModels(
   return { kind: "exhausted", attempts };
 }
 
-// Stage 2 — the cheap paid fallback. Reached only when the free stage is
-// "exhausted". Returns null if every paid model also fails (so the caller can
-// raise one combined error); throws only on a genuine account-credit failure.
-async function tryOpenRouterPaidFallback(
+// Walk a list of paid models, returning the first that answers. Returns null
+// when every model failed for a recoverable reason (so the caller can raise
+// one combined error); throws on a genuine account-credit failure since the
+// next model would fail the same way. The optional `provider` parameter forces
+// a routing strategy (e.g. { sort: "throughput" } for the nitro tier).
+async function tryOpenRouterPaidModels(
   prompt: string,
   apiKey: string,
+  models: string[],
   attempts: string[],
   signal?: AbortSignal,
+  provider?: OpenRouterProviderRouting,
 ): Promise<LLMResult | null> {
-  for (const m of OPENROUTER_PAID_FALLBACK_MODELS) {
+  // Tag the logged model so AnalysisLog distinguishes a throughput-routed
+  // call from a default-routed one without us having to crack the request log.
+  const tag = provider?.sort === "throughput" ? "paid+nitro" : "paid";
+  for (const m of models) {
     if (signal?.aborted) throw new Error("LLM call aborted");
     try {
-      const res = await callOpenRouter(apiKey, m, prompt, signal);
+      const res = await callOpenRouter(apiKey, m, prompt, signal, provider);
 
       if (res.status === 402) {
         const body = await res.text();
@@ -439,41 +489,76 @@ async function tryOpenRouterPaidFallback(
             true,
           );
         }
-        attempts.push(`${m} (paid): HTTP 402 ${body.slice(0, 120)}`);
+        attempts.push(`${m} (${tag}): HTTP 402 ${body.slice(0, 120)}`);
         continue;
       }
       if (!res.ok) {
         const body = await res.text();
-        attempts.push(`${m} (paid): HTTP ${res.status} ${body.slice(0, 160)}`);
+        attempts.push(`${m} (${tag}): HTTP ${res.status} ${body.slice(0, 160)}`);
         continue;
       }
 
       const data = await res.json();
       const text = data?.choices?.[0]?.message?.content || "";
       if (!text) {
-        attempts.push(`${m} (paid): empty response`);
+        attempts.push(`${m} (${tag}): empty response`);
         continue;
       }
       const tokensUsed = (data?.usage?.prompt_tokens || 0) + (data?.usage?.completion_tokens || 0);
-      return { text, model: m, tokensUsed };
+      // Suffix the model id so the analyzer log shows the routing strategy.
+      const loggedModel = provider?.sort === "throughput" ? `${m}:nitro` : m;
+      return { text, model: loggedModel, tokensUsed };
     } catch (e: any) {
       if (e instanceof LLMRateLimitedError) throw e;
-      attempts.push(`${m} (paid): ${String(e?.message || e)}`);
+      attempts.push(`${m} (${tag}): ${String(e?.message || e)}`);
     }
   }
   return null;
 }
 
-// Free-first, cheap-paid-fallback. :free models are always tried first; a
-// paid model runs only when every free model is busy or the :free daily cap is
-// spent — see OPENROUTER_PAID_FALLBACK_MODELS. A paid model used here shows up
-// in AnalysisLog as openrouter:<paid-model-id> (no ":free" suffix).
+export type OpenRouterTier = "free" | "nitro" | "auto";
+
+export type OpenRouterCallOptions = {
+  tier: OpenRouterTier;
+  // Paid model id used when tier is "nitro" (or in the "auto" tier's paid
+  // fallback when set; defaults to the OPENROUTER_PAID_FALLBACK_MODELS list).
+  paidModel?: string;
+};
+
+// Tier-aware entry point.
+//   "free"  → only :free models, no paid fallback (rate-limit error on
+//             exhaustion so the analyzer leaves rows PENDING).
+//   "nitro" → skip free entirely; call the configured paid model with
+//             provider.sort="throughput" (equivalent to the :nitro suffix
+//             shortcut) for the fastest upstream host. Costs money but
+//             returns in 2–5s where free can take 30–60s.
+//   "auto"  → original behavior: :free first, paid fallback on exhaustion.
 export async function generateWithOpenRouter(
   prompt: string,
   apiKey: string,
   model: string,
   signal?: AbortSignal,
+  options: OpenRouterCallOptions = { tier: "auto" },
 ): Promise<LLMResult> {
+  if (options.tier === "nitro") {
+    const paidModels = options.paidModel
+      ? [options.paidModel, ...OPENROUTER_PAID_FALLBACK_MODELS.filter((m) => m !== options.paidModel)]
+      : OPENROUTER_PAID_FALLBACK_MODELS;
+    const attempts: string[] = [];
+    const paid = await tryOpenRouterPaidModels(
+      prompt,
+      apiKey,
+      paidModels,
+      attempts,
+      signal,
+      { sort: "throughput" },
+    );
+    if (paid) return paid;
+    throw new Error(
+      `OpenRouter (nitro): every paid model failed → ${attempts.join(" | ")}`,
+    );
+  }
+
   const free = await tryOpenRouterFreeModels(prompt, apiKey, model, signal);
   if (free.kind === "ok") return free.result;
   if (free.kind === "account-credit") {
@@ -485,9 +570,22 @@ export async function generateWithOpenRouter(
     throw new LLMRateLimitedError(free.message, free.retryAfterMs, false);
   }
 
-  // free.kind === "exhausted" — free models had nothing left. Pay for one.
+  if (options.tier === "free") {
+    // Free-only mode: do NOT pay. Surface a rate-limit error so the analyzer
+    // pauses cleanly and leaves the rows PENDING for the next pass.
+    throw new LLMRateLimitedError(
+      `OpenRouter free models exhausted (no paid fallback in 'free' tier) — ${free.attempts.slice(-3).join(" | ")}`,
+      60 * 60_000,
+      true,
+    );
+  }
+
+  // tier === "auto" — free.kind === "exhausted" — fall through to paid.
   const attempts = [...free.attempts];
-  const paid = await tryOpenRouterPaidFallback(prompt, apiKey, attempts, signal);
+  const paidModels = options.paidModel
+    ? [options.paidModel, ...OPENROUTER_PAID_FALLBACK_MODELS.filter((m) => m !== options.paidModel)]
+    : OPENROUTER_PAID_FALLBACK_MODELS;
+  const paid = await tryOpenRouterPaidModels(prompt, apiKey, paidModels, attempts, signal);
   if (paid) return paid;
 
   throw new Error(
@@ -727,6 +825,7 @@ const ROTATION_PROVIDERS: Record<RotationProviderId, RotationProvider> = {
         c.openrouterApiKey,
         c.openrouterModel || OPENROUTER_AUTO,
         signal,
+        { tier: c.openrouterTier, paidModel: c.openrouterPaidModel },
       ),
   },
   cerebras: {

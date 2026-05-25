@@ -13,6 +13,8 @@ export async function GET() {
     gemini_model: all.gemini_model || "gemini-2.5-flash",
     openrouter_api_key: all.openrouter_api_key || "",
     openrouter_model: all.openrouter_model || "auto",
+    openrouter_tier: config.openrouterTier,
+    openrouter_paid_model: config.openrouterPaidModel,
     groq_api_key: all.groq_api_key || "",
     groq_model: all.groq_model || "llama-3.1-8b-instant",
     cerebras_api_key: all.cerebras_api_key || "",

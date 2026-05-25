@@ -116,22 +116,31 @@ export async function POST(req: NextRequest) {
           apiKey,
           requested,
           signal,
+          { tier: config.openrouterTier, paidModel: config.openrouterPaidModel },
         );
         // generateWithOpenRouter only ever returns a paid model id (no ":free"
-        // suffix) when every free model was busy and the paid fallback ran.
+        // suffix) when every free model was busy and the paid fallback ran,
+        // OR when the tier is "nitro" (paid model with :nitro suffix tag).
         const usedPaidFallback = !r.model.endsWith(":free");
+        const usedNitro = r.model.endsWith(":nitro");
         return NextResponse.json({
           ok: true,
           keyPreview,
           requestedModel: requested,
+          tier: config.openrouterTier,
           modelUsed: r.model,
           freeModelsAvailable: liveFreeModels.length,
           firstFreeModels: liveFreeModels.slice(0, 8),
           ...(requestedModelDead && { warning: retiredWarning }),
-          ...(usedPaidFallback && {
+          ...(usedNitro && {
+            note:
+              `Tier "nitro": paid model "${r.model}" answered via throughput-routed ` +
+              `endpoint (~$0.0002 per 5-job batch, sub-5s typical).`,
+          }),
+          ...(usedPaidFallback && !usedNitro && {
             note:
               `Every :free model was busy, so the cheap paid fallback "${r.model}" ` +
-              `answered (~$0.0002 per 8-job batch). Free models are always tried first.`,
+              `answered (~$0.0002 per 5-job batch). Free models are always tried first.`,
           }),
           sample: r.text.trim().slice(0, 200),
         });
@@ -140,6 +149,7 @@ export async function POST(req: NextRequest) {
           ok: false,
           keyPreview,
           requestedModel: requested,
+          tier: config.openrouterTier,
           freeModelsAvailable: liveFreeModels.length,
           firstFreeModels: liveFreeModels.slice(0, 8),
           ...(requestedModelDead && { warning: retiredWarning }),
@@ -313,8 +323,9 @@ export async function POST(req: NextRequest) {
               config.openrouterApiKey,
               config.openrouterModel || "auto",
               AbortSignal.timeout(remaining()),
+              { tier: config.openrouterTier, paidModel: config.openrouterPaidModel },
             );
-            out.openrouter = `OK · ${r.model}`;
+            out.openrouter = `OK · ${r.model} (tier: ${config.openrouterTier})`;
             anyOk = true;
           } else if (id === "cloudflare") {
             if (!config.cloudflareAccountId || !config.cloudflareApiKey) {

@@ -147,6 +147,8 @@ export default function SettingsPage() {
   const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash");
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [openrouterModel, setOpenrouterModel] = useState("auto");
+  const [openrouterTier, setOpenrouterTier] = useState<"free" | "nitro" | "auto">("auto");
+  const [openrouterPaidModel, setOpenrouterPaidModel] = useState("meta-llama/llama-3.1-8b-instruct");
   const [groqKey, setGroqKey] = useState("");
   const [groqModel, setGroqModel] = useState("llama-3.1-8b-instant");
   const [cerebrasKey, setCerebrasKey] = useState("");
@@ -198,6 +200,12 @@ export default function SettingsPage() {
     setGeminiModel(data.gemini_model || "gemini-2.5-flash");
     setOpenrouterKey(data.openrouter_api_key || "");
     setOpenrouterModel(data.openrouter_model || "auto");
+    setOpenrouterTier(
+      data.openrouter_tier === "free" || data.openrouter_tier === "nitro"
+        ? data.openrouter_tier
+        : "auto",
+    );
+    setOpenrouterPaidModel(data.openrouter_paid_model || "meta-llama/llama-3.1-8b-instruct");
     setGroqKey(data.groq_api_key || "");
     setGroqModel(data.groq_model || "llama-3.1-8b-instant");
     setCerebrasKey(data.cerebras_api_key || "");
@@ -224,6 +232,8 @@ export default function SettingsPage() {
       gemini_model: geminiModel,
       openrouter_api_key: openrouterKey,
       openrouter_model: openrouterModel,
+      openrouter_tier: openrouterTier,
+      openrouter_paid_model: openrouterPaidModel,
       groq_api_key: groqKey,
       groq_model: groqModel,
       cerebras_api_key: cerebrasKey,
@@ -440,32 +450,117 @@ export default function SettingsPage() {
         placeholder="sk-or-v1-..."
       />
       <p style={helpStyle}>
-        Free, no credit card — get a key at{" "}
+        Get a key at{" "}
         <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" style={linkStyle}>
           openrouter.ai/settings/keys
         </a>
-        . Free tier is roughly 50 req/day per key.
+        . Free tier is roughly 50 req/day per key; add a few dollars of balance
+        to unlock paid models and the nitro tier below.
       </p>
-      <label style={labelStyle}>Model</label>
-      <select value={openrouterModel} onChange={(e) => setOpenrouterModel(e.target.value)} style={inputStyle}>
-        <option value="auto">auto (recommended — discover and rotate free models live)</option>
-        <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1 (reasoning)</option>
-        <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct</option>
-        <option value="google/gemini-2.0-flash-exp:free">google/gemini-2.0-flash-exp</option>
-        <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct</option>
-        <option value="meta-llama/llama-3.2-3b-instruct:free">meta-llama/llama-3.2-3b-instruct</option>
-        <option value="google/gemma-2-9b-it:free">google/gemma-2-9b-it</option>
-        <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct</option>
-        {openrouterModel && !OPENROUTER_PRESET_MODELS.includes(openrouterModel) && (
-          <option value={openrouterModel}>
-            {openrouterModel} (saved value — likely retired, switch to auto)
-          </option>
-        )}
-      </select>
+
+      <label style={labelStyle}>Routing Tier</label>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "0.5rem" }}>
+        <label style={{ ...radioLabel, marginRight: 0 }}>
+          <input
+            type="radio"
+            name="openrouter-tier"
+            value="auto"
+            checked={openrouterTier === "auto"}
+            onChange={() => setOpenrouterTier("auto")}
+          />
+          <strong>auto</strong>&nbsp;— free models first, cheap paid fallback when free is busy <em>(recommended)</em>
+        </label>
+        <label style={{ ...radioLabel, marginRight: 0 }}>
+          <input
+            type="radio"
+            name="openrouter-tier"
+            value="free"
+            checked={openrouterTier === "free"}
+            onChange={() => setOpenrouterTier("free")}
+          />
+          <strong>free only</strong>&nbsp;— never call paid models; pause when free is exhausted
+        </label>
+        <label style={{ ...radioLabel, marginRight: 0 }}>
+          <input
+            type="radio"
+            name="openrouter-tier"
+            value="nitro"
+            checked={openrouterTier === "nitro"}
+            onChange={() => setOpenrouterTier("nitro")}
+          />
+          <strong>nitro</strong>&nbsp;— paid model with{" "}
+          <code>provider.sort=&quot;throughput&quot;</code> for fastest response (~$0.0002 / 5-job batch)
+        </label>
+      </div>
       <p style={helpStyle}>
-        Leave on <strong>auto</strong> unless you have a reason not to — OpenRouter
-        retires free models often, and a pinned model that goes away causes errors.
+        <strong>nitro</strong> uses OpenRouter&apos;s throughput-routing — equivalent
+        to the <code>:nitro</code> model suffix described in{" "}
+        <a
+          href="https://openrouter.ai/docs/guides/routing/provider-selection"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={linkStyle}
+        >
+          OpenRouter docs
+        </a>
+        . Pick this when you need a 220-job backlog to finish in minutes, not
+        hours, and you don&apos;t mind ~$0.04 for 200 batches.
       </p>
+
+      {openrouterTier !== "nitro" && (
+        <>
+          <label style={labelStyle}>Free Model</label>
+          <select
+            value={openrouterModel}
+            onChange={(e) => setOpenrouterModel(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="auto">auto (recommended — discover and rotate free models live)</option>
+            <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1 (reasoning)</option>
+            <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct</option>
+            <option value="google/gemini-2.0-flash-exp:free">google/gemini-2.0-flash-exp</option>
+            <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct</option>
+            <option value="meta-llama/llama-3.2-3b-instruct:free">meta-llama/llama-3.2-3b-instruct</option>
+            <option value="google/gemma-2-9b-it:free">google/gemma-2-9b-it</option>
+            <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct</option>
+            {openrouterModel && !OPENROUTER_PRESET_MODELS.includes(openrouterModel) && (
+              <option value={openrouterModel}>
+                {openrouterModel} (saved value — likely retired, switch to auto)
+              </option>
+            )}
+          </select>
+          <p style={helpStyle}>
+            Leave on <strong>auto</strong> unless you have a reason not to — OpenRouter
+            retires free models often, and a pinned model that goes away causes errors.
+          </p>
+        </>
+      )}
+
+      {(openrouterTier === "nitro" || openrouterTier === "auto") && (
+        <>
+          <label style={labelStyle}>Paid Model {openrouterTier === "auto" && "(fallback only)"}</label>
+          <select
+            value={openrouterPaidModel}
+            onChange={(e) => setOpenrouterPaidModel(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="meta-llama/llama-3.1-8b-instruct">
+              meta-llama/llama-3.1-8b-instruct (cheapest, ~$0.0002/batch)
+            </option>
+            <option value="mistralai/mistral-nemo">mistralai/mistral-nemo (cheap, larger context)</option>
+            <option value="meta-llama/llama-3.3-70b-instruct">
+              meta-llama/llama-3.3-70b-instruct (smarter, ~10× cost)
+            </option>
+            <option value="google/gemini-2.5-flash">google/gemini-2.5-flash (fast, mid-cost)</option>
+          </select>
+          <p style={helpStyle}>
+            {openrouterTier === "nitro"
+              ? "Used for every call. With nitro routing the request goes to the model's fastest provider, not the cheapest."
+              : "Only called when every :free model is busy or the free daily cap is spent."}
+          </p>
+        </>
+      )}
+
       <button type="button" onClick={() => runTest("openrouter")} disabled={testing === "openrouter"} style={testBtn}>
         {testing === "openrouter" ? "Testing..." : "Test OpenRouter"}
       </button>

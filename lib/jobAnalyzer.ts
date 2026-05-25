@@ -109,10 +109,12 @@ type PendingJobRow = {
   description: string | null;
 };
 
-// Per-job description budget inside a batched prompt. Smaller than the 6000
-// used for single-job analysis so 8–12 jobs still fit a free model's context
-// window comfortably; role / location / remote signals live near the top.
-const BATCH_DESCRIPTION_LIMIT = 4000;
+// Per-job description budget inside a batched prompt. Tighter than the 6000
+// used for single-job analysis so a 5-job batch lands at ~18k chars total —
+// small enough for a free model to finish well inside the abort deadline, and
+// large enough to keep the role / location / remote signals that drive almost
+// every verdict (they cluster in the first 1500–2000 chars of a job posting).
+const BATCH_DESCRIPTION_LIMIT = 3000;
 
 // Pull the rules + rubric out of an analysis-prompt template so the batch
 // prompt reuses the exact criteria the single-job path uses. Falls back to the
@@ -330,13 +332,15 @@ export type AnalyzeBatchOptions = {
 // Leave at least this much wall-clock for the response + post-batch sheets
 // sync. Without this floor a slow LLM call can push the function past Vercel's
 // 60s cap and the user sees a generic FUNCTION_INVOCATION_TIMEOUT instead of a
-// graceful "batch partial, click again" message.
-const HEADROOM_MS = 12_000;
+// graceful "batch partial, click again" message. 6s comfortably covers the
+// Prisma updateMany + sheets append on a typical 5-job batch; the previous 12s
+// was overcautious and stole that much LLM time from every run.
+const HEADROOM_MS = 6_000;
 // Refuse to start a new batched LLM call without at least this much working
-// time before the kill-timer. A batched call (8–12 job descriptions in, a JSON
-// array out) typically lands in 8–18s on a free model; this floor stops us
+// time before the kill-timer. A 5-job batch (≤18k-char prompt, JSON array out)
+// typically lands in 5–12s on a fast-priority free model; this floor stops us
 // from starting one we cannot finish before the abort fires.
-const MIN_BATCH_BUDGET_MS = 18_000;
+const MIN_BATCH_BUDGET_MS = 14_000;
 
 async function delay(ms: number, signal?: AbortSignal): Promise<void> {
   if (ms <= 0) return;
@@ -528,7 +532,7 @@ export async function analyzeAllPending(options: AnalyzeBatchOptions = {}): Prom
         break;
       }
 
-      // Small courtesy pause between batched calls. With ~8 jobs per call this
+      // Small courtesy pause between batched calls. With ~5 jobs per call this
       // is far under the free-tier 20 req/min ceiling.
       if (i + batchSize < pending.length && requestDelayMs > 0) {
         const left = deadline - (Date.now() - startedAt);

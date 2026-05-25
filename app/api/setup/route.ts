@@ -76,6 +76,8 @@ async function seedDefaults() {
     ai_providers: '["gemini","groq","cerebras","openrouter"]',
     gemini_model: "gemini-2.5-flash",
     openrouter_model: "auto",
+    openrouter_tier: "auto",
+    openrouter_paid_model: "meta-llama/llama-3.1-8b-instruct",
     cloudflare_model: "@cf/meta/llama-3.1-8b-instruct",
     target_market: "Europe, Eastern Europe, Remote worldwide",
     current_location: "Armenia",
