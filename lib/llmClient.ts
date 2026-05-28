@@ -187,6 +187,11 @@ async function callOpenRouter(
     model,
     messages: [{ role: "user", content: prompt }],
     temperature: 0.3,
+    // Cap the completion so a batched verdict array can't be left open by a
+    // provider's tiny default output limit — a truncated JSON array fails to
+    // parse and yields zero verdicts. ~12 jobs of {id,approved,score,reason,
+    // techStack} land well under 2000 tokens.
+    max_tokens: 2000,
   };
   if (provider && Object.keys(provider).length > 0) {
     body.provider = provider;

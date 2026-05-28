@@ -172,31 +172,101 @@ Example for two jobs with ids 11 and 12:
 Now analyze all ${jobs.length} jobs and output ONLY the JSON array.`;
 }
 
-// Parse the model's JSON array into a verdict-by-job-id map. A missing or
-// malformed element is simply omitted — the caller leaves any unmatched job
-// PENDING for a later pass rather than guessing a verdict.
-function parseBatchResponse(text: string): Map<number, AnalysisResult> {
-  const out = new Map<number, AnalysisResult>();
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) return out;
+// A single parsed verdict, preserving the model's own `id` when it supplied a
+// usable one. `id` is null when the element had no integer id — the caller
+// then falls back to positional matching.
+type ParsedVerdict = { id: number | null; verdict: AnalysisResult };
+
+// Pull the JSON array of verdicts out of a model response. Small instruct
+// models are sloppy about the OUTPUT CONTRACT — they wrap the array in
+// ```json fences, add a "Here are the results:" preamble, or nest it under a
+// key like {"results":[...]}. Extracting the first balanced [...] (ignoring
+// brackets inside strings) survives all of those, where a greedy
+// /\[[\s\S]*\]/ would grab too much and fail to parse.
+function extractJsonArray(text: string): string | null {
+  // Drop code fences so a ```json … ``` wrapper doesn't confuse the scanner.
+  const cleaned = text.replace(/```(?:json)?/gi, "");
+  const start = cleaned.indexOf("[");
+  if (start === -1) return null;
+  let depth = 0;
+  let inStr = false;
+  let escaped = false;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (inStr) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === "[") depth++;
+    else if (ch === "]") {
+      depth--;
+      if (depth === 0) return cleaned.slice(start, i + 1);
+    }
+  }
+  // No matching close bracket — the response was truncated mid-array. Salvage
+  // what we can by closing it after the last complete object.
+  const lastObjEnd = cleaned.lastIndexOf("}");
+  if (lastObjEnd > start) return cleaned.slice(start, lastObjEnd + 1) + "]";
+  return null;
+}
+
+function toVerdict(el: any): AnalysisResult {
+  return {
+    approved: !!el?.approved,
+    score: Math.min(100, Math.max(0, Number(el?.score) || 0)),
+    reason: String(el?.reason || ""),
+    techStack: Array.isArray(el?.techStack) ? el.techStack.map(String) : [],
+  };
+}
+
+// Parse the model's JSON array into an ORDERED list of verdicts. Each carries
+// the model's own id when it gave a valid integer, else null. Order is
+// preserved so the caller can match by position when ids are unreliable.
+function parseBatchVerdicts(text: string): ParsedVerdict[] {
+  const slice = extractJsonArray(text);
+  if (!slice) return [];
   let arr: unknown;
   try {
-    arr = JSON.parse(match[0]);
+    arr = JSON.parse(slice);
   } catch {
-    return out;
+    return [];
   }
-  if (!Array.isArray(arr)) return out;
-  for (const el of arr as any[]) {
-    const id = Number(el?.id);
-    if (!Number.isInteger(id)) continue;
-    out.set(id, {
-      approved: !!el?.approved,
-      score: Math.min(100, Math.max(0, Number(el?.score) || 0)),
-      reason: String(el?.reason || ""),
-      techStack: Array.isArray(el?.techStack) ? el.techStack.map(String) : [],
-    });
+  if (!Array.isArray(arr)) return [];
+  return (arr as any[]).map((el) => {
+    const n = Number(el?.id);
+    return { id: Number.isInteger(n) ? n : null, verdict: toVerdict(el) };
+  });
+}
+
+// Map an ordered list of parsed verdicts onto `count` jobs that were sent in
+// positional order with ids 1..count. Tries the model's ids first, then falls
+// back to array position. This is the crux of the analyze fix: small models
+// frequently RENUMBER the jobs (1..N) or drop the arbitrary database ids we
+// put in the prompt, so matching purely on echoed ids returned zero verdicts
+// and left every job PENDING ("AI returned no usable verdicts"). Sending small
+// 1..N ids and accepting a positional fallback makes a verdict land regardless.
+function matchVerdictsByPosition(
+  parsed: ParsedVerdict[],
+  count: number,
+): Map<number, AnalysisResult> {
+  const byPos = new Map<number, AnalysisResult>();
+  const byId = new Map<number, AnalysisResult>();
+  for (const p of parsed) {
+    if (p.id != null && p.id >= 1 && p.id <= count && !byId.has(p.id)) {
+      byId.set(p.id, p.verdict);
+    }
   }
-  return out;
+  const canFallBackByOrder = parsed.length === count;
+  for (let pos = 0; pos < count; pos++) {
+    const oneBased = pos + 1;
+    let v = byId.get(oneBased);
+    if (!v && canFallBackByOrder) v = parsed[pos].verdict;
+    if (v) byPos.set(pos, v);
+  }
+  return byPos;
 }
 
 export async function analyzeJob(jobId: number, signal?: AbortSignal): Promise<AnalysisResult> {
@@ -407,21 +477,35 @@ async function analyzeBatch(
     return { approved, rejected, resolved, unresolved: 0 };
   }
 
-  const prompt = buildBatchPrompt(needsLlm, config);
+  // Send the model small positional ids (1..N) rather than the real database
+  // ids. The model only has to echo 1..N, and even if it renumbers or drops
+  // them we recover the verdict by array position — see matchVerdictsByPosition.
+  const promptRows: PendingJobRow[] = needsLlm.map((job, i) => ({
+    id: i + 1,
+    title: job.title,
+    company: job.company,
+    location: job.location,
+    description: job.description,
+  }));
+  const prompt = buildBatchPrompt(promptRows, config);
   const startTime = Date.now();
   const llmResult = await generateText(prompt, signal, "batch");
   const durationMs = Date.now() - startTime;
-  const verdicts = parseBatchResponse(llmResult.text);
+  const verdicts = matchVerdictsByPosition(
+    parseBatchVerdicts(llmResult.text),
+    needsLlm.length,
+  );
 
   // One call covers the whole chunk — split its cost across the per-job logs.
   const perJobDuration = Math.round(durationMs / needsLlm.length);
   const perJobTokens = Math.round((llmResult.tokensUsed || 0) / needsLlm.length);
 
   let unresolved = 0;
-  for (const job of needsLlm) {
-    const v = verdicts.get(job.id);
+  for (let pos = 0; pos < needsLlm.length; pos++) {
+    const job = needsLlm[pos];
+    const v = verdicts.get(pos);
     if (!v) {
-      unresolved++; // model dropped this id — leave PENDING for the next pass
+      unresolved++; // model dropped this job — leave PENDING for the next pass
       continue;
     }
     const u = await prisma.scrapedJob.updateMany({
@@ -653,8 +737,10 @@ export async function analyzeScrapedJobs(
     }
 
     const chunk = needsLlm.slice(i, i + batchSize);
+    // Positional ids 1..chunkLen, mapped back to the caller's original job
+    // index after matching — same robustness as the DB-batched path.
     const prompt = buildBatchPrompt(
-      chunk.map((c) => c.row),
+      chunk.map((c, j) => ({ ...c.row, id: j + 1 })),
       config,
     );
     const t0 = Date.now();
@@ -671,15 +757,17 @@ export async function analyzeScrapedJobs(
     }
 
     const durationMs = Date.now() - t0;
-    // parseBatchResponse keys verdicts by the synthetic id we set above == index.
-    const parsed = parseBatchResponse(llmResult.text);
+    const matched = matchVerdictsByPosition(
+      parseBatchVerdicts(llmResult.text),
+      chunk.length,
+    );
     const perJobDuration = Math.round(durationMs / chunk.length);
     const perJobTokens = Math.round((llmResult.tokensUsed || 0) / chunk.length);
 
     let resolved = 0;
-    for (const c of chunk) {
-      const v = parsed.get(c.index);
-      if (!v) continue; // model dropped this id — left unstored for the next scan
+    chunk.forEach((c, pos) => {
+      const v = matched.get(pos);
+      if (!v) return; // model dropped this job — left unstored for the next scan
       verdicts.set(c.index, {
         ...v,
         model: llmResult.model,
@@ -687,7 +775,7 @@ export async function analyzeScrapedJobs(
         durationMs: perJobDuration,
       });
       resolved++;
-    }
+    });
     // A chunk that resolved nothing means the model failed outright — retrying
     // identical content would just fail again.
     if (resolved === 0) {
