@@ -316,8 +316,9 @@
     }
   }
 
-  function findApplyUrlInEmbeddedJson() {
+  function findApplyUrlInEmbeddedJson(explicitId) {
     const currentId =
+      explicitId ||
       new URLSearchParams(window.location.search).get("currentJobId") ||
       (window.location.href.match(/\/jobs\/view\/(\d+)/) || [])[1] ||
       "";
@@ -365,10 +366,106 @@
     return candidates[0].url;
   }
 
-  function extractApplyUrl() {
+  // --- VOYAGER API APPLY-URL LOOKUP ---
+  //
+  // The reliable way to get a job's real (off-LinkedIn) apply URL is to ask
+  // LinkedIn's own job API for that exact job id. During a scan we navigate the
+  // jobs SPA by clicking cards: the rendered "Apply" button is a <button> that
+  // opens the company site via JS (no href in the DOM), and the server-rendered
+  // JSON blobs only ever describe the FIRST job loaded at page load — they are
+  // never re-injected for cards loaded over XHR. So both DOM scraping paths come
+  // up empty after the first job, which is why every row used to fall back to
+  // the LinkedIn link. This call runs on linkedin.com with the user's own
+  // session cookies, scoped to a single job id, so it can't leak a neighbor's
+  // URL and works the same for every card on every page.
+
+  function getLinkedInCsrfToken() {
+    // LinkedIn's own web client uses the JSESSIONID cookie value (quotes
+    // stripped) as the csrf-token header. The cookie is readable from JS.
+    const m = (document.cookie || "").match(/JSESSIONID=("?)([^";]+)\1/);
+    return m ? m[2] : "";
+  }
+
+  // Pure parser: recursively scan a Voyager jobPostings response (REST or
+  // normalized+json, possibly wrapped in {data, included}) for the external
+  // company apply URL. Easy Apply / onsite jobs carry no companyApplyUrl, so
+  // those correctly yield "". Kept side-effect free so it can be unit tested.
+  function extractCompanyApplyUrlFromVoyagerData(data) {
+    if (!data || typeof data !== "object") return "";
+    const companyApply = [];
+    const genericApply = [];
+    const stack = [data];
+    let guard = 0;
+    while (stack.length && guard < 200000) {
+      guard++;
+      const node = stack.pop();
+      if (!node || typeof node !== "object") continue;
+      if (Array.isArray(node)) {
+        for (const v of node) if (v && typeof v === "object") stack.push(v);
+        continue;
+      }
+      for (const k in node) {
+        const v = node[k];
+        if (typeof v === "string") {
+          if (!/^https?:\/\//i.test(v)) continue;
+          if (k === "companyApplyUrl") companyApply.push(v);
+          else if (k === "applyUrl" && !/linkedin\.com/i.test(v)) genericApply.push(v);
+        } else if (v && typeof v === "object") {
+          stack.push(v);
+        }
+      }
+    }
+    return companyApply[0] || genericApply[0] || "";
+  }
+
+  async function fetchApplyUrlFromVoyager(jobId) {
+    if (!jobId) return "";
+    const csrf = getLinkedInCsrfToken();
+    if (!csrf) {
+      log("Voyager apply lookup skipped: no JSESSIONID/csrf-token cookie", "warn");
+      return "";
+    }
+    const endpoints = [
+      `https://www.linkedin.com/voyager/api/jobs/jobPostings/${jobId}?decorationId=com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting-65`,
+      `https://www.linkedin.com/voyager/api/jobs/jobPostings/${jobId}`,
+    ];
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "csrf-token": csrf,
+            accept: "application/vnd.linkedin.normalized+json+2.1",
+            "x-restli-protocol-version": "2.0.0",
+            "x-li-lang": "en_US",
+          },
+        });
+        if (!res.ok) {
+          log(`Voyager apply lookup ${res.status} for job ${jobId}`, "warn");
+          continue;
+        }
+        const data = await res.json();
+        const raw = extractCompanyApplyUrlFromVoyagerData(data);
+        if (raw) {
+          const tidied = tidyApplyUrl(raw);
+          log(`Voyager apply URL for job ${jobId}: ${tidied}`);
+          return tidied;
+        }
+        // 200 with no companyApplyUrl == Easy Apply / onsite. Keep trying the
+        // other endpoint shape in case the decoration was partial.
+        log(`Voyager response for job ${jobId} had no companyApplyUrl`);
+      } catch (e) {
+        log(`Voyager apply lookup failed for job ${jobId}: ${e.message}`, "warn");
+      }
+    }
+    return "";
+  }
+
+  function extractApplyUrl(explicitId) {
     const detail = getDetailContainer();
     if (!detail) {
-      const fromJson = findApplyUrlInEmbeddedJson();
+      const fromJson = findApplyUrlInEmbeddedJson(explicitId);
       return fromJson ? tidyApplyUrl(fromJson) : "";
     }
     const selectors = [
@@ -418,7 +515,7 @@
     }
 
     // Fallback 2: scan embedded Voyager JSON blobs for companyApplyUrl / applyUrl
-    const fromJson = findApplyUrlInEmbeddedJson();
+    const fromJson = findApplyUrlInEmbeddedJson(explicitId);
     if (fromJson) return tidyApplyUrl(fromJson);
 
     return "";
@@ -690,7 +787,16 @@
     const jobUrl = cardJobId
       ? `https://www.linkedin.com/jobs/view/${cardJobId}`
       : extractJobUrl();
-    const applyUrl = easyApply ? "" : extractApplyUrl();
+    // Apply URL: the real (off-LinkedIn) company application page. Ask
+    // LinkedIn's job API for this exact job id first — it's authoritative and
+    // survives card-to-card SPA navigation — then fall back to scraping the
+    // detail panel / embedded JSON, scoped to the same job id. Easy Apply jobs
+    // have no external page, so applyUrl stays empty for them.
+    let applyUrl = "";
+    if (!easyApply) {
+      if (cardJobId) applyUrl = await fetchApplyUrlFromVoyager(cardJobId);
+      if (!applyUrl) applyUrl = extractApplyUrl(cardJobId);
+    }
 
     log(`Extracted: title="${title}", company="${company}", location="${location}", desc=${description.length}chars, url=${jobUrl}, applyUrl=${applyUrl || "n/a"}`);
 
