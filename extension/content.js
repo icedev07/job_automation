@@ -97,6 +97,32 @@
     return (card.querySelector("[data-job-id]")?.getAttribute("data-job-id") || "").trim();
   }
 
+  // Robustly resolve a card's numeric LinkedIn job id across every layout.
+  // The left-rail search cards are <li data-occludable-job-id> wrapping a
+  // <div data-job-id>, so a plain getAttribute/closest on the <li> misses it.
+  // We check, in order: a [data-job-id] on the card or any descendant, a
+  // [data-occludable-job-id] on the card or a descendant, and finally the
+  // numeric id embedded in the /jobs/view/<id> link (always present on a valid
+  // card). Returns "" only for genuinely non-job elements.
+  function resolveCardJobId(card) {
+    if (!card) return "";
+    const direct = getCardJobId(card);
+    if (direct && direct !== "search") return direct;
+
+    const occAttr =
+      card.getAttribute?.("data-occludable-job-id") ||
+      card.querySelector?.("[data-occludable-job-id]")?.getAttribute("data-occludable-job-id") ||
+      card.closest?.("[data-occludable-job-id]")?.getAttribute("data-occludable-job-id") ||
+      "";
+    if (occAttr && /^\d+$/.test(occAttr.trim())) return occAttr.trim();
+
+    const href = card.querySelector?.("a[href*='/jobs/view/']")?.getAttribute("href") || "";
+    const m = href.match(/\/jobs\/view\/(?:[^/?#]*-)?(\d+)/);
+    if (m) return m[1];
+
+    return "";
+  }
+
   function isInsideNonResultsSection(el) {
     return !!(el?.closest("#jobs-search-results-footer") || el?.closest(".continuous-discovery-modules"));
   }
@@ -418,47 +444,94 @@
     return companyApply[0] || genericApply[0] || "";
   }
 
+  // Regex scan of raw text (a JSON string or a full HTML page, possibly
+  // HTML-entity-escaped) for the company apply URL. Used for the job-page
+  // fallback where we don't have a parsed object.
+  function findCompanyApplyUrlInText(text) {
+    if (!text) return "";
+    const patterns = [
+      /"companyApplyUrl"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i,
+      /&quot;companyApplyUrl&quot;\s*:\s*&quot;([^&]+)&quot;/i,
+    ];
+    for (const re of patterns) {
+      const m = text.match(re);
+      if (m && m[1]) {
+        const decoded = decodeJsonString(m[1]).replace(/&amp;/g, "&");
+        if (/^https?:\/\//i.test(decoded)) return decoded;
+      }
+    }
+    return "";
+  }
+
   async function fetchApplyUrlFromVoyager(jobId) {
     if (!jobId) return "";
     const csrf = getLinkedInCsrfToken();
-    if (!csrf) {
-      log("Voyager apply lookup skipped: no JSESSIONID/csrf-token cookie", "warn");
-      return "";
-    }
-    const endpoints = [
-      `https://www.linkedin.com/voyager/api/jobs/jobPostings/${jobId}?decorationId=com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting-65`,
-      `https://www.linkedin.com/voyager/api/jobs/jobPostings/${jobId}`,
-    ];
-    for (const url of endpoints) {
-      try {
-        const res = await fetch(url, {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "csrf-token": csrf,
-            accept: "application/vnd.linkedin.normalized+json+2.1",
-            "x-restli-protocol-version": "2.0.0",
-            "x-li-lang": "en_US",
-          },
-        });
-        if (!res.ok) {
-          log(`Voyager apply lookup ${res.status} for job ${jobId}`, "warn");
-          continue;
+
+    // Primary: LinkedIn's authenticated job API. The endpoint exists and only
+    // needs the user's own session (cookies + csrf-token from the JSESSIONID
+    // cookie). Two response shapes are tried in case a decoration is partial.
+    if (csrf) {
+      const endpoints = [
+        `https://www.linkedin.com/voyager/api/jobs/jobPostings/${jobId}?decorationId=com.linkedin.voyager.deco.jobs.web.shared.WebFullJobPosting-65`,
+        `https://www.linkedin.com/voyager/api/jobs/jobPostings/${jobId}`,
+      ];
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "csrf-token": csrf,
+              accept: "application/vnd.linkedin.normalized+json+2.1",
+              "x-restli-protocol-version": "2.0.0",
+              "x-li-lang": "en_US",
+            },
+          });
+          if (!res.ok) {
+            log(`Apply lookup: voyager REST ${res.status} for job ${jobId}`, "warn");
+            continue;
+          }
+          const data = await res.json();
+          const raw = extractCompanyApplyUrlFromVoyagerData(data);
+          if (raw) {
+            const tidied = tidyApplyUrl(raw);
+            log(`Apply URL (voyager REST) for job ${jobId}: ${tidied}`);
+            return tidied;
+          }
+          log(`Apply lookup: voyager 200 for job ${jobId} but no companyApplyUrl (likely Easy Apply)`);
+        } catch (e) {
+          log(`Apply lookup: voyager REST failed for job ${jobId}: ${e.message}`, "warn");
         }
-        const data = await res.json();
-        const raw = extractCompanyApplyUrlFromVoyagerData(data);
+      }
+    } else {
+      log("Apply lookup: no JSESSIONID/csrf-token cookie; using job-page fallback", "warn");
+    }
+
+    // Fallback: the authenticated job page HTML. Version-independent (doesn't
+    // depend on any voyager decoration) and works even without a csrf token,
+    // because a same-origin fetch carries the session cookies. Only runs when
+    // the API path above produced nothing.
+    try {
+      const res = await fetch(`https://www.linkedin.com/jobs/view/${jobId}`, {
+        method: "GET",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const text = await res.text();
+        const raw = findCompanyApplyUrlInText(text);
         if (raw) {
           const tidied = tidyApplyUrl(raw);
-          log(`Voyager apply URL for job ${jobId}: ${tidied}`);
+          log(`Apply URL (job page) for job ${jobId}: ${tidied}`);
           return tidied;
         }
-        // 200 with no companyApplyUrl == Easy Apply / onsite. Keep trying the
-        // other endpoint shape in case the decoration was partial.
-        log(`Voyager response for job ${jobId} had no companyApplyUrl`);
-      } catch (e) {
-        log(`Voyager apply lookup failed for job ${jobId}: ${e.message}`, "warn");
+        log(`Apply lookup: job page for ${jobId} had no companyApplyUrl (likely Easy Apply)`);
+      } else {
+        log(`Apply lookup: job page ${res.status} for job ${jobId}`, "warn");
       }
+    } catch (e) {
+      log(`Apply lookup: job page failed for job ${jobId}: ${e.message}`, "warn");
     }
+
     return "";
   }
 
@@ -760,7 +833,7 @@
 
     // Get job URL from the card link
     const cardLink = card.querySelector("a[href*='/jobs/view/']");
-    const cardJobId = card.getAttribute("data-job-id") || card.closest("[data-job-id]")?.getAttribute("data-job-id");
+    const cardJobId = resolveCardJobId(card);
     const cardTitle = card.querySelector(".job-card-list__title--link, a[class*='job-card-container__link']");
     const cardTitleText = cardTitle?.textContent?.trim() || "";
     const cardCompanyEl = card.querySelector(".artdeco-entity-lockup__subtitle span");
