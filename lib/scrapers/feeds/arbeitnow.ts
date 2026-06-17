@@ -1,5 +1,6 @@
 import type { Feed, NormalizedJob } from "../types";
 import { stripHtml } from "../rss";
+import { feedHttpGet, parseJsonOrWarn } from "../http";
 
 // Arbeitnow is a Germany/DACH-leaning job board with a public, no-auth JSON API
 // — a strong fit for the Armenia → Europe target. It is paginated (?page=N,
@@ -60,12 +61,13 @@ export const arbeitnowFeed: Feed = {
     const keywordFilter = parseKeywordFilter(searchUrl);
     const jobs: NormalizedJob[] = [];
     let nextUrl: string | null = `${ARBEITNOW_URL}?page=1`;
+    let warning: string | undefined;
 
     for (let page = 0; page < MAX_PAGES && jobs.length < maxJobs && nextUrl; page++) {
       if (signal?.aborted) break;
       if (page > 0) await sleep(INTER_PAGE_DELAY_MS);
 
-      const res: Response = await fetch(nextUrl, {
+      const r = await feedHttpGet("Arbeitnow", nextUrl, {
         headers: {
           "User-Agent":
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -74,13 +76,19 @@ export const arbeitnowFeed: Feed = {
         signal,
         cache: "no-store",
       });
-      if (!res.ok) {
-        if (page === 0) throw new Error(`Arbeitnow responded ${res.status}`);
-        break; // rate-limited or transient on a later page — keep what we have
+      if (!r.ok) {
+        // First page blocked → surface the reason; a later page (often the
+        // 5 req/min cap) just stops with whatever we already gathered.
+        if (page === 0) warning = r.warning;
+        break;
       }
-      const data = (await res.json()) as ArbeitnowResponse;
-      const list = Array.isArray(data.data) ? data.data : [];
-      nextUrl = data.links?.next || null;
+      const parsed = parseJsonOrWarn<ArbeitnowResponse>("Arbeitnow", r.body);
+      if (!parsed.ok) {
+        if (page === 0) warning = parsed.warning;
+        break;
+      }
+      const list = Array.isArray(parsed.data.data) ? parsed.data.data : [];
+      nextUrl = parsed.data.links?.next || null;
       if (list.length === 0) break;
 
       for (const entry of list) {
@@ -111,6 +119,6 @@ export const arbeitnowFeed: Feed = {
       void PAGE_SIZE;
     }
 
-    return { jobs };
+    return { jobs, warning };
   },
 };

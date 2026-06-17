@@ -1,5 +1,6 @@
 import type { Feed, NormalizedJob } from "../types";
 import { stripHtml } from "../rss";
+import { feedHttpGet, parseJsonOrWarn } from "../http";
 
 // Working Nomads exposes a single public JSON endpoint returning every active
 // listing as one flat array — no auth, no pagination, no server-side filter.
@@ -33,7 +34,7 @@ export const workingNomadsFeed: Feed = {
   label: "Working Nomads",
   fetch: async ({ maxJobs, searchUrl, signal }) => {
     const categoryFilter = parseCategoryFilter(searchUrl);
-    const res = await fetch(WORKING_NOMADS_URL, {
+    const r = await feedHttpGet("Working Nomads", WORKING_NOMADS_URL, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -42,9 +43,10 @@ export const workingNomadsFeed: Feed = {
       signal,
       cache: "no-store",
     });
-    if (!res.ok) throw new Error(`Working Nomads responded ${res.status}`);
-    const data = (await res.json()) as WorkingNomadsRaw[];
-    const list = Array.isArray(data) ? data : [];
+    if (!r.ok) return { jobs: [], warning: r.warning };
+    const parsed = parseJsonOrWarn<WorkingNomadsRaw[]>("Working Nomads", r.body);
+    if (!parsed.ok) return { jobs: [], warning: parsed.warning };
+    const list = Array.isArray(parsed.data) ? parsed.data : [];
 
     const jobs: NormalizedJob[] = [];
     for (const entry of list) {

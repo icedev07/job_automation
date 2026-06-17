@@ -1,5 +1,6 @@
 import type { Feed, NormalizedJob } from "../types";
 import { parseRss, stripHtml } from "../rss";
+import { feedHttpGet } from "../http";
 
 // Real Work From Anywhere lists only TRUE work-from-anywhere remote roles (no
 // region locks) — an ideal fit for an Armenia-based applicant. It publishes a
@@ -42,7 +43,7 @@ export const realWorkFromAnywhereFeed: Feed = {
   label: "Real Work From Anywhere",
   fetch: async ({ maxJobs, searchUrl, signal }) => {
     const url = resolveFeedUrl(searchUrl);
-    const res = await fetch(url, {
+    const r = await feedHttpGet("Real Work From Anywhere", url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -51,9 +52,8 @@ export const realWorkFromAnywhereFeed: Feed = {
       signal,
       cache: "no-store",
     });
-    if (!res.ok) throw new Error(`Real Work From Anywhere responded ${res.status}`);
-    const xml = await res.text();
-    const items = parseRss(xml);
+    if (!r.ok) return { jobs: [], warning: r.warning };
+    const items = parseRss(r.body);
 
     const jobs: NormalizedJob[] = [];
     for (const it of items) {

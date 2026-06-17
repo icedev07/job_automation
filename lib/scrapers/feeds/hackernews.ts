@@ -1,5 +1,6 @@
 import type { Feed, NormalizedJob } from "../types";
 import { stripHtml, decodeEntities } from "../rss";
+import { feedHttpGet, parseJsonOrWarn } from "../http";
 
 // Hacker News "Who is hiring?" — the canonical hidden job source. On the first
 // business day of every month, user `whoishiring` posts an "Ask HN: Who is
@@ -119,8 +120,11 @@ function parsePosting(plain: string): { company: string; title: string; location
   };
 }
 
-async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(url, {
+async function getJson<T>(
+  url: string,
+  signal?: AbortSignal,
+): Promise<{ ok: true; data: T } | { ok: false; warning: string }> {
+  const r = await feedHttpGet("Hacker News", url, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -129,8 +133,8 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
     signal,
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`Hacker News responded ${res.status}`);
-  return (await res.json()) as T;
+  if (!r.ok) return r;
+  return parseJsonOrWarn<T>("Hacker News", r.body);
 }
 
 export const hackerNewsFeed: Feed = {
@@ -140,13 +144,15 @@ export const hackerNewsFeed: Feed = {
     const keywordFilter = searchUrl != null ? parseKeywordFilter(searchUrl) : ["remote"];
 
     const search = await getJson<AlgoliaSearch>(ALGOLIA_SEARCH, signal);
-    const thread = pickHiringThread(search.hits ?? []);
+    if (!search.ok) return { jobs: [], warning: search.warning };
+    const thread = pickHiringThread(search.data.hits ?? []);
     if (!thread?.objectID) {
       return { jobs: [], warning: "No 'Who is hiring?' thread found via HN Algolia search" };
     }
 
     const item = await getJson<AlgoliaItem>(`${ALGOLIA_ITEM}${thread.objectID}`, signal);
-    const comments = Array.isArray(item.children) ? item.children : [];
+    if (!item.ok) return { jobs: [], warning: item.warning };
+    const comments = Array.isArray(item.data.children) ? item.data.children : [];
 
     const jobs: NormalizedJob[] = [];
     for (const c of comments) {

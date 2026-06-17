@@ -1,5 +1,6 @@
 import type { Feed, NormalizedJob } from "../types";
 import { stripHtml } from "../rss";
+import { feedHttpGet, parseJsonOrWarn } from "../http";
 
 // The Muse exposes a public, key-less JSON jobs API with real server-side
 // category / location / level filters. It is paginated (?page=N, 0-indexed,
@@ -59,11 +60,12 @@ export const theMuseFeed: Feed = {
   fetch: async ({ maxJobs, searchUrl, signal }) => {
     const jobs: NormalizedJob[] = [];
     let pageCount = Infinity;
+    let warning: string | undefined;
 
     for (let page = 0; page < MAX_PAGES && jobs.length < maxJobs && page < pageCount; page++) {
       if (signal?.aborted) break;
       const url = buildUrl(searchUrl, page);
-      const res = await fetch(url, {
+      const r = await feedHttpGet("The Muse", url, {
         headers: {
           "User-Agent":
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -72,11 +74,16 @@ export const theMuseFeed: Feed = {
         signal,
         cache: "no-store",
       });
-      if (!res.ok) {
-        if (page === 0) throw new Error(`The Muse responded ${res.status}`);
+      if (!r.ok) {
+        if (page === 0) warning = r.warning;
         break;
       }
-      const data = (await res.json()) as MuseResponse;
+      const parsed = parseJsonOrWarn<MuseResponse>("The Muse", r.body);
+      if (!parsed.ok) {
+        if (page === 0) warning = parsed.warning;
+        break;
+      }
+      const data = parsed.data;
       const list = Array.isArray(data.results) ? data.results : [];
       if (typeof data.page_count === "number") pageCount = data.page_count;
       if (list.length === 0) break;
@@ -104,6 +111,6 @@ export const theMuseFeed: Feed = {
       }
     }
 
-    return { jobs };
+    return { jobs, warning };
   },
 };

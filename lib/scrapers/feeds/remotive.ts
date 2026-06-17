@@ -1,5 +1,6 @@
 import type { Feed, NormalizedJob } from "../types";
 import { stripHtml } from "../rss";
+import { feedHttpGet, parseJsonOrWarn } from "../http";
 
 // Remotive publishes a fully public, no-auth JSON endpoint of remote jobs.
 //   https://remotive.com/api/remote-jobs?category=software-dev&search=react
@@ -50,7 +51,7 @@ export const remotiveFeed: Feed = {
   label: "Remotive",
   fetch: async ({ maxJobs, searchUrl, signal }) => {
     const url = buildUrl(searchUrl, Math.min(100, Math.max(1, maxJobs)));
-    const res = await fetch(url, {
+    const r = await feedHttpGet("Remotive", url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -59,9 +60,10 @@ export const remotiveFeed: Feed = {
       signal,
       cache: "no-store",
     });
-    if (!res.ok) throw new Error(`Remotive responded ${res.status}`);
-    const data = (await res.json()) as RemotiveResponse;
-    const list = Array.isArray(data.jobs) ? data.jobs : [];
+    if (!r.ok) return { jobs: [], warning: r.warning };
+    const parsed = parseJsonOrWarn<RemotiveResponse>("Remotive", r.body);
+    if (!parsed.ok) return { jobs: [], warning: parsed.warning };
+    const list = Array.isArray(parsed.data.jobs) ? parsed.data.jobs : [];
 
     const jobs: NormalizedJob[] = [];
     for (const entry of list) {
