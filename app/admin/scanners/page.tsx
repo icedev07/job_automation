@@ -38,6 +38,56 @@ const SCANNERS: Scanner[] = [
     defaultSearchUrl: "",
     searchPlaceholder: "remote=true,limit=50",
   },
+  // ── Hidden / low-competition sources ──────────────────────────────────────
+  // Zero-auth public APIs & feeds that bypass the crowded commercial boards.
+  {
+    key: "remotive",
+    label: "Remotive",
+    hint: "public JSON of remote jobs. accepts category=software-dev, search=react, company_name=…, or a full Remotive api url.",
+    defaultMax: 50,
+    defaultSearchUrl: "category=software-dev",
+    searchPlaceholder: "category=software-dev,search=react",
+  },
+  {
+    key: "workingnomads",
+    label: "Working Nomads",
+    hint: "public JSON of curated remote jobs (one flat feed). search field = comma-separated category keywords to keep. blank = every category.",
+    defaultMax: 50,
+    defaultSearchUrl: "Development",
+    searchPlaceholder: "Development, DevOps, Sysadmin",
+  },
+  {
+    key: "arbeitnow",
+    label: "Arbeitnow (EU)",
+    hint: "Germany/DACH-leaning public JSON (rate-limited — a few pages per scan). search field = comma-separated keywords matched on title + tags. blank = all.",
+    defaultMax: 50,
+    defaultSearchUrl: "",
+    searchPlaceholder: "developer, engineer, remote",
+  },
+  {
+    key: "hnwhoishiring",
+    label: "Hacker News — Who is hiring?",
+    hint: "the monthly 'Ask HN: Who is hiring?' thread — each comment is a job posting. search field = comma-separated keywords matched on the posting text. blank = every post; default keeps remote ones.",
+    defaultMax: 60,
+    defaultSearchUrl: "remote",
+    searchPlaceholder: "remote, europe",
+  },
+  {
+    key: "themuse",
+    label: "The Muse",
+    hint: "public JSON with real server-side filters. accepts category=Software Engineering, level=Senior Level, location=Remote (no comma), or a full themuse api url for comma'd locations.",
+    defaultMax: 50,
+    defaultSearchUrl: "category=Software Engineering",
+    searchPlaceholder: "category=Software Engineering,level=Senior Level",
+  },
+  {
+    key: "realworkfromanywhere",
+    label: "Real Work From Anywhere",
+    hint: "true work-from-anywhere remote roles via RSS (no region locks). search field = a category slug (e.g. remote-software-developer-jobs) or a full rss url. blank = all jobs.",
+    defaultMax: 50,
+    defaultSearchUrl: "remote-software-developer-jobs",
+    searchPlaceholder: "remote-software-developer-jobs",
+  },
   {
     key: "justremote",
     label: "JustRemote",
@@ -132,13 +182,41 @@ type TabDef = {
   scannerKeys: string[];
 };
 
+const HIDDEN_SOURCE_KEYS = [
+  "remotive",
+  "workingnomads",
+  "arbeitnow",
+  "hnwhoishiring",
+  "themuse",
+  "realworkfromanywhere",
+];
+
 const TABS: TabDef[] = [
   { id: "all", label: "All sources", scannerKeys: SCANNERS.map((s) => s.key) },
+  { id: "hidden", label: "Hidden gems", scannerKeys: HIDDEN_SOURCE_KEYS },
   { id: "greenhouse", label: "Greenhouse", scannerKeys: ["greenhouse", "mygreenhouse"] },
   { id: "lever", label: "Lever", scannerKeys: ["lever"] },
   { id: "ashby", label: "Ashby", scannerKeys: ["ashby"] },
-  { id: "rss", label: "RSS feeds", scannerKeys: ["weworkremotely", "jobspresso", "authenticjobs", "nodesk"] },
-  { id: "json", label: "JSON feeds", scannerKeys: ["remoteok", "jobicy", "landingjobs", "justremote"] },
+  {
+    id: "rss",
+    label: "RSS feeds",
+    scannerKeys: ["weworkremotely", "jobspresso", "authenticjobs", "nodesk", "realworkfromanywhere"],
+  },
+  {
+    id: "json",
+    label: "JSON feeds",
+    scannerKeys: [
+      "remoteok",
+      "jobicy",
+      "landingjobs",
+      "remotive",
+      "workingnomads",
+      "arbeitnow",
+      "hnwhoishiring",
+      "themuse",
+      "justremote",
+    ],
+  },
 ];
 
 // MyGreenhouse search facets — the value tokens are exactly what my.greenhouse.io
@@ -316,7 +394,7 @@ export default function ScannersPage() {
   const [analyzeResult, setAnalyzeResult] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
   const [lastScans, setLastScans] = useState<Record<string, LastScan>>({});
-  const [activeTab, setActiveTab] = useState<string>("greenhouse");
+  const [activeTab, setActiveTab] = useState<string>("hidden");
 
   useEffect(() => {
     fetch("/api/admin/scanners").then((r) => r.json()).then(setConfig);
@@ -642,6 +720,18 @@ export default function ScannersPage() {
           );
         })}
       </div>
+
+      {activeTab === "hidden" && (
+        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.85rem 1rem", marginBottom: "1rem" }}>
+          <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#166534" }}>Hidden job sources</div>
+          <div style={{ fontSize: "0.75rem", color: "#15803d", marginTop: "0.25rem", lineHeight: 1.5 }}>
+            Low-competition, zero-auth feeds that bypass the crowded commercial boards — public JSON APIs and the
+            monthly Hacker News “Who is hiring?” thread. Toggle <strong>Enabled</strong> on each to include it in scans;
+            every enabled source is checked by the AI inline and runs as part of <strong>Scrape all sources</strong>.
+            No login or API key required.
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {SCANNERS.filter((s) => {

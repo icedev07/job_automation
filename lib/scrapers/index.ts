@@ -11,6 +11,14 @@ import { authenticJobsFeed } from "./feeds/authenticjobs";
 import { nodeskFeed } from "./feeds/nodesk";
 import { justRemoteFeed } from "./feeds/justremote";
 import { myGreenhouseFeed } from "./feeds/mygreenhouse";
+// Hidden / low-competition sources — zero-auth public APIs & feeds that bypass
+// the crowded commercial boards (see README "Hidden sources").
+import { remotiveFeed } from "./feeds/remotive";
+import { workingNomadsFeed } from "./feeds/workingnomads";
+import { arbeitnowFeed } from "./feeds/arbeitnow";
+import { hackerNewsFeed } from "./feeds/hackernews";
+import { theMuseFeed } from "./feeds/themuse";
+import { realWorkFromAnywhereFeed } from "./feeds/realworkfromanywhere";
 import {
   findExistingJob,
   refreshScrapedJob,
@@ -27,6 +35,13 @@ const FEEDS: Feed[] = [
   remoteOkFeed,
   jobicyFeed,
   landingJobsFeed,
+  // hidden / low-competition zero-auth sources
+  remotiveFeed,
+  workingNomadsFeed,
+  arbeitnowFeed,
+  hackerNewsFeed,
+  theMuseFeed,
+  realWorkFromAnywhereFeed,
   // RSS-driven boards (default URL, user can override)
   weWorkRemotelyFeed,
   jobspressoFeed,

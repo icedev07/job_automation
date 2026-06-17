@@ -8,6 +8,13 @@ const SCANNER_KEY_PREFIXES = [
   "remoteok",
   "jobicy",
   "landingjobs",
+  // hidden / low-competition zero-auth sources
+  "remotive",
+  "workingnomads",
+  "arbeitnow",
+  "hnwhoishiring",
+  "themuse",
+  "realworkfromanywhere",
   "weworkremotely",
   "jobspresso",
   "authenticjobs",

@@ -11,6 +11,8 @@ export type RssItem = {
   contentEncoded?: string;
   pubDate?: string;
   categories?: string[];
+  /** <author> or <dc:creator> — some boards put the company here, not in the title. */
+  author?: string;
 };
 
 const ENTITY_MAP: Record<string, string> = {
@@ -23,7 +25,7 @@ const ENTITY_MAP: Record<string, string> = {
   "&nbsp;": " ",
 };
 
-function decodeEntities(text: string): string {
+export function decodeEntities(text: string): string {
   if (!text) return "";
   return text
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
@@ -72,6 +74,7 @@ export function parseRss(xml: string): RssItem[] {
     const contentEncoded = pickTag(block, "content:encoded") || pickTag(block, "content");
     const pubDate = pickTag(block, "pubDate") || pickTag(block, "published") || pickTag(block, "updated");
     const categories = pickAllTags(block, "category");
+    const author = pickTag(block, "author") || pickTag(block, "dc:creator") || pickTag(block, "creator");
     if (!title || !link) continue;
     items.push({
       title,
@@ -81,6 +84,7 @@ export function parseRss(xml: string): RssItem[] {
       contentEncoded,
       pubDate,
       categories: categories.length ? categories : undefined,
+      author: author || undefined,
     });
   }
   return items;
@@ -93,7 +97,10 @@ export function stripHtml(html: string): string {
   const decoded = decodeEntities(decodeEntities(html));
   return decoded
     .replace(/<\s*br\s*\/?>/gi, "\n")
-    .replace(/<\/p\s*>/gi, "\n\n")
+    // Break on BOTH opening and closing <p>. Some sources (notably Hacker News
+    // comments) separate paragraphs with a bare opening <p> and no </p>, which
+    // would otherwise be stripped to nothing and merge adjacent lines.
+    .replace(/<\/?p(?:\s[^>]*)?>/gi, "\n\n")
     .replace(/<\/li\s*>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/\n{3,}/g, "\n\n")
