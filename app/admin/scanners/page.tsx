@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import greenhouseCuratedSlugs from "@/lib/scrapers/feeds/greenhouse-curated-slugs.json";
+
+// Derived from the bundled list so the hint can never drift from reality.
+const GREENHOUSE_CURATED_COUNT = (greenhouseCuratedSlugs as string[]).length;
 
 type Scanner = {
   key: string;
@@ -134,7 +138,7 @@ const SCANNERS: Scanner[] = [
   {
     key: "greenhouse",
     label: "Greenhouse (multi-company)",
-    hint: "comma-separated company slugs from boards-api.greenhouse.io. type `@curated` to expand the bundled 540-company list, or mix `@curated,extra-slug`.",
+    hint: `comma-separated company slugs from boards-api.greenhouse.io. type @curated to expand the bundled ${GREENHOUSE_CURATED_COUNT}-company list, or mix @curated,extra-slug. optional filters: @remote, @since=7 (days), @kw=engineer, @loc=germany.`,
     defaultMax: 200,
     defaultSearchUrl: "stripe,anthropic,cloudflare,mongodb,samsara,roblox,airbnb,gitlab,intercom,figma,fivetran,robinhood,lyft,asana,instacart,postman,dropbox,vercel,duolingo,discord,newrelic,amplitude,mixpanel,webflow,algolia,airtable,modernhealth",
     searchPlaceholder: "@curated  (or: stripe,vercel,airbnb,figma)",

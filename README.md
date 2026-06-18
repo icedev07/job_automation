@@ -32,7 +32,7 @@ All sources below are free for applicants. Each is configurable from `/admin/sca
 | `authenticjobs` | [Authentic Jobs](https://authenticjobs.com) | none | dev-leaning RSS |
 | `nodesk` | [Nodesk](https://nodesk.co) | none | Atom feed |
 | `justremote` | [JustRemote](https://justremote.co) | none | scraped from SSR payload (~10 jobs/page) |
-| `greenhouse` | [Greenhouse boards](https://boards-api.greenhouse.io) | none | per-company public ATS API. Supports `@curated` to expand the bundled 540-slug list, or a comma-separated custom slug list. |
+| `greenhouse` | [Greenhouse boards](https://boards-api.greenhouse.io) | none | per-company public ATS API. Supports `@curated` to expand the bundled live-only slug list, a comma-separated custom slug list, and opt-in filter tokens (`@remote`, `@since=N`, `@kw=…`, `@loc=…`). |
 | `lever` | [Lever](https://api.lever.co) | none | per-company public API |
 | `ashby` | [Ashby](https://api.ashbyhq.com/posting-api) | none | per-company public API |
 | `mygreenhouse` | [MyGreenhouse candidate portal](https://my.greenhouse.io) | session cookie | aggregator across every employer opted into MyGreenhouse. See below. |
@@ -65,11 +65,26 @@ The MyGreenhouse tile has a **Locations** field. Leave it blank to search every 
 
 ### Bulk Greenhouse coverage without auth
 
-For the public `greenhouse` scanner, type `@curated` in its search-params field. That expands to a bundled list of 540 Greenhouse company slugs scraped from the community [awesome-easy-apply](https://github.com/sample-resume/awesome-easy-apply) index. You can mix it with custom slugs:
+For the public `greenhouse` scanner, type `@curated` in its search-params field. That expands to a bundled, pre-pruned list of live Greenhouse company slugs (every entry currently returns jobs) drawn from the community [awesome-easy-apply](https://github.com/sample-resume/awesome-easy-apply) index. You can mix it with custom slugs:
 
 ```
 @curated, mycompany, another-slug
 ```
+
+You can also paste full board URLs (classic `boards.greenhouse.io/slug`, modern `job-boards.greenhouse.io/slug`, the EU host, or an `…/embed/job_board?for=slug` embed) — the slug is extracted automatically.
+
+**Opt-in filters** (applied before AI analysis, so they also save free-tier AI quota) can be mixed into the same field as extra tokens:
+
+```
+@curated, @remote, @since=7, @kw=engineer, @loc=germany
+```
+
+- `@remote` — keep only remote / work-from-anywhere roles.
+- `@since=N` (alias `@days=N`) — keep only jobs first published within the last N days; also drops postings whose application deadline has passed.
+- `@kw=term` — keep only jobs whose title or department contains `term` (repeatable; matches are OR'd).
+- `@loc=keyword` — keep only jobs whose location or office contains `keyword` (repeatable).
+
+With no filter tokens the scanner behaves as before (newest jobs per company, spread fairly across all configured slugs).
 
 ## Architecture
 
