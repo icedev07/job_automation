@@ -19,6 +19,7 @@ import { arbeitnowFeed } from "./feeds/arbeitnow";
 import { hackerNewsFeed } from "./feeds/hackernews";
 import { theMuseFeed } from "./feeds/themuse";
 import { realWorkFromAnywhereFeed } from "./feeds/realworkfromanywhere";
+import { noFluffJobsFeed } from "./feeds/nofluffjobs";
 import {
   findExistingJob,
   refreshScrapedJob,
@@ -42,6 +43,7 @@ const FEEDS: Feed[] = [
   hackerNewsFeed,
   theMuseFeed,
   realWorkFromAnywhereFeed,
+  noFluffJobsFeed,
   // RSS-driven boards (default URL, user can override)
   weWorkRemotelyFeed,
   jobspressoFeed,

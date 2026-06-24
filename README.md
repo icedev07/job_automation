@@ -27,6 +27,7 @@ All sources below are free for applicants. Each is configurable from `/admin/sca
 | `hnwhoishiring` | [Hacker News “Who is hiring?”](https://news.ycombinator.com) | none | the monthly thread via the HN Algolia API; each comment is a job |
 | `themuse` | [The Muse](https://www.themuse.com) | none | public JSON; server-side `category=`/`location=`/`level=` filters |
 | `realworkfromanywhere` | [Real Work From Anywhere](https://www.realworkfromanywhere.com) | none | RSS of true work-from-anywhere roles; per-category feeds |
+| `nofluffjobs` | [NoFluffJobs](https://nofluffjobs.com) | none | Poland/CEE IT board via the public search API; salary always disclosed, opt-in `keyword`/`remote=true`/`days=N` filters |
 | `weworkremotely` | [We Work Remotely](https://weworkremotely.com) | none | RSS per category slug |
 | `jobspresso` | [Jobspresso](https://jobspresso.co) | none | RSS at `/jobs/feed/` |
 | `authenticjobs` | [Authentic Jobs](https://authenticjobs.com) | none | dev-leaning RSS |
@@ -39,10 +40,11 @@ All sources below are free for applicants. Each is configurable from `/admin/sca
 
 ### Hidden sources ("Hidden gems" tab)
 
-`remotive`, `workingnomads`, `arbeitnow`, `hnwhoishiring`, `themuse`, and `realworkfromanywhere` are low-competition, zero-auth sources that bypass the crowded commercial boards. They are grouped under the **Hidden gems** tab in `/admin/scanners`, each with its own enable/disable toggle, and run as part of **Scrape all sources** like every other feed. No login or API key is required.
+`remotive`, `workingnomads`, `arbeitnow`, `hnwhoishiring`, `themuse`, `realworkfromanywhere`, and `nofluffjobs` are low-competition, zero-auth sources that bypass the crowded commercial boards. They are grouped under the **Hidden gems** tab in `/admin/scanners`, each with its own enable/disable toggle, and run as part of **Scrape all sources** like every other feed. No login or API key is required.
 
 - `hnwhoishiring` resolves the latest monthly *"Ask HN: Who is hiring?"* thread via the HN Algolia API, then parses each top-level comment. The job link stored is the HN comment permalink (stable + unique for dedup); the employer's own apply link, when present, is captured separately as the manual apply URL.
 - `arbeitnow` is rate-limited to 5 requests/min, so it pulls only a few pages per scan and paces requests.
+- `nofluffjobs` queries the public NoFluffJobs search API (`POST /api/search/posting`) in a single call — its pagination params are ignored, so one request returns the freshest slab (~80-190 postings), which we sort newest-first and slice. Salary is always disclosed (PLN/month), and the reliable `fullyRemote` flag powers the `remote=true` filter. The search field is an opt-in pre-filter: a bare keyword (e.g. `.net`, `c#`, `java`) plus optional `remote=true`, `days=N` tokens; blank keeps every technology. The endpoint serves the Poland/CEE catalogue and ignores a region param, so region is not exposed as a filter.
 - The search field for the client-filtered feeds (`workingnomads`, `arbeitnow`, `hnwhoishiring`) is a comma-separated keyword/category include filter; `remotive` and `themuse` accept real server-side query params (or a full API URL). `realworkfromanywhere` takes a category slug or a full RSS URL.
 
 Some well-known "hidden" boards were evaluated and **excluded** because they cannot be fetched zero-auth from a serverless function: **Himalayas** (Cloudflare JS challenge blocks datacenter IPs on both its JSON and RSS endpoints), **Wellfound/AngelList** (DataDome + Cloudflare), **StillHiring.today** (data lives only inside an authenticated Airtable embed), and **Dynamite Jobs / Remote.co** (no machine-readable feed). GitHub company directories (yanirs/established-remote, remoteintech/remote-jobs, etc.) are company lists rather than job feeds, so they are better used to extend the Greenhouse/Lever/Ashby slug lists than as standalone scanners.

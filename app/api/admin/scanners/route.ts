@@ -15,6 +15,7 @@ const SCANNER_KEY_PREFIXES = [
   "hnwhoishiring",
   "themuse",
   "realworkfromanywhere",
+  "nofluffjobs",
   "weworkremotely",
   "jobspresso",
   "authenticjobs",

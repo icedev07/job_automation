@@ -93,6 +93,14 @@ const SCANNERS: Scanner[] = [
     searchPlaceholder: "remote-software-developer-jobs",
   },
   {
+    key: "nofluffjobs",
+    label: "NoFluffJobs (PL/CEE)",
+    hint: "Poland/CEE IT board, public search API — salary always disclosed, heavy on .NET/Java/JS B2B. type a keyword (e.g. .net, c#, java) plus opt-in filters: remote=true, days=14. blank = newest across all tech.",
+    defaultMax: 50,
+    defaultSearchUrl: ".net,remote=true",
+    searchPlaceholder: ".net,remote=true,days=14",
+  },
+  {
     key: "justremote",
     label: "JustRemote",
     hint: "scraped from SSR payload (~10 jobs per page). path picks the board, e.g. remote-developer-jobs, remote-design-jobs.",
@@ -193,6 +201,7 @@ const HIDDEN_SOURCE_KEYS = [
   "hnwhoishiring",
   "themuse",
   "realworkfromanywhere",
+  "nofluffjobs",
 ];
 
 const TABS: TabDef[] = [
@@ -218,6 +227,7 @@ const TABS: TabDef[] = [
       "arbeitnow",
       "hnwhoishiring",
       "themuse",
+      "nofluffjobs",
       "justremote",
     ],
   },

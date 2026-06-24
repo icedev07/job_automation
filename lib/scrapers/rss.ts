@@ -96,6 +96,11 @@ export function stripHtml(html: string): string {
   // first then strip tags. Run decode twice in case the source decoded once.
   const decoded = decodeEntities(decodeEntities(html));
   return decoded
+    // Drop HTML comments wholesale FIRST. Some boards bury recruiter markers
+    // (e.g. <!-- #LI-MidSenior -->) in comments; if a <p>/<br> inside one is
+    // converted to a newline before the tag pass, the comment splits and a bare
+    // "-->" leaks into the stored text.
+    .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<\s*br\s*\/?>/gi, "\n")
     // Break on BOTH opening and closing <p>. Some sources (notably Hacker News
     // comments) separate paragraphs with a bare opening <p> and no </p>, which
