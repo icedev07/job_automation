@@ -13,6 +13,7 @@ const logArea = document.getElementById("logArea");
 const sendLogsChk = document.getElementById("sendLogsChk");
 const hideApprovedChk = document.getElementById("hideApprovedChk");
 const showResultsChk = document.getElementById("showResultsChk");
+const betaModeChk = document.getElementById("betaModeChk");
 
 const MAX_VISIBLE_RESULTS = 100;
 const downloadBtn = document.getElementById("downloadBtn");
@@ -37,11 +38,12 @@ function addLog(msg, level) {
   console.log("[JobScanner]", msg);
 }
 
-chrome.storage.local.get(["extensionApiKey", "serverUrl", "sendLogsToServer", "hideApproved", "showResults"], (data) => {
+chrome.storage.local.get(["extensionApiKey", "serverUrl", "sendLogsToServer", "hideApproved", "showResults", "betaMode"], (data) => {
   if (data.extensionApiKey) apiKeyInput.value = data.extensionApiKey;
   if (data.serverUrl) serverUrlInput.value = data.serverUrl;
   if (data.sendLogsToServer) sendLogsChk.checked = true;
   if (data.hideApproved) hideApprovedChk.checked = true;
+  if (data.betaMode) betaModeChk.checked = true;
   // default ON unless explicitly disabled
   showResultsChk.checked = data.showResults !== false;
   applyShowResults();
@@ -62,6 +64,11 @@ sendLogsChk.addEventListener("change", () => {
 hideApprovedChk.addEventListener("change", () => {
   chrome.storage.local.set({ hideApproved: hideApprovedChk.checked });
   addLog(`Hide approved jobs: ${hideApprovedChk.checked ? "ON" : "OFF"}`);
+});
+
+betaModeChk.addEventListener("change", () => {
+  chrome.storage.local.set({ betaMode: betaModeChk.checked });
+  addLog(`Analyze AI search page (beta): ${betaModeChk.checked ? "ON" : "OFF"}`);
 });
 
 showResultsChk.addEventListener("change", () => {
@@ -338,18 +345,20 @@ startBtn.addEventListener("click", () => {
         renderedResultIds = new Set();
         resultsCount.textContent = "0";
         logArea.textContent = "";
-        addLog(`Starting scan. Server: ${serverUrl}`);
-        sendStartScan(tab.id, serverUrl, data.extensionApiKey || "", false);
+        const betaMode = betaModeChk.checked;
+        addLog(`Starting scan. Server: ${serverUrl}${betaMode ? " [AI search / beta mode]" : ""}`);
+        sendStartScan(tab.id, serverUrl, data.extensionApiKey || "", false, betaMode);
       });
     });
   });
 });
 
-function sendStartScan(tabId, serverUrl, apiKey, isRetry) {
+function sendStartScan(tabId, serverUrl, apiKey, isRetry, betaMode) {
   chrome.tabs.sendMessage(tabId, {
     type: "START_SCAN",
     serverUrl,
     apiKey,
+    betaMode: !!betaMode,
   }, (response) => {
     if (chrome.runtime.lastError) {
       if (!isRetry) {
@@ -368,7 +377,7 @@ function sendStartScan(tabId, serverUrl, apiKey, isRetry) {
             return;
           }
           addLog("Content script injected. Retrying START_SCAN...");
-          setTimeout(() => sendStartScan(tabId, serverUrl, apiKey, true), 500);
+          setTimeout(() => sendStartScan(tabId, serverUrl, apiKey, true, betaMode), 500);
         });
       } else {
         addLog(`ERROR sending START_SCAN: ${chrome.runtime.lastError.message}`, "error");

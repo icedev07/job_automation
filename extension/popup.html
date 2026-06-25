@@ -93,6 +93,10 @@
         <input type="checkbox" id="sendLogsChk"> Send logs to server
         <span title="Uploads all captured logs to your backend's ExtensionLog table at scan end. View them in /admin/logs → Extension Logs. Pure debugging aid, safe to leave off." style="color:#9ca3af;cursor:help">(?)</span>
       </label>
+      <label style="font-size:10px;display:flex;align-items:center;gap:4px;color:#374151;cursor:pointer">
+        <input type="checkbox" id="betaModeChk"> Analyze AI search page (beta)
+        <span title="Turn ON when you are on LinkedIn's new AI / natural-language jobs search (the 'search-results' page with a chat-style search). It uses a different layout, so the scanner switches to the matching extractor. Leave OFF for the classic /jobs/search/ results." style="color:#9ca3af;cursor:help">(?)</span>
+      </label>
     </div>
 
     <button id="startBtn">Start Scan</button>

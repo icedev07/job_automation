@@ -8,6 +8,11 @@
   let currentStatus = "Idle";
   let serverUrl = "";
   let apiKey = "";
+  // When true, scan LinkedIn's new AI / natural-language jobs search
+  // (pageKey d_flagship3_nlsearch_srp_jobs, path /jobs/search-results/) which
+  // renders via Server-Driven UI instead of the classic Ember DOM. Toggled from
+  // the popup's "Analyze AI search page" checkbox. See the BETA section below.
+  let betaMode = false;
   const MIN_VALID_CARDS_THRESHOLD = 3;
   const MIN_BROAD_CARDS_FOR_MISMATCH = 10;
 
@@ -32,6 +37,7 @@
       scanning = true;
       serverUrl = msg.serverUrl;
       apiKey = msg.apiKey || "";
+      betaMode = !!msg.betaMode;
       stats = { checked: 0, approved: 0, hidden: 0, skipped: 0 };
       stopRequested = false;
       sendResponse({ ok: true });
@@ -87,10 +93,318 @@
     });
   }
 
+  // ==========================================================================
+  // LINKEDIN AI / "NEW" SEARCH (beta) SUPPORT
+  // --------------------------------------------------------------------------
+  // LinkedIn's natural-language ("AI") jobs search (pageKey
+  // d_flagship3_nlsearch_srp_jobs, path /jobs/search-results/) renders through a
+  // Server-Driven-UI engine, so NONE of the classic Ember hooks exist: there is
+  // no <li data-occludable-job-id>, no data-job-id, no /jobs/view/ link on the
+  // cards, and the class names are per-deploy hashes (useless as selectors).
+  // What the SDUI page gives us instead, all semantic and stable:
+  //   * Each list card is  <div componentkey="job-card-component-ref-<JOBID>"
+  //     role="button">  — the numeric job id is in the componentkey and the
+  //     element is itself the click target. (There are two nested copies per
+  //     card; we keep the outermost.) Cards live only in the results LazyColumn,
+  //     never inside the detail panel.
+  //   * Inside a card the visible text is plain <p> nodes in order:
+  //     title, company, location, [salary], then metadata (incl. "Easy Apply").
+  //   * The per-card hide control is <button aria-label="Dismiss <title> job">.
+  //   * The open job's detail renders in
+  //     <div data-sdui-screen="...SemanticJobDetails"> whose title is an
+  //     <a href="/jobs/view/<id>">, company an <a href="/company/...">, the
+  //     external apply an <a href="/safety/go/?url=<real>"> (tidyApplyUrl
+  //     unwraps it), and the description a lazy-loaded
+  //     <div componentkey="JobDetails_AboutTheJob_<id>">.
+  //   * Pagination is testid based:
+  //     button[data-testid="pagination-controls-next-button-visible"] (or
+  //     ...-hidden on the last page) and
+  //     button[data-testid="pagination-indicator-N"][aria-current].
+  // Every helper below mirrors a classic extractor so the shared scan loop
+  // (processCard / pagination / server calls) is reused unchanged. They run only
+  // when betaMode === true.
+  // ==========================================================================
+
+  const BETA_CARD_SELECTOR = "[componentkey^='job-card-component-ref-']";
+  const BETA_DETAIL_SELECTOR = "[data-sdui-screen*='SemanticJobDetails']";
+
+  function betaJobIdFromComponentKey(ck) {
+    const m = (ck || "").match(/job-card-component-ref-(\d+)/);
+    return m ? m[1] : "";
+  }
+
+  function isInsideBetaDetail(el) {
+    return !!el?.closest?.(BETA_DETAIL_SELECTOR);
+  }
+
+  // Outermost card element per unique job id, scoped to the results list. Cards
+  // that appear inside the detail panel (e.g. "similar jobs") are excluded so we
+  // never treat a recommendation as a search result.
+  function getBetaJobCards() {
+    const all = Array.from(document.querySelectorAll(BETA_CARD_SELECTOR));
+    const byId = new Map();
+    for (const el of all) {
+      if (isInsideBetaDetail(el)) continue;
+      const id = betaJobIdFromComponentKey(el.getAttribute("componentkey"));
+      if (!id) continue;
+      const existing = byId.get(id);
+      if (!existing) { byId.set(id, el); continue; }
+      // Keep whichever element wraps the other (the outermost copy).
+      if (el.contains(existing)) byId.set(id, el);
+    }
+    const cards = Array.from(byId.values());
+    if (cards.length) log(`Beta: found ${cards.length} AI-search job cards`);
+    return cards;
+  }
+
+  function getBetaCardClickTarget(card) {
+    if (card.getAttribute("role") === "button") return card;
+    return card.querySelector("[role='button']") || card;
+  }
+
+  // Title / company / location are the first three real text <p> nodes in the
+  // card, in document order. Read positionally (class names are unstable
+  // hashes) and skip pure-separator nodes such as "·".
+  function getBetaCardFields(card) {
+    const ps = Array.from(card.querySelectorAll("p"))
+      .map((p) => p.textContent.trim())
+      .filter((t) => t && t !== "·");
+    return { title: ps[0] || "", company: ps[1] || "", location: ps[2] || "" };
+  }
+
+  function isEasyApplyFromBetaCard(card) {
+    return /easy apply/i.test(card.textContent || "");
+  }
+
+  function clickBetaDismiss(card) {
+    const btn =
+      card.querySelector("button[aria-label^='Dismiss']") ||
+      card.querySelector("button[aria-label*='Dismiss']") ||
+      card.querySelector("button[aria-label*='dismiss']");
+    if (btn) {
+      log(`Beta: clicking dismiss "${btn.getAttribute("aria-label") || "dismiss"}"`);
+      btn.click();
+      return true;
+    }
+    log("Beta: no dismiss button found on card");
+    return false;
+  }
+
+  function getBetaDetailContainer() {
+    return document.querySelector(BETA_DETAIL_SELECTOR);
+  }
+
+  // Prefer rendered (innerText) text, but fall back to textContent when
+  // innerText is empty or unavailable — the SDUI description slot can be
+  // present in the DOM before layout/visibility resolves its innerText.
+  function betaVisibleText(el) {
+    if (!el) return "";
+    const it = el.innerText;
+    return (typeof it === "string" && it.trim().length ? it : el.textContent || "");
+  }
+
+  // Wait for the detail panel to reflect the just-clicked job, then for its
+  // lazily-streamed "About the job" description. The title anchor flips to the
+  // new job id well before the description arrives, so we don't return the
+  // moment the title matches — we then give the description a bounded grace
+  // window (and proceed anyway if it never fills, so a short/odd description
+  // can't stall the scan). extractBetaDescription falls back to panel text.
+  async function waitForBetaDetail(jobId) {
+    const hardDeadline = Date.now() + 9000;
+    const DESC_GRACE_MS = 3500;
+    let titleMatchedAt = 0;
+    while (Date.now() < hardDeadline && !stopRequested) {
+      const d = getBetaDetailContainer();
+      if (d) {
+        const a = d.querySelector("a[href*='/jobs/view/']");
+        const titleMatches =
+          !!a && (!jobId || (a.getAttribute("href") || "").includes(`/jobs/view/${jobId}`));
+        const about =
+          (jobId && d.querySelector(`[componentkey='JobDetails_AboutTheJob_${jobId}']`)) ||
+          d.querySelector("[componentkey^='JobDetails_AboutTheJob_']");
+        const aboutReady = !!about && betaVisibleText(about).trim().length > 50;
+        if (titleMatches) {
+          if (!titleMatchedAt) titleMatchedAt = Date.now();
+          if (aboutReady) return; // best case: right job AND description present
+          if (Date.now() - titleMatchedAt >= DESC_GRACE_MS) return; // gave it its grace
+        }
+      }
+      await sleep(250);
+    }
+    await sleep(400);
+  }
+
+  function extractBetaTitle() {
+    const d = getBetaDetailContainer();
+    if (!d) return "";
+    const a = d.querySelector("a[href*='/jobs/view/']");
+    const t = a?.textContent?.trim();
+    if (t && t.length < 200) { log(`Beta title: "${t}"`); return t; }
+    return "";
+  }
+
+  function extractBetaCompany() {
+    const d = getBetaDetailContainer();
+    if (!d) return "";
+    for (const a of d.querySelectorAll("a[href*='/company/']")) {
+      const t = a.textContent.trim();
+      if (t && t.length < 100) { log(`Beta company: "${t}"`); return t; }
+    }
+    return "";
+  }
+
+  function extractBetaLocation() {
+    const d = getBetaDetailContainer();
+    if (!d) return "";
+    // The location is the head of the subtitle line, e.g.
+    // "Freiburg, Baden-Württemberg, Germany · 2 days ago · 17 people clicked apply".
+    for (const p of d.querySelectorAll("p")) {
+      const head = (p.textContent.split("·")[0] || "").trim();
+      if (
+        head &&
+        head.length > 2 &&
+        head.length < 100 &&
+        !/^\d+\s+(applicant|people|hour|day|week|month|minute|second)/i.test(head) &&
+        !/ago$/i.test(head) &&
+        /(remote|hybrid|on-?site|,|\bArea\b|\bMetropolitan\b|\bRegion\b)/i.test(head)
+      ) {
+        log(`Beta location: "${head}"`);
+        return head;
+      }
+    }
+    return "";
+  }
+
+  function extractBetaDescription() {
+    const d = getBetaDetailContainer();
+    if (!d) return "";
+    const slot = d.querySelector("[componentkey^='JobDetails_AboutTheJob_']");
+    if (slot) {
+      const t = betaVisibleText(slot).trim();
+      if (t.length > 50) { log(`Beta description: ${t.length} chars (AboutTheJob slot)`); return t; }
+    }
+    // Fallback: the whole detail panel text (includes the header, but better
+    // than nothing for analysis if the dedicated slot hasn't streamed in).
+    const t = betaVisibleText(d).trim();
+    if (t.length > 80) { log(`Beta description: ${t.length} chars (detail fallback)`); return t; }
+    log("Beta: could not extract description");
+    return "";
+  }
+
+  function extractBetaApplyUrl() {
+    const d = getBetaDetailContainer();
+    if (!d) return "";
+    // External apply is an <a> to LinkedIn's safety redirect wrapping the real
+    // company URL; tidyApplyUrl unwraps the ?url= target.
+    const direct = d.querySelector(
+      "a[href*='/safety/go/'], a[href*='offsite'], a[href*='externalApply']",
+    );
+    if (direct) {
+      const tidied = tidyApplyUrl(direct.getAttribute("href") || "");
+      if (tidied) return tidied;
+    }
+    // Fallback: an anchor literally labelled "Apply".
+    for (const a of d.querySelectorAll("a[href]")) {
+      if (/^apply$/i.test(a.textContent.trim())) {
+        const tidied = tidyApplyUrl(a.getAttribute("href") || "");
+        if (tidied && !/linkedin\.com\/jobs\/view/i.test(tidied)) return tidied;
+      }
+    }
+    return "";
+  }
+
+  // The scrollable rail that holds the cards (or the LazyColumn itself).
+  function getBetaResultsListContainer() {
+    const findScrollable = (start) => {
+      let node = start;
+      for (let i = 0; i < 14 && node && node !== document.body; i++) {
+        if (node.scrollHeight > node.clientHeight + 20) {
+          const oy = getComputedStyle(node).overflowY;
+          if (oy === "auto" || oy === "scroll" || oy === "overlay") return node;
+        }
+        node = node.parentElement;
+      }
+      return null;
+    };
+    const cards = getBetaJobCards();
+    if (cards.length) {
+      return findScrollable(cards[0]) || cards[0].parentElement;
+    }
+    const cols = Array.from(
+      document.querySelectorAll("[data-component-type='LazyColumn'], [data-testid='lazy-column']"),
+    );
+    for (const col of cols) {
+      if (!isInsideBetaDetail(col) && col.querySelector(BETA_CARD_SELECTOR)) {
+        return findScrollable(col) || col;
+      }
+    }
+    return null;
+  }
+
+  // Current/total derived from the testid pagination. Total is reported as
+  // current+1 whenever a usable Next button exists, so the shared "is last page"
+  // check (current >= total) stays correct even though the visible indicator
+  // strip is windowed and doesn't reveal the true page count.
+  function findBetaPageState() {
+    const indicators = document.querySelectorAll("[data-testid^='pagination-indicator-']");
+    const nextVisible = document.querySelector(
+      "button[data-testid='pagination-controls-next-button-visible']",
+    );
+    const nextHidden = document.querySelector(
+      "button[data-testid='pagination-controls-next-button-hidden']",
+    );
+    if (!indicators.length && !nextVisible && !nextHidden) return null;
+    let current = 1;
+    indicators.forEach((b) => {
+      if (b.getAttribute("aria-current") === "true") {
+        const m = (b.getAttribute("aria-label") || "").match(/Page\s+(\d+)/i);
+        if (m) current = parseInt(m[1], 10);
+      }
+    });
+    // The testid itself encodes visibility (…next-button-visible vs …-hidden),
+    // so its presence (and not being disabled) is the authoritative "has next
+    // page" signal — no offsetParent/layout check needed here.
+    const hasNext = !!(nextVisible && !nextVisible.disabled);
+    return { current, total: hasNext ? current + 1 : current };
+  }
+
+  async function goToNextBetaPage() {
+    await scrollJobsListToBottom();
+    const beforeSignature = getPageSignature();
+
+    const nextBtn = document.querySelector(
+      "button[data-testid='pagination-controls-next-button-visible']",
+    );
+    if (!nextBtn || nextBtn.disabled || nextBtn.offsetParent === null) {
+      log("Beta: no visible Next button; last page reached");
+      return false;
+    }
+    log("Beta: clicking Next");
+    nextBtn.click();
+    await sleep(1200);
+    const changed = await waitForPageChange(beforeSignature, 12000);
+    if (!changed) {
+      log("Beta: Next clicked but page signature did not change", "warn");
+      return false;
+    }
+    // Start the new page from the top of the list.
+    const container = getResultsListContainer();
+    if (container) container.scrollTop = 0;
+    await sleep(500);
+    return true;
+  }
+
   // --- JOB CARD DETECTION ---
 
   function getCardJobId(card) {
     if (!card) return "";
+    if (betaMode) {
+      return betaJobIdFromComponentKey(
+        card.getAttribute?.("componentkey") ||
+          card.querySelector?.(BETA_CARD_SELECTOR)?.getAttribute("componentkey") ||
+          "",
+      );
+    }
     if (card.matches?.("[data-job-id]")) {
       return (card.getAttribute("data-job-id") || "").trim();
     }
@@ -106,6 +420,7 @@
   // card). Returns "" only for genuinely non-job elements.
   function resolveCardJobId(card) {
     if (!card) return "";
+    if (betaMode) return getCardJobId(card);
     const direct = getCardJobId(card);
     if (direct && direct !== "search") return direct;
 
@@ -143,6 +458,7 @@
   }
 
   function getBroadJobLikeCardCount() {
+    if (betaMode) return getBetaJobCards().length;
     return Array.from(document.querySelectorAll("li[data-occludable-job-id], div.job-card-container, [data-job-id]"))
       .filter((el) => !isInsideNonResultsSection(el))
       .filter((el) => {
@@ -188,6 +504,7 @@
   }
 
   function getJobCards() {
+    if (betaMode) return getBetaJobCards();
     const primaryList =
       document.querySelector(".scaffold-layout__list ul") ||
       document.querySelector(".jobs-search-results-list ul") ||
@@ -251,6 +568,7 @@
   // --- EASY APPLY DETECTION (from the job card in the list, NOT the detail panel) ---
 
   function isEasyApplyFromCard(card) {
+    if (betaMode) return isEasyApplyFromBetaCard(card);
     // The most reliable indicator: the card footer has "Easy Apply" text with LinkedIn icon
     const footerItems = card.querySelectorAll(".job-card-container__footer-item, li");
     for (const item of footerItems) {
@@ -277,6 +595,7 @@
   // --- DETAIL PANEL EXTRACTION ---
 
   function getDetailContainer() {
+    if (betaMode) return getBetaDetailContainer();
     return document.querySelector(".jobs-search__job-details--container") ||
            document.querySelector(".jobs-search__job-details--wrapper") ||
            document.querySelector(".jobs-details__main-content");
@@ -536,6 +855,12 @@
   }
 
   function extractApplyUrl(explicitId) {
+    if (betaMode) {
+      const fromBeta = extractBetaApplyUrl();
+      if (fromBeta) return fromBeta;
+      const fromJson = findApplyUrlInEmbeddedJson(explicitId);
+      return fromJson ? tidyApplyUrl(fromJson) : "";
+    }
     const detail = getDetailContainer();
     if (!detail) {
       const fromJson = findApplyUrlInEmbeddedJson(explicitId);
@@ -595,6 +920,7 @@
   }
 
   function extractTitle() {
+    if (betaMode) return extractBetaTitle();
     const detail = getDetailContainer();
     const scope = detail || document;
     const selectors = [
@@ -619,6 +945,7 @@
   }
 
   function extractCompany() {
+    if (betaMode) return extractBetaCompany();
     const detail = getDetailContainer();
     const scope = detail || document;
     const selectors = [
@@ -639,6 +966,7 @@
   }
 
   function extractLocation() {
+    if (betaMode) return extractBetaLocation();
     const detail = getDetailContainer();
     const scope = detail || document;
     // Look for tvm__text spans in the tertiary description
@@ -675,6 +1003,7 @@
   }
 
   function extractDescription() {
+    if (betaMode) return extractBetaDescription();
     const selectors = [
       "#job-details",
       ".jobs-description-content__text",
@@ -745,6 +1074,16 @@
   // --- DISMISS / NOT INTERESTED ---
 
   async function clickDismiss(card) {
+    if (betaMode) {
+      try {
+        const dismissed = clickBetaDismiss(card);
+        if (dismissed) await sleep(500);
+        return dismissed;
+      } catch (e) {
+        log(`Beta: error dismissing: ${e.message}`);
+        return false;
+      }
+    }
     try {
       // LinkedIn has a dismiss X button on each card
       const dismissBtn =
@@ -831,31 +1170,51 @@
       log(`Job ${index + 1}: Easy Apply detected from card`);
     }
 
-    // Get job URL from the card link
-    const cardLink = card.querySelector("a[href*='/jobs/view/']");
+    // Get job URL + quick fields from the card. The classic and AI-search
+    // layouts expose these completely differently, so read them mode-aware:
+    // beta cards carry the job id in their componentkey and the title/company/
+    // location as ordered <p> nodes, with no /jobs/view/ link to click.
     const cardJobId = resolveCardJobId(card);
-    const cardTitle = card.querySelector(".job-card-list__title--link, a[class*='job-card-container__link']");
-    const cardTitleText = cardTitle?.textContent?.trim() || "";
-    const cardCompanyEl = card.querySelector(".artdeco-entity-lockup__subtitle span");
-    const cardCompanyText = cardCompanyEl?.textContent?.trim() || "";
+    const cardLink = betaMode ? null : card.querySelector("a[href*='/jobs/view/']");
+    const quick = betaMode
+      ? getBetaCardFields(card)
+      : (() => {
+          const titleEl = card.querySelector(".job-card-list__title--link, a[class*='job-card-container__link']");
+          const companyEl = card.querySelector(".artdeco-entity-lockup__subtitle span");
+          return {
+            title: titleEl?.textContent?.trim() || "",
+            company: companyEl?.textContent?.trim() || "",
+            location: "",
+            titleEl,
+          };
+        })();
+    const cardTitleText = quick.title;
+    const cardCompanyText = quick.company;
+    const cardLocationText = quick.location;
 
     const cardId = cardJobId || `idx-${index}-${Date.now()}`;
 
     log(`Card ${index + 1}: title="${cardTitleText}", company="${cardCompanyText}", easyApply=${easyApply}, jobId=${cardJobId}`);
 
     // Click the card to load the detail panel
-    const clickTarget = cardLink || cardTitle || card;
+    const clickTarget = betaMode
+      ? getBetaCardClickTarget(card)
+      : (cardLink || quick.titleEl || card);
     clickTarget.click();
     await sleep(2000);
 
     // Wait for detail panel to load
-    await waitForSelector("#job-details, .job-details-jobs-unified-top-card__job-title", document, 8000);
-    await sleep(800);
+    if (betaMode) {
+      await waitForBetaDetail(cardJobId);
+    } else {
+      await waitForSelector("#job-details, .job-details-jobs-unified-top-card__job-title", document, 8000);
+      await sleep(800);
+    }
 
     // Extract from detail panel
     const title = extractTitle() || cardTitleText;
     const company = extractCompany() || cardCompanyText;
-    const location = extractLocation();
+    const location = extractLocation() || cardLocationText;
     const description = extractDescription();
     const jobUrl = cardJobId
       ? `https://www.linkedin.com/jobs/view/${cardJobId}`
@@ -1045,6 +1404,7 @@
   }
 
   function getResultsListContainer() {
+    if (betaMode) return getBetaResultsListContainer();
     const candidates = [
       document.querySelector(".scaffold-layout__list"),
       document.querySelector(".jobs-search-results-list"),
@@ -1064,6 +1424,10 @@
   }
 
   function findActivePageNumber() {
+    if (betaMode) {
+      const st = findBetaPageState();
+      return st ? st.current : null;
+    }
     // LinkedIn uses several pagination DOMs. Try each.
     const sel = document.querySelector("li.artdeco-pagination__indicator--number.active button, li.artdeco-pagination__indicator--number.selected button, button[aria-current='true']");
     if (sel) {
@@ -1088,6 +1452,7 @@
   }
 
   function findPageState() {
+    if (betaMode) return findBetaPageState();
     const pageState = document.querySelector(".jobs-search-pagination__page-state");
     if (!pageState?.textContent) return null;
     const m = pageState.textContent.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
@@ -1119,6 +1484,7 @@
   }
 
   async function goToNextPage() {
+    if (betaMode) return goToNextBetaPage();
     await scrollJobsListToBottom();
     const beforeSignature = getPageSignature();
 
@@ -1334,12 +1700,13 @@
   function maybeResumeAfterNavigation() {
     chrome.runtime.sendMessage({ type: "GET_BG_STATE" }, (state) => {
       if (chrome.runtime.lastError || !state?.scanning || !state.resumeAfterNavigation || !state.isScanTab) return;
-      chrome.storage.local.get(["extensionApiKey"], (data) => {
+      chrome.storage.local.get(["extensionApiKey", "betaMode"], (data) => {
         if (!state.scanning || scanning) return;
         scanning = true;
         stopRequested = false;
         serverUrl = state.serverUrl || "";
         apiKey = data.extensionApiKey || "";
+        betaMode = !!data.betaMode;
         stats = state.stats || { checked: 0, approved: 0, hidden: 0, skipped: 0 };
         startScan();
       });

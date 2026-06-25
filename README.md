@@ -188,6 +188,14 @@ The `extension/` folder contains a Manifest V3 Chrome extension that scans Linke
 5. On-site/hybrid/unsuitable jobs are hidden
 6. Approved jobs are saved to the "LinkedIn" tab in Google Sheets
 
+It supports both the classic `/jobs/search/` results and LinkedIn's newer AI /
+natural-language search (`/jobs/search-results/`, the chat-style search). The
+two pages use completely different layouts, so when you scan the AI search page
+tick **"Analyze AI search page (beta)"** in the popup first — the scanner then
+switches to the matching extractor (same flow: per-job AI analysis, external
+apply-link capture, pagination, and hide-on-reject). Leave it off for the
+classic page.
+
 ### Install
 
 1. Open `chrome://extensions`, enable Developer mode
