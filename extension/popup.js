@@ -14,6 +14,22 @@ const sendLogsChk = document.getElementById("sendLogsChk");
 const hideApprovedChk = document.getElementById("hideApprovedChk");
 const showResultsChk = document.getElementById("showResultsChk");
 const betaModeChk = document.getElementById("betaModeChk");
+const jobLimitInput = document.getElementById("jobLimitInput");
+
+const DEFAULT_JOB_LIMIT = 100;
+// Normalize the user's "Job scan limit" input into the value the scanner uses:
+//   -1            -> unlimited (scan every job)
+//   any integer>=1-> that many jobs, then stop
+//   empty/invalid -> the default (100)
+// 0 and other negatives are treated as invalid and fall back to the default so
+// the scanner can never be asked to scan "zero" or a nonsensical count.
+function normalizeJobLimit(raw) {
+  const n = parseInt(raw, 10);
+  if (isNaN(n)) return DEFAULT_JOB_LIMIT;
+  if (n === -1) return -1;
+  if (n < 1) return DEFAULT_JOB_LIMIT;
+  return n;
+}
 
 const MAX_VISIBLE_RESULTS = 100;
 const downloadBtn = document.getElementById("downloadBtn");
@@ -38,12 +54,18 @@ function addLog(msg, level) {
   console.log("[JobScanner]", msg);
 }
 
-chrome.storage.local.get(["extensionApiKey", "serverUrl", "sendLogsToServer", "hideApproved", "showResults", "betaMode"], (data) => {
+chrome.storage.local.get(["extensionApiKey", "serverUrl", "sendLogsToServer", "hideApproved", "showResults", "betaMode", "jobLimit"], (data) => {
   if (data.extensionApiKey) apiKeyInput.value = data.extensionApiKey;
   if (data.serverUrl) serverUrlInput.value = data.serverUrl;
   if (data.sendLogsToServer) sendLogsChk.checked = true;
   if (data.hideApproved) hideApprovedChk.checked = true;
   if (data.betaMode) betaModeChk.checked = true;
+  // Restore the saved job limit (falls back to the default when never set).
+  jobLimitInput.value = String(
+    data.jobLimit === undefined || data.jobLimit === null
+      ? DEFAULT_JOB_LIMIT
+      : normalizeJobLimit(data.jobLimit)
+  );
   // default ON unless explicitly disabled
   showResultsChk.checked = data.showResults !== false;
   applyShowResults();
@@ -70,6 +92,16 @@ betaModeChk.addEventListener("change", () => {
   chrome.storage.local.set({ betaMode: betaModeChk.checked });
   addLog(`Analyze AI search page (beta): ${betaModeChk.checked ? "ON" : "OFF"}`);
 });
+
+// Persist the job limit as the user edits it, normalizing the stored value and
+// reflecting it back into the field so the saved value is always the one used.
+function persistJobLimit() {
+  const limit = normalizeJobLimit(jobLimitInput.value);
+  jobLimitInput.value = String(limit);
+  chrome.storage.local.set({ jobLimit: limit });
+  addLog(`Job scan limit: ${limit === -1 ? "all jobs (no limit)" : limit}`);
+}
+jobLimitInput.addEventListener("change", persistJobLimit);
 
 showResultsChk.addEventListener("change", () => {
   chrome.storage.local.set({ showResults: showResultsChk.checked });
@@ -346,19 +378,26 @@ startBtn.addEventListener("click", () => {
         resultsCount.textContent = "0";
         logArea.textContent = "";
         const betaMode = betaModeChk.checked;
-        addLog(`Starting scan. Server: ${serverUrl}${betaMode ? " [AI search / beta mode]" : ""}`);
-        sendStartScan(tab.id, serverUrl, data.extensionApiKey || "", false, betaMode);
+        const jobLimit = normalizeJobLimit(jobLimitInput.value);
+        // Persist the limit so a scan that pages via full reload can restore it
+        // when the content script resumes after navigation.
+        jobLimitInput.value = String(jobLimit);
+        chrome.storage.local.set({ jobLimit });
+        const limitLabel = jobLimit === -1 ? "all jobs (no limit)" : `${jobLimit} jobs`;
+        addLog(`Starting scan. Server: ${serverUrl}${betaMode ? " [AI search / beta mode]" : ""} [limit: ${limitLabel}]`);
+        sendStartScan(tab.id, serverUrl, data.extensionApiKey || "", false, betaMode, jobLimit);
       });
     });
   });
 });
 
-function sendStartScan(tabId, serverUrl, apiKey, isRetry, betaMode) {
+function sendStartScan(tabId, serverUrl, apiKey, isRetry, betaMode, jobLimit) {
   chrome.tabs.sendMessage(tabId, {
     type: "START_SCAN",
     serverUrl,
     apiKey,
     betaMode: !!betaMode,
+    jobLimit: normalizeJobLimit(jobLimit),
   }, (response) => {
     if (chrome.runtime.lastError) {
       if (!isRetry) {
@@ -377,7 +416,7 @@ function sendStartScan(tabId, serverUrl, apiKey, isRetry, betaMode) {
             return;
           }
           addLog("Content script injected. Retrying START_SCAN...");
-          setTimeout(() => sendStartScan(tabId, serverUrl, apiKey, true, betaMode), 500);
+          setTimeout(() => sendStartScan(tabId, serverUrl, apiKey, true, betaMode, jobLimit), 500);
         });
       } else {
         addLog(`ERROR sending START_SCAN: ${chrome.runtime.lastError.message}`, "error");

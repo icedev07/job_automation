@@ -13,8 +13,34 @@
   // renders via Server-Driven UI instead of the classic Ember DOM. Toggled from
   // the popup's "Analyze AI search page" checkbox. See the BETA section below.
   let betaMode = false;
+  // Job scan limit: stop after this many jobs have been scanned across all
+  // pages. -1 means "no limit" (scan every job). `processedJobs` counts every
+  // unique card the scanner opens during the run, regardless of outcome
+  // (approved / rejected / skipped / already processed). Both survive URL-based
+  // pagination (full page reload) via the background state — see
+  // maybeResumeAfterNavigation.
+  let jobLimit = -1;
+  let processedJobs = 0;
   const MIN_VALID_CARDS_THRESHOLD = 3;
   const MIN_BROAD_CARDS_FOR_MISMATCH = 10;
+
+  // Mirror of the popup's normalizer so the content script is robust even if it
+  // ever receives a raw/odd value: -1 = unlimited, >=1 = that many jobs,
+  // anything else (0, NaN, negative) falls back to the 100-job default.
+  function normalizeJobLimit(raw) {
+    const n = parseInt(raw, 10);
+    if (isNaN(n)) return 100;
+    if (n === -1) return -1;
+    if (n < 1) return 100;
+    return n;
+  }
+
+  // True once we've scanned as many jobs as the limit allows. A limit of -1
+  // (unlimited) or any non-positive value never trips, so the scan runs to the
+  // last page exactly as it did before this feature existed.
+  function jobLimitReached() {
+    return jobLimit > 0 && processedJobs >= jobLimit;
+  }
 
   function log(msg, level) {
     console.log(`[JobScanner] ${msg}`);
@@ -38,8 +64,11 @@
       serverUrl = msg.serverUrl;
       apiKey = msg.apiKey || "";
       betaMode = !!msg.betaMode;
+      jobLimit = normalizeJobLimit(msg.jobLimit);
+      processedJobs = 0;
       stats = { checked: 0, approved: 0, hidden: 0, skipped: 0 };
       stopRequested = false;
+      log(`Job scan limit: ${jobLimit === -1 ? "unlimited" : jobLimit}`);
       sendResponse({ ok: true });
       startScan();
       return true;
@@ -73,7 +102,9 @@
   function sendNavigating(statusMsg) {
     currentStatus = statusMsg;
     log(statusMsg);
-    return chrome.runtime.sendMessage({ type: "SCAN_NAVIGATING", stats: { ...stats }, statusMsg }).catch(() => {});
+    // Carry processedJobs so the job-limit count is preserved when the page
+    // reloads for URL-based pagination and the scan resumes.
+    return chrome.runtime.sendMessage({ type: "SCAN_NAVIGATING", stats: { ...stats }, statusMsg, processedJobs }).catch(() => {});
   }
 
   function sleep(ms) {
@@ -1594,8 +1625,16 @@
         foundNew++;
         processedCount++;
         await processCard(card, processedCount - 1, processedCount);
+        processedJobs++;
+        if (jobLimitReached()) {
+          log(`Reached job scan limit (${jobLimit}); stopping after ${processedJobs} jobs.`);
+          break;
+        }
         await sleep(1200);
       }
+
+      // Stop paging through this list once the global limit is hit.
+      if (jobLimitReached()) break;
 
       const container = getResultsListContainer();
       if (!container) {
@@ -1676,6 +1715,10 @@
         sendDone(`Stopped. ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
         return;
       }
+      if (jobLimitReached()) {
+        sendDone(`Reached job scan limit of ${jobLimit}. Scanned ${processedJobs} jobs: ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
+        return;
+      }
       if (processedOnPage === 0) {
         sendDone(`Safety stop: No processable jobs found on page ${pageNum}. ${stats.checked} checked, ${stats.approved} approved, ${stats.hidden} hidden.`);
         return;
@@ -1700,13 +1743,17 @@
   function maybeResumeAfterNavigation() {
     chrome.runtime.sendMessage({ type: "GET_BG_STATE" }, (state) => {
       if (chrome.runtime.lastError || !state?.scanning || !state.resumeAfterNavigation || !state.isScanTab) return;
-      chrome.storage.local.get(["extensionApiKey", "betaMode"], (data) => {
+      chrome.storage.local.get(["extensionApiKey", "betaMode", "jobLimit"], (data) => {
         if (!state.scanning || scanning) return;
         scanning = true;
         stopRequested = false;
         serverUrl = state.serverUrl || "";
         apiKey = data.extensionApiKey || "";
         betaMode = !!data.betaMode;
+        // Restore the limit and the running count so a scan that paged via a
+        // full reload keeps honoring the same job-limit budget.
+        jobLimit = normalizeJobLimit(data.jobLimit);
+        processedJobs = state.processedJobs || 0;
         stats = state.stats || { checked: 0, approved: 0, hidden: 0, skipped: 0 };
         startScan();
       });

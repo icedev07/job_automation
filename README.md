@@ -196,6 +196,13 @@ switches to the matching extractor (same flow: per-job AI analysis, external
 apply-link capture, pagination, and hide-on-reject). Leave it off for the
 classic page.
 
+Use the **Job scan limit** field to cap how many jobs a run scans across all
+pages. It defaults to **100**; set it to **-1** to scan every job with no limit.
+The count includes every job the scanner opens (approved, rejected, skipped, or
+already processed), and the limit is honored across pagination — including the
+full-page-reload fallback — so a run stops cleanly as soon as the budget is
+reached. The field works the same in classic and AI-search (beta) modes.
+
 ### Install
 
 1. Open `chrome://extensions`, enable Developer mode

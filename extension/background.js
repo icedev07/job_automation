@@ -21,6 +21,9 @@ function createEmptyState() {
     currentJob: null,
     scanTabId: null,
     resumeAfterNavigation: false,
+    // Running count of jobs scanned this run, preserved so the job-scan-limit
+    // budget survives a full page reload during URL-based pagination.
+    processedJobs: 0,
   };
 }
 
@@ -112,6 +115,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "SCAN_NAVIGATING") {
       if (msg.stats) state.stats = msg.stats;
       if (msg.statusMsg) state.statusMsg = msg.statusMsg;
+      if (typeof msg.processedJobs === "number") state.processedJobs = msg.processedJobs;
       state.currentJob = null;
       state.scanning = true;
       state.resumeAfterNavigation = true;

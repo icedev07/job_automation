@@ -99,6 +99,16 @@
       </label>
     </div>
 
+    <div class="config-section" style="margin-bottom:10px">
+      <label style="display:flex;align-items:center;gap:4px">
+        Job scan limit
+        <span title="Stop the scan after this many jobs have been scanned (across all pages). Default is 100. Set to -1 to scan every job with no limit. Counts each job the scanner opens, regardless of the result." style="color:#9ca3af;cursor:help">(?)</span>
+      </label>
+      <div class="config-row" style="margin-bottom:0">
+        <input type="number" id="jobLimitInput" min="-1" step="1" value="100" placeholder="100 (-1 = all)">
+      </div>
+    </div>
+
     <button id="startBtn">Start Scan</button>
 
     <div class="stats">
